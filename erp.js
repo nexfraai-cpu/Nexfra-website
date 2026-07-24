@@ -854,24 +854,125 @@ function renderConfiguratorFormInputs(template) {
     }).join('');
   });
 
-  // Render Dimensions section (Length, Height, Width)
+  // Render Dimensions section (Length, Height, Width) with Numeric Inputs & Unit Dropdowns
   const dimsContainer = document.getElementById('specs-dimensions-controls-inject');
   if (dimsContainer && template.dimensions) {
+    const parseDim = (dimStr, defaultUnit) => {
+      if (!dimStr || dimStr.toUpperCase() === 'NA') return { num: 'NA', unit: 'NA' };
+      const match = String(dimStr).trim().match(/^([\d.]+)\s*(.*)$/);
+      if (match) {
+        return { num: match[1], unit: match[2] || defaultUnit };
+      }
+      return { num: dimStr, unit: defaultUnit };
+    };
+
+    const lenObj = parseDim(template.dimensions.length, 'Feet');
+    const hgtObj = parseDim(template.dimensions.height, 'Feet');
+    const wdtObj = parseDim(template.dimensions.width, 'Inches');
+
     dimsContainer.innerHTML = `
-      <div class="spec-control-group">
-        <label style="font-size:0.775rem;font-weight:600;">Overall Frame Length</label>
-        <input type="text" id="w-dim-length" class="form-control" value="${template.dimensions.length}" oninput="simulateDraftAutoSave()">
-      </div>
-      <div class="spec-control-group">
-        <label style="font-size:0.775rem;font-weight:600;">Side Wall Height</label>
-        <input type="text" id="w-dim-height" class="form-control" value="${template.dimensions.height}" oninput="simulateDraftAutoSave()">
-      </div>
-      <div class="spec-control-group">
-        <label style="font-size:0.775rem;font-weight:600;">Overall Width</label>
-        <input type="text" id="w-dim-width" class="form-control" value="${template.dimensions.width}" oninput="simulateDraftAutoSave()">
+      <div class="spec-control-group" style="grid-column: span 2; background:#F8FAFC; padding:16px; border-radius:8px; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 12px 0; font-size:0.85rem; font-weight:700; color:#1E293B; display:flex; align-items:center; gap:6px;">
+          📏 Product Dimensions (Easy Numeric Entry)
+        </h4>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px;">
+          <!-- LENGTH -->
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">Overall Length</label>
+            <div style="display:flex; gap:4px;">
+              <input type="number" step="0.1" id="w-dim-length-num" class="form-control" value="${lenObj.num}" placeholder="40" oninput="updateDimFullValue('length')" style="font-weight:700; height:38px;">
+              <select id="w-dim-length-unit" class="form-control" onchange="updateDimFullValue('length')" style="width:90px; font-weight:600; padding:6px 20px 6px 8px; height:38px; min-height:38px;">
+                <option value="Feet" ${lenObj.unit.includes('Feet') ? 'selected' : ''}>Feet</option>
+                <option value="Meters" ${lenObj.unit.includes('Meter') ? 'selected' : ''}>Meters</option>
+                <option value="Inches" ${lenObj.unit.includes('Inch') ? 'selected' : ''}>Inches</option>
+                <option value="mm" ${lenObj.unit.includes('mm') ? 'selected' : ''}>mm</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 20, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">20ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 28, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">28ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 30, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">30ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 32, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">32ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 40, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">40ft</button>
+            </div>
+            <input type="hidden" id="w-dim-length" value="${template.dimensions.length}">
+          </div>
+
+          <!-- HEIGHT -->
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">Side Wall Height</label>
+            <div style="display:flex; gap:4px;">
+              <input type="text" id="w-dim-height-num" class="form-control" value="${hgtObj.num}" placeholder="4.5" oninput="updateDimFullValue('height')" style="font-weight:700; height:38px;">
+              <select id="w-dim-height-unit" class="form-control" onchange="updateDimFullValue('height')" style="width:90px; font-weight:600; padding:6px 20px 6px 8px; height:38px; min-height:38px;">
+                <option value="Feet" ${hgtObj.unit.includes('Feet') ? 'selected' : ''}>Feet</option>
+                <option value="Inches" ${hgtObj.unit.includes('Inch') ? 'selected' : ''}>Inches</option>
+                <option value="Meters" ${hgtObj.unit.includes('Meter') ? 'selected' : ''}>Meters</option>
+                <option value="NA" ${hgtObj.num === 'NA' || hgtObj.unit === 'NA' ? 'selected' : ''}>NA</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 'NA', 'NA')" style="padding:2px 6px; font-size:0.7rem;">N/A</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 4.0, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">4.0ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 4.5, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">4.5ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 5.0, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">5.0ft</button>
+            </div>
+            <input type="hidden" id="w-dim-height" value="${template.dimensions.height}">
+          </div>
+
+          <!-- WIDTH -->
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">Overall Width</label>
+            <div style="display:flex; gap:4px;">
+              <input type="number" step="0.5" id="w-dim-width-num" class="form-control" value="${wdtObj.num}" placeholder="98" oninput="updateDimFullValue('width')" style="font-weight:700; height:38px;">
+              <select id="w-dim-width-unit" class="form-control" onchange="updateDimFullValue('width')" style="width:95px; font-weight:600; padding:6px 20px 6px 8px; height:38px; min-height:38px;">
+                <option value="Inches" ${wdtObj.unit.includes('Inch') ? 'selected' : ''}>Inches</option>
+                <option value="Feet" ${wdtObj.unit.includes('Feet') ? 'selected' : ''}>Feet</option>
+                <option value="mm" ${wdtObj.unit.includes('mm') ? 'selected' : ''}>mm</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('width', 96, 'Inches')" style="padding:2px 6px; font-size:0.7rem;">96 in</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('width', 98, 'Inches')" style="padding:2px 6px; font-size:0.7rem;">98 in (Std)</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('width', 102, 'Inches')" style="padding:2px 6px; font-size:0.7rem;">102 in</button>
+            </div>
+            <input type="hidden" id="w-dim-width" value="${template.dimensions.width}">
+          </div>
+        </div>
       </div>
     `;
   }
+
+window.updateDimFullValue = function(dimType) {
+  const numInp = document.getElementById(`w-dim-${dimType}-num`);
+  const unitSelect = document.getElementById(`w-dim-${dimType}-unit`);
+  const hiddenInp = document.getElementById(`w-dim-${dimType}`);
+
+  if (!hiddenInp) return;
+
+  const num = numInp ? numInp.value.trim() : '';
+  const unit = unitSelect ? unitSelect.value : '';
+
+  if (!num || num.toUpperCase() === 'NA' || unit === 'NA') {
+    hiddenInp.value = 'NA';
+    if (numInp) numInp.value = 'NA';
+    if (unitSelect) unitSelect.value = 'NA';
+  } else {
+    hiddenInp.value = `${num} ${unit}`;
+  }
+
+  simulateDraftAutoSave();
+};
+
+window.setDimPreset = function(dimType, numVal, unitVal) {
+  const numInp = document.getElementById(`w-dim-${dimType}-num`);
+  const unitSelect = document.getElementById(`w-dim-${dimType}-unit`);
+
+  if (numInp) numInp.value = numVal;
+  if (unitSelect) unitSelect.value = unitVal;
+
+  updateDimFullValue(dimType);
+};
 
   // Render Custom Item Sections
   renderCustomItemSpecControls();
