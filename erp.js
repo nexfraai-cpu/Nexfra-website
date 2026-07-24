@@ -801,7 +801,7 @@ function renderConfiguratorFormInputs(template) {
 
       if (spec.type === 'dropdown') {
         controlHtml = `
-          <select id="w-spec-${spec.id}" class="form-control" onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; height:38px; font-weight:600;">
+          <select id="w-spec-${spec.id}" class="form-control" onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; font-weight:600; min-height:42px; padding:8px 12px; line-height:1.4; box-sizing:border-box;">
             ${allOpts.map(opt => {
               const diff = getEffectiveSpecPriceDiff(spec, opt);
               return `<option value="${opt}" ${opt === selectedVal ? 'selected' : ''}>
@@ -851,7 +851,7 @@ function renderConfiguratorFormInputs(template) {
         `;
       } else if (spec.type === 'text') {
         controlHtml = `
-          <input type="text" id="w-spec-${spec.id}" class="form-control" value="${selectedVal}" placeholder="e.g. Golden Green, Nippon PU Paint" oninput="updateSpecValueState('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; height:38px; font-weight:600; margin-top:4px;">
+          <input type="text" id="w-spec-${spec.id}" class="form-control" value="${selectedVal}" placeholder="e.g. Golden Green, Nippon PU Paint" oninput="updateSpecValueState('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; font-weight:600; min-height:42px; padding:8px 12px; line-height:1.4; box-sizing:border-box; margin-top:4px;">
         `;
       }
 
