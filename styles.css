@@ -1903,6 +1903,41 @@ textarea.form-control {
   border-color: rgba(255, 255, 255, 0.3);
 }
 
+/* Terms & Conditions Bar */
+.terms-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  margin-top: 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-bg-white);
+}
+
+.terms-bar:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--color-primary);
+}
+
+.terms-chevron {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  transition: transform 0.2s ease;
+}
+
+.terms-bar:hover .terms-chevron {
+  transform: translateX(3px);
+}
+
 /* Work Orders Layout */
 .grid-workorders {
   display: grid;

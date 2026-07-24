@@ -36,7 +36,17 @@ let wizardState = {
   specs: {},
   notRequired: {},
   status: 'Draft',
-  total: 0
+  total: 0,
+  terms: [
+    '1) Validity – 15 days',
+    '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
+    '3) Freight - Ex Price Hosur,.. Transportation in Customers Scope & is not considered in the above Price',
+    '4) Warrantee: Standard warranty against manufacturing defects of 12 Months from the date of delivery. Consumables, Glass & Rubber parts are not covered under the standard warranty',
+    '5) Taxes - All taxes & duties will be billed at actual applicable rates, at the time of billing',
+    '6) Payment terms – 50% advance and balance Prior to Delivery',
+    '7) Inspection: By Nexfra and share the report along with invoice'
+  ],
+  scopeOfWork: 'As Mentioned above'
 };
 
 // Master Vehicle Configurator Templates
@@ -87,7 +97,10 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 179-5stage", priceDiffs: { "Hyva 179-5stage": 0, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "axles", name: "Axles Fitted", section: "chassis", type: "radio", options: ["York 3x13T", "York 3x16T", "York 2x13T", "Custom"], defaultValue: "York 3x13T", priceDiffs: { "York 3x13T": 0, "York 3x16T": 80000, "York 2x13T": -100000, "Custom": 40000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
-      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Royal Blue" }
+      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Royal Blue" },
+      { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
+      { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" }
     ]
   },
   boxbody: {
@@ -104,10 +117,10 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "pump", name: "Hydraulic Pump Type", section: "hydraulic", type: "dropdown", options: ["Included Gear Pump", "Included Piston Pump", "Custom"], defaultValue: "Included Gear Pump", priceDiffs: { "Included Gear Pump": 0, "Included Piston Pump": 28000, "Custom": 15000 } },
       { id: "lock_system", name: "Tail Door Lock System", section: "chassis", type: "radio", options: ["Horizontal Lock System", "Manual Lock", "Custom"], defaultValue: "Horizontal Lock System", priceDiffs: { "Horizontal Lock System": 0, "Manual Lock": -10000, "Custom": 15000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
+      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" },
       { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
       { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" },
-      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" }
+      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" }
     ]
   },
   rockbody: {
@@ -119,7 +132,9 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "side_sheet", name: "Side Sheet thickness", section: "material", type: "dropdown", options: ["8mm ST-52", "10mm Hardox 450", "Custom"], defaultValue: "8mm ST-52", priceDiffs: { "8mm ST-52": 0, "10mm Hardox 450": 120000, "Custom": 60000 } },
       { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 179-5stage", "Hyva 150-4stage", "Custom"], defaultValue: "Hyva 179-5stage", priceDiffs: { "Hyva 179-5stage": 0, "Hyva 150-4stage": -25000, "Custom": 20000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
-      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Crimson Red" }
+      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Crimson Red" },
+      { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
+      { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } }
     ]
   },
   rigid28: {
@@ -462,8 +477,19 @@ function startNewQuotationWizard() {
     subtype: '',
     capacity: '',
     specs: {},
+    notRequired: {},
     status: 'Draft',
-    total: 0
+    total: 0,
+    terms: [
+      '1) Validity – 15 days',
+      '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
+      '3) Freight - Ex Price Hosur,.. Transportation in Customers Scope & is not considered in the above Price',
+      '4) Warrantee: Standard warranty against manufacturing defects of 12 Months from the date of delivery. Consumables, Glass & Rubber parts are not covered under the standard warranty',
+      '5) Taxes - All taxes & duties will be billed at actual applicable rates, at the time of billing',
+      '6) Payment terms – 50% advance and balance Prior to Delivery',
+      '7) Inspection: By Nexfra and share the report along with invoice'
+    ],
+    scopeOfWork: 'As Mentioned above'
   };
 
   // Reset inputs
@@ -753,16 +779,22 @@ function renderConfiguratorFormInputs(template) {
     const secSpecs = template.specs.filter(s => s.section === secId);
     
     if (secSpecs.length === 0) {
-      container.innerHTML = '<span class="section-hint col-span-2">No specifications modifications needed for this module.</span>';
+      container.innerHTML = '<span class="section-hint col-span-2" style="font-size:0.8rem; color:#64748B; padding:8px 0; display:block;">No extra modifications needed for this module.</span>';
       return;
     }
 
     container.innerHTML = secSpecs.map(spec => {
       const isNr = !!wizardState.notRequired[spec.id];
-      const nrBadgeHtml = `<span class="nr-badge${isNr ? ' active' : ''}" id="nr-badge-${spec.id}" onclick="toggleFieldRequired('${spec.id}")">${isNr ? 'Not Required' : 'Required'}</span>`;
+      const nrBadgeHtml = `<span class="nr-badge${isNr ? ' active' : ''}" id="nr-badge-${spec.id}" onclick="toggleFieldRequired('${spec.id}')">${isNr ? 'Not Required' : 'Required'}</span>`;
       let controlHtml = '';
 
-      const hasCustom = spec.options && spec.options.some(o => o.toLowerCase() === 'custom');
+      const rawOpts = (spec.options && Array.isArray(spec.options) && spec.options.length > 0)
+        ? spec.options 
+        : (spec.priceDiffs && Object.keys(spec.priceDiffs).length > 0)
+          ? Object.keys(spec.priceDiffs)
+          : ['Standard', 'Custom'];
+
+      const hasCustom = rawOpts.some(o => typeof o === 'string' && o.toLowerCase() === 'custom');
       const customOpts = getCustomFieldOptions(spec.id);
       const curCustomDesc = wizardState.specs[spec.id + '_custom_desc'] || '';
       const curCustomPrice = wizardState.specs[spec.id + '_custom_price'] || '';
@@ -779,19 +811,18 @@ function renderConfiguratorFormInputs(template) {
         </div>
       ` : '';
 
-      // Build options list: exclude original "Custom" entry, include saved custom options
       const allOpts = [
-        ...spec.options.filter(o => o.toLowerCase() !== 'custom'),
+        ...rawOpts.filter(o => typeof o === 'string' && o.toLowerCase() !== 'custom'),
         ...customOpts.map(c => c.name)
       ];
-      const selectedVal = wizardState.specs[spec.id] || spec.defaultValue;
+      const selectedVal = wizardState.specs[spec.id] !== undefined ? wizardState.specs[spec.id] : spec.defaultValue;
       if (wizardState.specs[spec.id] === undefined) {
         wizardState.specs[spec.id] = selectedVal;
       }
 
       if (spec.type === 'dropdown') {
         controlHtml = `
-          <select id="w-spec-${spec.id}" class="form-control" onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
+          <select id="w-spec-${spec.id}" class="form-control" onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; font-weight:600; min-height:42px; padding:8px 12px; line-height:1.4; box-sizing:border-box;">
             ${allOpts.map(opt => {
               const diff = getEffectiveSpecPriceDiff(spec, opt);
               return `<option value="${opt}" ${opt === selectedVal ? 'selected' : ''}>
@@ -804,18 +835,18 @@ function renderConfiguratorFormInputs(template) {
         `;
       } else if (spec.type === 'radio') {
         controlHtml = `
-          <div class="radio-group">
+          <div class="radio-group" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
             ${allOpts.map((opt, i) => {
               const diff = getEffectiveSpecPriceDiff(spec, opt);
               return `
-                <label class="radio-label">
+                <label class="radio-label" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.825rem; font-weight:600; color:#334155; background:#F8FAFC; padding:6px 12px; border-radius:6px; border:1px solid #CBD5E1;">
                   <input type="radio" name="w-spec-radio-${spec.id}" value="${opt}" ${opt === selectedVal ? 'checked' : ''} onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
-                  ${opt} ${diff !== 0 ? `<span style="font-size:0.75rem;color:var(--color-text-muted);">(${diff > 0 ? '+' : ''}₹${diff.toLocaleString('en-IN')})</span>` : ''}
+                  ${opt} ${diff !== 0 ? `<span style="font-size:0.75rem; color:#64748B;">(${diff > 0 ? '+' : ''}₹${diff.toLocaleString('en-IN')})</span>` : ''}
                 </label>
               `;
             }).join('')}
             ${hasCustom ? `
-              <label class="radio-label">
+              <label class="radio-label" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.825rem; font-weight:600; color:#334155; background:#F8FAFC; padding:6px 12px; border-radius:6px; border:1px solid #CBD5E1;">
                 <input type="radio" name="w-spec-radio-${spec.id}" value="Custom" ${selectedVal === 'Custom' ? 'checked' : ''} onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
                 Custom
               </label>
@@ -824,16 +855,16 @@ function renderConfiguratorFormInputs(template) {
           ${customDetailsHtml}
         `;
       } else if (spec.type === 'checkbox') {
-        const checkboxOpts = Object.keys(spec.priceDiffs || {});
+        const checkboxOpts = (allOpts && allOpts.length > 0) ? allOpts : ["Yes", "No"];
         controlHtml = `
-          <div class="checkbox-group">
+          <div class="checkbox-group" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
             ${checkboxOpts.map(opt => {
               const isChecked = selectedVal === opt;
-              const pd = spec.priceDiffs ? spec.priceDiffs[opt] : 0;
+              const pd = getEffectiveSpecPriceDiff(spec, opt);
               return `
-                <label class="checkbox-label">
+                <label class="checkbox-label" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.825rem; font-weight:600; color:#334155; background:#F8FAFC; padding:6px 12px; border-radius:6px; border:1px solid #CBD5E1;">
                   <input type="radio" name="w-spec-radio-${spec.id}" value="${opt}" ${isChecked ? 'checked' : ''} onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
-                  ${opt} ${pd !== 0 ? `<span style="font-size:0.75rem;color:var(--color-text-muted);">(${pd > 0 ? '+' : ''}₹${pd.toLocaleString('en-IN')})</span>` : ''}
+                  ${opt} ${pd !== 0 ? `<span style="font-size:0.75rem; color:#64748B;">(${pd > 0 ? '+' : ''}₹${pd.toLocaleString('en-IN')})</span>` : ''}
                 </label>
               `;
             }).join('')}
@@ -841,37 +872,141 @@ function renderConfiguratorFormInputs(template) {
         `;
       } else if (spec.type === 'text') {
         controlHtml = `
-          <input type="text" id="w-spec-${spec.id}" class="form-control" value="${selectedVal}" oninput="updateSpecValueState('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
+          <input type="text" id="w-spec-${spec.id}" class="form-control" value="${selectedVal}" placeholder="e.g. Golden Green, Nippon PU Paint" oninput="updateSpecValueState('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; font-weight:600; min-height:42px; padding:8px 12px; line-height:1.4; box-sizing:border-box; margin-top:4px;">
         `;
       }
 
       return `
-        <div class="spec-control-group">
-          <label style="font-size:0.775rem;font-weight:600;color:var(--color-text-dark);">${spec.name} ${nrBadgeHtml}</label>
+        <div class="spec-control-group" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label style="font-size:0.8rem; font-weight:700; color:#1E293B; margin:0;">${spec.name}</label>
+            ${nrBadgeHtml}
+          </div>
           ${controlHtml}
         </div>
       `;
     }).join('');
   });
 
-  // Render Dimensions section (Length, Height, Width)
+  // Render Dimensions section (Length, Height, Width) with Numeric Inputs & Unit Dropdowns
   const dimsContainer = document.getElementById('specs-dimensions-controls-inject');
   if (dimsContainer && template.dimensions) {
+    const parseDim = (dimStr, defaultUnit) => {
+      if (!dimStr || dimStr.toUpperCase() === 'NA') return { num: 'NA', unit: 'NA' };
+      const match = String(dimStr).trim().match(/^([\d.]+)\s*(.*)$/);
+      if (match) {
+        return { num: match[1], unit: match[2] || defaultUnit };
+      }
+      return { num: dimStr, unit: defaultUnit };
+    };
+
+    const lenObj = parseDim(template.dimensions.length, 'Feet');
+    const hgtObj = parseDim(template.dimensions.height, 'Feet');
+    const wdtObj = parseDim(template.dimensions.width, 'Inches');
+
     dimsContainer.innerHTML = `
-      <div class="spec-control-group">
-        <label style="font-size:0.775rem;font-weight:600;">Overall Frame Length</label>
-        <input type="text" id="w-dim-length" class="form-control" value="${template.dimensions.length}" oninput="simulateDraftAutoSave()">
-      </div>
-      <div class="spec-control-group">
-        <label style="font-size:0.775rem;font-weight:600;">Side Wall Height</label>
-        <input type="text" id="w-dim-height" class="form-control" value="${template.dimensions.height}" oninput="simulateDraftAutoSave()">
-      </div>
-      <div class="spec-control-group">
-        <label style="font-size:0.775rem;font-weight:600;">Overall Width</label>
-        <input type="text" id="w-dim-width" class="form-control" value="${template.dimensions.width}" oninput="simulateDraftAutoSave()">
+      <div class="spec-control-group" style="grid-column: span 2; background:#F8FAFC; padding:16px; border-radius:8px; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 12px 0; font-size:0.85rem; font-weight:700; color:#1E293B; display:flex; align-items:center; gap:6px;">
+          📏 Product Dimensions (Easy Numeric Entry)
+        </h4>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:14px;">
+          <!-- LENGTH -->
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">Overall Length</label>
+            <div style="display:flex; gap:4px;">
+              <input type="number" step="0.1" id="w-dim-length-num" class="form-control" value="${lenObj.num}" placeholder="40" oninput="updateDimFullValue('length')" style="font-weight:700; height:38px;">
+              <select id="w-dim-length-unit" class="form-control" onchange="updateDimFullValue('length')" style="width:90px; font-weight:600; padding:6px 20px 6px 8px; height:38px; min-height:38px;">
+                <option value="Feet" ${lenObj.unit.includes('Feet') ? 'selected' : ''}>Feet</option>
+                <option value="Meters" ${lenObj.unit.includes('Meter') ? 'selected' : ''}>Meters</option>
+                <option value="Inches" ${lenObj.unit.includes('Inch') ? 'selected' : ''}>Inches</option>
+                <option value="mm" ${lenObj.unit.includes('mm') ? 'selected' : ''}>mm</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 20, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">20ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 28, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">28ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 30, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">30ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 32, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">32ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('length', 40, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">40ft</button>
+            </div>
+            <input type="hidden" id="w-dim-length" value="${template.dimensions.length}">
+          </div>
+
+          <!-- HEIGHT -->
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">Side Wall Height</label>
+            <div style="display:flex; gap:4px;">
+              <input type="text" id="w-dim-height-num" class="form-control" value="${hgtObj.num}" placeholder="4.5" oninput="updateDimFullValue('height')" style="font-weight:700; height:38px;">
+              <select id="w-dim-height-unit" class="form-control" onchange="updateDimFullValue('height')" style="width:90px; font-weight:600; padding:6px 20px 6px 8px; height:38px; min-height:38px;">
+                <option value="Feet" ${hgtObj.unit.includes('Feet') ? 'selected' : ''}>Feet</option>
+                <option value="Inches" ${hgtObj.unit.includes('Inch') ? 'selected' : ''}>Inches</option>
+                <option value="Meters" ${hgtObj.unit.includes('Meter') ? 'selected' : ''}>Meters</option>
+                <option value="NA" ${hgtObj.num === 'NA' || hgtObj.unit === 'NA' ? 'selected' : ''}>NA</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 'NA', 'NA')" style="padding:2px 6px; font-size:0.7rem;">N/A</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 4.0, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">4.0ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 4.5, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">4.5ft</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('height', 5.0, 'Feet')" style="padding:2px 6px; font-size:0.7rem;">5.0ft</button>
+            </div>
+            <input type="hidden" id="w-dim-height" value="${template.dimensions.height}">
+          </div>
+
+          <!-- WIDTH -->
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#334155; display:block; margin-bottom:6px;">Overall Width</label>
+            <div style="display:flex; gap:4px;">
+              <input type="number" step="0.5" id="w-dim-width-num" class="form-control" value="${wdtObj.num}" placeholder="98" oninput="updateDimFullValue('width')" style="font-weight:700; height:38px;">
+              <select id="w-dim-width-unit" class="form-control" onchange="updateDimFullValue('width')" style="width:95px; font-weight:600; padding:6px 20px 6px 8px; height:38px; min-height:38px;">
+                <option value="Inches" ${wdtObj.unit.includes('Inch') ? 'selected' : ''}>Inches</option>
+                <option value="Feet" ${wdtObj.unit.includes('Feet') ? 'selected' : ''}>Feet</option>
+                <option value="mm" ${wdtObj.unit.includes('mm') ? 'selected' : ''}>mm</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:4px; margin-top:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('width', 96, 'Inches')" style="padding:2px 6px; font-size:0.7rem;">96 in</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('width', 98, 'Inches')" style="padding:2px 6px; font-size:0.7rem;">98 in (Std)</button>
+              <button type="button" class="btn btn-outline btn-xs" onclick="setDimPreset('width', 102, 'Inches')" style="padding:2px 6px; font-size:0.7rem;">102 in</button>
+            </div>
+            <input type="hidden" id="w-dim-width" value="${template.dimensions.width}">
+          </div>
+        </div>
       </div>
     `;
   }
+
+window.updateDimFullValue = function(dimType) {
+  const numInp = document.getElementById(`w-dim-${dimType}-num`);
+  const unitSelect = document.getElementById(`w-dim-${dimType}-unit`);
+  const hiddenInp = document.getElementById(`w-dim-${dimType}`);
+
+  if (!hiddenInp) return;
+
+  const num = numInp ? numInp.value.trim() : '';
+  const unit = unitSelect ? unitSelect.value : '';
+
+  if (!num || num.toUpperCase() === 'NA' || unit === 'NA') {
+    hiddenInp.value = 'NA';
+    if (numInp) numInp.value = 'NA';
+    if (unitSelect) unitSelect.value = 'NA';
+  } else {
+    hiddenInp.value = `${num} ${unit}`;
+  }
+
+  simulateDraftAutoSave();
+};
+
+window.setDimPreset = function(dimType, numVal, unitVal) {
+  const numInp = document.getElementById(`w-dim-${dimType}-num`);
+  const unitSelect = document.getElementById(`w-dim-${dimType}-unit`);
+
+  if (numInp) numInp.value = numVal;
+  if (unitSelect) unitSelect.value = unitVal;
+
+  updateDimFullValue(dimType);
+};
 
   // Render Custom Item Sections
   renderCustomItemSpecControls();
@@ -1318,50 +1453,127 @@ window.closeAddCustomItemSectionModal = function() {
   document.getElementById('add-custom-item-modal').classList.remove('active');
 };
 
-window.addFieldRowToModal = function() {
-  const container = document.getElementById('aci-fields-container');
-  document.getElementById('aci-no-fields-msg').style.display = 'none';
-  const idx = container.children.length;
-  const rowId = `aci-field-${Date.now()}`;
+window.addOptionChoiceRow = function(fieldRowId, defaultName = '', defaultPrice = 0, isDefault = false) {
+  const table = document.getElementById(`aci-opt-table-${fieldRowId}`);
+  if (!table) return;
+
+  const choiceId = `opt-choice-${Date.now()}-${Math.floor(Math.random()*10000)}`;
+
   const html = `
-    <div class="aci-field-row" id="${rowId}">
-      <div class="aci-field-row-header">
-        <span>Field #${idx + 1}</span>
-        <button type="button" onclick="removeFieldRowFromModal(this)" style="display:inline-flex;align-items:center;gap:4px;">
-          <svg style="width:12px;height:12px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          Remove
+    <div class="aci-opt-choice-row" id="${choiceId}" style="display:grid; grid-template-columns: 2fr 1.2fr 80px 32px; gap:8px; align-items:center; background:#FFFFFF; padding:8px 10px; border-radius:6px; border:1px solid #CBD5E1; margin-bottom:6px;">
+      <div>
+        <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Option / Choice Name</span>
+        <input type="text" class="form-control form-control-sm aci-opt-name" placeholder="e.g. Air Suspension, Fuwa 3x13T" value="${defaultName}">
+      </div>
+      <div>
+        <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Price Diff (₹)</span>
+        <div style="display:flex; align-items:center; gap:2px;">
+          <span style="font-size:0.75rem; color:#64748B;">₹</span>
+          <input type="number" class="form-control form-control-sm aci-opt-price" placeholder="0" value="${defaultPrice}">
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Default</span>
+        <input type="radio" name="default-opt-${fieldRowId}" class="aci-opt-is-default" ${isDefault ? 'checked' : ''} style="cursor:pointer;">
+      </div>
+      <div>
+        <button type="button" onclick="removeOptionChoiceRow('${choiceId}')" style="background:none; border:none; color:#EF4444; cursor:pointer; padding:4px;" title="Remove Option">
+          <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
       </div>
-      <div class="aci-field-grid">
-        <div class="form-group">
-          <label>Field Name</label>
-          <input type="text" class="form-control aci-field-name" placeholder="e.g. Battery Type, Voltage">
+    </div>
+  `;
+  table.insertAdjacentHTML('beforeend', html);
+};
+
+window.removeOptionChoiceRow = function(choiceId) {
+  const row = document.getElementById(choiceId);
+  if (row) row.remove();
+};
+
+function extractFieldOptionsAndPrices(fieldRowEl, fieldRowId) {
+  const choiceRows = fieldRowEl.querySelectorAll('.aci-opt-choice-row');
+  let options = [];
+  let priceDiffs = {};
+  let defaultVal = '';
+
+  choiceRows.forEach(cRow => {
+    const optName = cRow.querySelector('.aci-opt-name')?.value.trim();
+    const optPrice = parseFloat(cRow.querySelector('.aci-opt-price')?.value) || 0;
+    const isDefault = cRow.querySelector('.aci-opt-is-default')?.checked;
+
+    if (optName) {
+      options.push(optName);
+      priceDiffs[optName] = optPrice;
+      if (isDefault || !defaultVal) {
+        defaultVal = optName;
+      }
+    }
+  });
+
+  return { options, priceDiffs, defaultVal };
+}
+
+window.addFieldRowToModal = function() {
+  const container = document.getElementById('aci-fields-container');
+  const msg = document.getElementById('aci-no-fields-msg');
+  if (msg) msg.style.display = 'none';
+  const idx = container.children.length;
+  const rowId = `aci-field-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+
+  const html = `
+    <div class="aci-field-row" id="${rowId}" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:16px; margin-bottom:16px;">
+      <div class="aci-field-row-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
+        <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Field #${idx + 1}</span>
+        <button type="button" onclick="removeFieldRowFromModal(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+          ✕ Remove Field
+        </button>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Field / Parameter Name *</label>
+          <input type="text" class="form-control form-control-sm aci-field-name" placeholder="e.g. Suspension System, Axle Brand & Loading" style="font-weight:600;">
         </div>
-        <div class="form-group">
-          <label>Field Type</label>
-          <select class="form-control aci-field-type" onchange="toggleFieldOptionsInput(this)">
-            <option value="dropdown">Dropdown (Select)</option>
-            <option value="radio">Radio (Selectable)</option>
-            <option value="text">Text Input</option>
-            <option value="number">Number Input</option>
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Control Type (Display Format) *</label>
+          <select class="form-control form-control-sm aci-field-type" onchange="toggleFieldOptionsInput(this)">
+            <option value="dropdown">Dropdown Select Menu (e.g. Mechanical Leaf Spring, Air Suspension)</option>
+            <option value="radio">Selectable Radio Buttons (e.g. York 3x13T, Fuwa 3x13T)</option>
+            <option value="checkbox">Checkbox (Yes/No)</option>
+            <option value="text">Text Input Field</option>
           </select>
         </div>
-        <div class="form-group aci-options-group" style="grid-column: span 2;">
-          <label>Options (one per line, for dropdown/radio only)</label>
-          <textarea class="form-control aci-field-options" placeholder="Option 1&#10;Option 2&#10;Option 3" rows="3"></textarea>
+      </div>
+
+      <div class="aci-default-text-group" style="display:none; margin-bottom:12px;">
+        <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Default Value</label>
+        <input type="text" class="form-control form-control-sm aci-field-default" placeholder="e.g. Standard Assembly">
+      </div>
+
+      <!-- VISUAL OPTIONS & PRICING TABLE BUILDER -->
+      <div class="aci-options-builder-container" style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#1E293B;">Options & Price Differentials List</label>
+            <span class="section-hint" style="font-size:0.7rem; color:#64748B; display:block;">Enter choice names and their exact price addition (+) or discount (-).</span>
+          </div>
+          <button type="button" class="btn btn-outline btn-xs" onclick="addOptionChoiceRow('${rowId}')" style="background:#0284C7; color:#FFFFFF; border:none; font-weight:700; padding:4px 10px; border-radius:4px;">
+            + Add Option Row
+          </button>
         </div>
-        <div class="form-group">
-          <label>Default Value</label>
-          <input type="text" class="form-control aci-field-default" placeholder="e.g. Standard">
-        </div>
-        <div class="form-group">
-          <label>Price Differentials (format: Option: price, one per line)</label>
-          <textarea class="form-control aci-field-prices" placeholder="Option 1: 0&#10;Option 2: 5000&#10;Option 3: 10000" rows="3"></textarea>
+
+        <div class="aci-option-items-table" id="aci-opt-table-${rowId}">
+          <!-- Option Choice Rows Injected Here -->
         </div>
       </div>
     </div>
   `;
   container.insertAdjacentHTML('beforeend', html);
+
+  // Add initial default option rows for quick entry
+  addOptionChoiceRow(rowId, 'Option 1 (Standard)', 0, true);
+  addOptionChoiceRow(rowId, 'Option 2 (Upgrade)', 15000, false);
 };
 
 window.removeFieldRowFromModal = function(btn) {
@@ -1369,38 +1581,26 @@ window.removeFieldRowFromModal = function(btn) {
   if (row) {
     row.remove();
     const container = document.getElementById('aci-fields-container');
-    if (container.children.length === 0) {
-      document.getElementById('aci-no-fields-msg').style.display = 'block';
+    if (container && container.children.length === 0) {
+      const msg = document.getElementById('aci-no-fields-msg');
+      if (msg) msg.style.display = 'block';
     }
   }
 };
 
 window.toggleFieldOptionsInput = function(select) {
   const row = select.closest('.aci-field-row');
-  const optsGroup = row.querySelector('.aci-options-group');
-  const priceGroup = row.querySelector('.aci-field-grid .form-group:last-child');
-  if (select.value === 'text' || select.value === 'number') {
-    optsGroup.style.display = 'none';
+  const optsContainer = row.querySelector('.aci-options-builder-container');
+  const defaultTextGroup = row.querySelector('.aci-default-text-group');
+
+  if (select.value === 'text' || select.value === 'checkbox') {
+    if (optsContainer) optsContainer.style.display = 'none';
+    if (defaultTextGroup) defaultTextGroup.style.display = 'block';
   } else {
-    optsGroup.style.display = 'block';
+    if (optsContainer) optsContainer.style.display = 'block';
+    if (defaultTextGroup) defaultTextGroup.style.display = 'none';
   }
 };
-
-// Parse price differentials textarea into object
-function parsePriceDiffs(text) {
-  const diffs = {};
-  text.split('\n').forEach(line => {
-    const parts = line.split(':');
-    if (parts.length >= 2) {
-      const opt = parts[0].trim();
-      const price = parseFloat(parts[1].trim());
-      if (opt && !isNaN(price)) {
-        diffs[opt] = price;
-      }
-    }
-  });
-  return diffs;
-}
 
 window.saveCustomItemSection = function() {
   const sectionName = document.getElementById('aci-section-name').value.trim();
@@ -1429,15 +1629,27 @@ window.saveCustomItemSection = function() {
     if (!name) return;
 
     const type = row.querySelector('.aci-field-type').value;
-    const defaultVal = row.querySelector('.aci-field-default').value.trim();
+    const rowId = row.id;
     let options = [];
-    const optsText = row.querySelector('.aci-field-options') ? row.querySelector('.aci-field-options').value.trim() : '';
-    if (optsText && (type === 'dropdown' || type === 'radio')) {
-      options = optsText.split('\n').map(o => o.trim()).filter(o => o);
-    }
+    let priceDiffs = {};
+    let defaultVal = '';
 
-    const priceDiffsText = row.querySelector('.aci-field-prices') ? row.querySelector('.aci-field-prices').value.trim() : '';
-    const priceDiffs = parsePriceDiffs(priceDiffsText);
+    if (type === 'dropdown' || type === 'radio') {
+      const extracted = extractFieldOptionsAndPrices(row, rowId);
+      options = extracted.options;
+      priceDiffs = extracted.priceDiffs;
+      defaultVal = extracted.defaultVal;
+
+      if (options.length === 0) {
+        options = ['Standard', 'Custom'];
+        priceDiffs = { 'Standard': 0, 'Custom': 15000 };
+        defaultVal = 'Standard';
+      }
+    } else if (type === 'checkbox') {
+      defaultVal = 'Yes';
+    } else {
+      defaultVal = row.querySelector('.aci-field-default')?.value.trim() || 'Standard';
+    }
 
     section.fields.push({
       id: `cf_${section.id}_${idx}`,
@@ -1530,43 +1742,51 @@ window.openEditCustomItemSectionModal = function(id) {
   const container = document.getElementById('edit-custom-item-modal-body');
 
   let fieldsHtml = section.fields.map((field, idx) => {
-    const optionsVal = (field.options && field.options.length > 0) ? field.options.join('\n') : '';
-    const pricesVal = field.priceDiffs ? Object.entries(field.priceDiffs).map(([k, v]) => `${k}: ${v}`).join('\n') : '';
+    const rowId = `edit-field-${Date.now()}-${idx}`;
 
     return `
-      <div class="aci-field-row" data-field-idx="${idx}">
-        <div class="aci-field-row-header">
-          <span>Field #${idx + 1}</span>
-          <button type="button" onclick="removeEditFieldRow(this)" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--color-danger);cursor:pointer;font-size:0.75rem;font-weight:600;padding:4px 8px;border-radius:4px;">
-            <svg style="width:12px;height:12px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            Remove
+      <div class="aci-field-row" id="${rowId}" data-field-idx="${idx}" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:16px; margin-bottom:16px;">
+        <div class="aci-field-row-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
+          <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Field #${idx + 1}</span>
+          <button type="button" onclick="removeEditFieldRow(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+            ✕ Remove Field
           </button>
         </div>
-        <div class="aci-field-grid">
-          <div class="form-group">
-            <label>Field Name</label>
-            <input type="text" class="form-control edit-field-name" value="${field.name}">
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Field Name *</label>
+            <input type="text" class="form-control form-control-sm edit-field-name" value="${field.name}" style="font-weight:600;">
           </div>
-          <div class="form-group">
-            <label>Field Type</label>
-            <select class="form-control edit-field-type" onchange="toggleEditFieldOptions(this)">
-              <option value="dropdown" ${field.type === 'dropdown' ? 'selected' : ''}>Dropdown (Select)</option>
-              <option value="radio" ${field.type === 'radio' ? 'selected' : ''}>Radio (Selectable)</option>
-              <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text Input</option>
-              <option value="number" ${field.type === 'number' ? 'selected' : ''}>Number Input</option>
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Control Type *</label>
+            <select class="form-control form-control-sm edit-field-type" onchange="toggleEditFieldOptions(this)">
+              <option value="dropdown" ${field.type === 'dropdown' ? 'selected' : ''}>Dropdown Select Menu</option>
+              <option value="radio" ${field.type === 'radio' ? 'selected' : ''}>Selectable Radio Buttons</option>
+              <option value="checkbox" ${field.type === 'checkbox' ? 'selected' : ''}>Checkbox (Yes/No)</option>
+              <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text Input Field</option>
             </select>
           </div>
-          <div class="form-group edit-options-group" style="grid-column: span 2; ${field.type === 'text' || field.type === 'number' ? 'display:none;' : ''}">
-            <label>Options (one per line, for dropdown/radio only)</label>
-            <textarea class="form-control edit-field-options" rows="3">${optionsVal}</textarea>
+        </div>
+
+        <div class="aci-default-text-group" style="${field.type === 'text' || field.type === 'checkbox' ? '' : 'display:none;'} margin-bottom:12px;">
+          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Default Value</label>
+          <input type="text" class="form-control form-control-sm edit-field-default" value="${field.defaultValue || ''}">
+        </div>
+
+        <div class="aci-options-builder-container" style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:12px; ${field.type === 'text' || field.type === 'checkbox' ? 'display:none;' : ''}">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <div>
+              <label style="font-size:0.775rem; font-weight:700; color:#1E293B;">Options & Price Differentials List</label>
+              <span class="section-hint" style="font-size:0.7rem; color:#64748B; display:block;">Enter choice names and their exact price addition (+) or discount (-).</span>
+            </div>
+            <button type="button" class="btn btn-outline btn-xs" onclick="addOptionChoiceRow('${rowId}')" style="background:#0284C7; color:#FFFFFF; border:none; font-weight:700; padding:4px 10px; border-radius:4px;">
+              + Add Option Row
+            </button>
           </div>
-          <div class="form-group">
-            <label>Default Value</label>
-            <input type="text" class="form-control edit-field-default" value="${field.defaultValue || ''}">
-          </div>
-          <div class="form-group">
-            <label>Price Differentials (format: Option: price)</label>
-            <textarea class="form-control edit-field-prices" rows="3">${pricesVal}</textarea>
+
+          <div class="aci-option-items-table" id="aci-opt-table-${rowId}">
+            <!-- Option Choice Rows Injected Here -->
           </div>
         </div>
       </div>
@@ -1590,6 +1810,20 @@ window.openEditCustomItemSectionModal = function(id) {
     </div>
   `;
 
+  // Pre-populate Option rows for existing fields
+  section.fields.forEach((field, idx) => {
+    const rowId = `edit-field-${Date.now()}-${idx}`;
+    if (field.options && field.options.length > 0) {
+      field.options.forEach(opt => {
+        const pDiff = field.priceDiffs && field.priceDiffs[opt] !== undefined ? field.priceDiffs[opt] : 0;
+        const isDef = field.defaultValue === opt;
+        addOptionChoiceRow(rowId, opt, pDiff, isDef);
+      });
+    } else if (field.type === 'dropdown' || field.type === 'radio') {
+      addOptionChoiceRow(rowId, 'Option 1', 0, true);
+    }
+  });
+
   document.getElementById('edit-custom-item-modal').classList.add('active');
 };
 
@@ -1606,54 +1840,70 @@ window.removeEditFieldRow = function(btn) {
 window.addEditFieldRow = function() {
   const container = document.getElementById('edit-fields-container');
   const idx = container.querySelectorAll('.aci-field-row').length;
+  const rowId = `edit-field-${Date.now()}-${idx}`;
+
   const html = `
-    <div class="aci-field-row">
-      <div class="aci-field-row-header">
-        <span>Field #${idx + 1}</span>
-        <button type="button" onclick="removeEditFieldRow(this)" style="display:inline-flex;align-items:center;gap:4px;background:none;border:none;color:var(--color-danger);cursor:pointer;font-size:0.75rem;font-weight:600;padding:4px 8px;border-radius:4px;">
-          <svg style="width:12px;height:12px;" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          Remove
+    <div class="aci-field-row" id="${rowId}" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:16px; margin-bottom:16px;">
+      <div class="aci-field-row-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
+        <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Field #${idx + 1}</span>
+        <button type="button" onclick="removeEditFieldRow(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+          ✕ Remove Field
         </button>
       </div>
-      <div class="aci-field-grid">
-        <div class="form-group">
-          <label>Field Name</label>
-          <input type="text" class="form-control edit-field-name" placeholder="e.g. Battery Type">
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Field Name *</label>
+          <input type="text" class="form-control form-control-sm edit-field-name" placeholder="e.g. Battery Voltage" style="font-weight:600;">
         </div>
-        <div class="form-group">
-          <label>Field Type</label>
-          <select class="form-control edit-field-type" onchange="toggleEditFieldOptions(this)">
-            <option value="dropdown">Dropdown (Select)</option>
-            <option value="radio">Radio (Selectable)</option>
-            <option value="text">Text Input</option>
-            <option value="number">Number Input</option>
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Control Type *</label>
+          <select class="form-control form-control-sm edit-field-type" onchange="toggleEditFieldOptions(this)">
+            <option value="dropdown">Dropdown Select Menu</option>
+            <option value="radio">Selectable Radio Buttons</option>
+            <option value="checkbox">Checkbox (Yes/No)</option>
+            <option value="text">Text Input Field</option>
           </select>
         </div>
-        <div class="form-group edit-options-group" style="grid-column: span 2;">
-          <label>Options (one per line)</label>
-          <textarea class="form-control edit-field-options" rows="3" placeholder="Option 1&#10;Option 2"></textarea>
+      </div>
+
+      <div class="aci-default-text-group" style="display:none; margin-bottom:12px;">
+        <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Default Value</label>
+        <input type="text" class="form-control form-control-sm edit-field-default" placeholder="e.g. Standard">
+      </div>
+
+      <div class="aci-options-builder-container" style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div>
+            <label style="font-size:0.775rem; font-weight:700; color:#1E293B;">Options & Price Differentials List</label>
+            <span class="section-hint" style="font-size:0.7rem; color:#64748B; display:block;">Enter choice names and their exact price addition (+) or discount (-).</span>
+          </div>
+          <button type="button" class="btn btn-outline btn-xs" onclick="addOptionChoiceRow('${rowId}')" style="background:#0284C7; color:#FFFFFF; border:none; font-weight:700; padding:4px 10px; border-radius:4px;">
+            + Add Option Row
+          </button>
         </div>
-        <div class="form-group">
-          <label>Default Value</label>
-          <input type="text" class="form-control edit-field-default" placeholder="e.g. Standard">
-        </div>
-        <div class="form-group">
-          <label>Price Differentials (format: Option: price)</label>
-          <textarea class="form-control edit-field-prices" rows="3" placeholder="Option 1: 0&#10;Option 2: 5000"></textarea>
+
+        <div class="aci-option-items-table" id="aci-opt-table-${rowId}">
+          <!-- Option Choice Rows Injected Here -->
         </div>
       </div>
     </div>
   `;
   container.insertAdjacentHTML('beforeend', html);
+  addOptionChoiceRow(rowId, 'Option 1', 0, true);
 };
 
 window.toggleEditFieldOptions = function(select) {
   const row = select.closest('.aci-field-row');
-  const optsGroup = row.querySelector('.edit-options-group');
-  if (select.value === 'text' || select.value === 'number') {
-    optsGroup.style.display = 'none';
+  const optsContainer = row.querySelector('.aci-options-builder-container');
+  const defaultTextGroup = row.querySelector('.aci-default-text-group');
+
+  if (select.value === 'text' || select.value === 'checkbox') {
+    if (optsContainer) optsContainer.style.display = 'none';
+    if (defaultTextGroup) defaultTextGroup.style.display = 'block';
   } else {
-    optsGroup.style.display = 'block';
+    if (optsContainer) optsContainer.style.display = 'block';
+    if (defaultTextGroup) defaultTextGroup.style.display = 'none';
   }
 };
 
@@ -1676,14 +1926,27 @@ window.saveEditedCustomItemSection = function() {
     const name = row.querySelector('.edit-field-name').value.trim();
     if (!name) return;
     const type = row.querySelector('.edit-field-type').value;
-    const defaultVal = row.querySelector('.edit-field-default').value.trim();
+    const rowId = row.id;
     let options = [];
-    const optsEl = row.querySelector('.edit-field-options');
-    if (optsEl && (type === 'dropdown' || type === 'radio')) {
-      options = optsEl.value.split('\n').map(o => o.trim()).filter(o => o);
+    let priceDiffs = {};
+    let defaultVal = '';
+
+    if (type === 'dropdown' || type === 'radio') {
+      const extracted = extractFieldOptionsAndPrices(row, rowId);
+      options = extracted.options;
+      priceDiffs = extracted.priceDiffs;
+      defaultVal = extracted.defaultVal;
+
+      if (options.length === 0) {
+        options = ['Standard', 'Custom'];
+        priceDiffs = { 'Standard': 0, 'Custom': 15000 };
+        defaultVal = 'Standard';
+      }
+    } else if (type === 'checkbox') {
+      defaultVal = 'Yes';
+    } else {
+      defaultVal = row.querySelector('.edit-field-default')?.value.trim() || 'Standard';
     }
-    const pricesVal = row.querySelector('.edit-field-prices') ? row.querySelector('.edit-field-prices').value.trim() : '';
-    const priceDiffs = parsePriceDiffs(pricesVal);
 
     section.fields.push({
       id: `cf_${_editSectionId}_${idx}`,
@@ -1702,7 +1965,7 @@ window.saveEditedCustomItemSection = function() {
   renderCustomSectionsList();
   renderConfiguratorFormInputs(WIZARD_PRODUCT_TEMPLATES[wizardState.subtype]);
   calculateWizardPricing();
-  logSystemActivity(`Updated custom spec section: "${sectionName}".`);
+  logSystemActivity(`Edited custom spec section: "${sectionName}".`);
   alert(`Custom section "${sectionName}" updated successfully!`);
 };
 
@@ -2012,6 +2275,46 @@ function calculateWizardPricing() {
   }
 }
 
+window.openTermsModal = function() {
+  const textarea = document.getElementById('terms-editor');
+  if (textarea && wizardState.terms) {
+    textarea.value = wizardState.terms.join('\n');
+  }
+  document.getElementById('terms-modal').style.display = 'flex';
+};
+
+window.closeTermsModal = function() {
+  document.getElementById('terms-modal').style.display = 'none';
+};
+
+window.saveTermsFromModal = function() {
+  const textarea = document.getElementById('terms-editor');
+  if (textarea) {
+    wizardState.terms = textarea.value.split('\n').map(s => s.trim()).filter(s => s);
+  }
+  closeTermsModal();
+};
+
+window.openScopeModal = function() {
+  const textarea = document.getElementById('scope-editor');
+  if (textarea && wizardState.scopeOfWork) {
+    textarea.value = wizardState.scopeOfWork;
+  }
+  document.getElementById('scope-modal').style.display = 'flex';
+};
+
+window.closeScopeModal = function() {
+  document.getElementById('scope-modal').style.display = 'none';
+};
+
+window.saveScopeFromModal = function() {
+  const textarea = document.getElementById('scope-editor');
+  if (textarea) {
+    wizardState.scopeOfWork = textarea.value.trim() || 'As Mentioned above';
+  }
+  closeScopeModal();
+};
+
 // Step 5: Final Quotation Mock Preview Populate
 function generateQuotationFinalReview() {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
@@ -2112,6 +2415,18 @@ function generateQuotationFinalReview() {
     specsContainer.innerHTML = specsListHtml;
   }
 
+  // Populate Terms & Conditions from wizardState
+  const termsList = document.getElementById('w-pdf-terms-list');
+  if (termsList && wizardState.terms) {
+    termsList.innerHTML = wizardState.terms.map(t => `<li>${t}</li>`).join('');
+  }
+
+  // Populate Scope of Work from wizardState
+  const scopeVal = document.getElementById('w-pdf-scope-val');
+  if (scopeVal && wizardState.scopeOfWork) {
+    scopeVal.innerText = wizardState.scopeOfWork;
+  }
+
   // Toggle Work Order conversion block
   updateQuotationStatusState();
 }
@@ -2167,7 +2482,9 @@ window.saveWizardQuotation = function() {
     date: c.date,
     total: wizardState.total,
     status: wizardState.status,
-    specs: wizardState.specs
+    specs: wizardState.specs,
+    terms: wizardState.terms,
+    scopeOfWork: wizardState.scopeOfWork
   });
 
   // 3. Save invoice if approved
@@ -2798,5 +3115,18 @@ window.openPdfPreview = function(quoteId) {
   if (specsContainer) {
     specsContainer.innerHTML = specsHtml;
   }
+
+  // Populate Terms & Conditions from saved quotation
+  const pdfTermsList = document.getElementById('pdf-terms-list');
+  if (pdfTermsList && quote.terms) {
+    pdfTermsList.innerHTML = quote.terms.map(t => `<li>${t}</li>`).join('');
+  }
+
+  // Populate Scope of Work from saved quotation
+  const pdfScopeVal = document.getElementById('pdf-scope-val');
+  if (pdfScopeVal && quote.scopeOfWork) {
+    pdfScopeVal.innerText = quote.scopeOfWork;
+  }
+
   document.getElementById('pdf-preview-modal').classList.add('active');
 };

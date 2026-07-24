@@ -17,7 +17,7 @@
   
   <!-- html2pdf.js for High-Fidelity Client-side PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/styles-wO8o_VKh.css">
+  <link rel="stylesheet" crossorigin href="/assets/styles-CFBr-OFZ.css">
 </head>
 <body style="background-color: var(--color-bg); overflow: hidden; height: 100vh; display: flex; flex-direction: column;">
 
@@ -621,6 +621,16 @@
                   <div id="w-live-summary-sheet">
                     <!-- Live calculation outputs injected by JS -->
                   </div>
+
+                  <div class="terms-bar" onclick="openTermsModal()">
+                    <span>📋 Terms & Conditions</span>
+                    <svg class="terms-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+
+                  <div class="terms-bar" onclick="openScopeModal()">
+                    <span>📄 Scope of Work</span>
+                    <svg class="terms-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
                 </div>
 
                 <div class="preview-footer">
@@ -758,7 +768,7 @@
                   <div class="pdf-header-line"></div>
                   
                   <div class="pdf-section-title">Scope of Work:</div>
-                  <div class="pdf-text-block">As Mentioned above</div>
+                  <div class="pdf-text-block" id="w-pdf-scope-val">As Mentioned above</div>
                   
                   <div class="pdf-section-title">Painting:</div>
                   <div class="pdf-text-block" id="w-pdf-painting-val">Epoxy Primer with PU Paint two coats each,</div>
@@ -767,14 +777,8 @@
                   <div class="pdf-text-block">Customer or Dealer Scope</div>
                   
                   <div class="pdf-section-title">Terms & Conditions:</div>
-                  <ul class="pdf-list">
-                    <li>1) <strong>Validity</strong> – 15 days</li>
-                    <li>2) <strong>Delivery</strong> – 2 To 3 weeks from Date of receipt of purchase order and advance payment</li>
-                    <li>3) <strong>Freight</strong> - Ex Price Hosur,.. Transportation in Customers Scope & is not considered in the above Price</li>
-                    <li>4) <strong>Warrantee</strong>: Standard warranty against manufacturing defects of 12 Months from the date of delivery. Consumables, Glass & Rubber parts are not covered under the standard warranty</li>
-                    <li>5) <strong>Taxes</strong> - All taxes & duties will be billed at actual applicable rates, at the time of billing</li>
-                    <li>6) <strong>Payment terms</strong> – 50% advance and balance Prior to Delivery</li>
-                    <li>7) <strong>Inspection</strong>: By Nexfra and share the report along with invoice</li>
+                  <ul class="pdf-list" id="w-pdf-terms-list">
+                    <!-- Populated by JS from wizardState.terms -->
                   </ul>
                   
                   <div class="pdf-section-title">BANK DETAILS :-</div>
@@ -1194,7 +1198,7 @@
             <div class="pdf-header-line"></div>
             
             <div class="pdf-section-title">Scope of Work:</div>
-            <div class="pdf-text-block">As Mentioned above</div>
+            <div class="pdf-text-block" id="pdf-scope-val">As Mentioned above</div>
             
             <div class="pdf-section-title">Painting:</div>
             <div class="pdf-text-block" id="pdf-painting-val">Epoxy Primer with PU Paint two coats each,</div>
@@ -1203,14 +1207,8 @@
             <div class="pdf-text-block">Customer or Dealer Scope</div>
             
             <div class="pdf-section-title">Terms & Conditions:</div>
-            <ul class="pdf-list">
-              <li>1) <strong>Validity</strong> – 15 days</li>
-              <li>2) <strong>Delivery</strong> – 2 To 3 weeks from Date of receipt of purchase order and advance payment</li>
-              <li>3) <strong>Freight</strong> - Ex Price Hosur,.. Transportation in Customers Scope & is not considered in the above Price</li>
-              <li>4) <strong>Warrantee</strong>: Standard warranty against manufacturing defects of 12 Months from the date of delivery. Consumables, Glass & Rubber parts are not covered under the standard warranty</li>
-              <li>5) <strong>Taxes</strong> - All taxes & duties will be billed at actual applicable rates, at the time of billing</li>
-              <li>6) <strong>Payment terms</strong> – 50% advance and balance Prior to Delivery</li>
-              <li>7) <strong>Inspection</strong>: By Nexfra and share the report along with invoice</li>
+            <ul class="pdf-list" id="pdf-terms-list">
+              <!-- Populated by JS from saved quotation data -->
             </ul>
             
             <div class="pdf-section-title">BANK DETAILS :-</div>
@@ -1355,6 +1353,54 @@
       <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeEditCustomItemSectionModal()">Cancel</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="saveEditedCustomItemSection()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TERMS & CONDITIONS EDITOR MODAL -->
+  <!-- ========================================== -->
+  <div class="pdf-modal" id="terms-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:700px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:90vh;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
+          📋 Edit Terms & Conditions
+        </h3>
+        <button type="button" class="btn btn-outline btn-xs" onclick="closeTermsModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+      </div>
+      
+      <div style="padding:24px;">
+        <p style="font-size:0.85rem; color:#64748B; margin-bottom:12px;">Edit each term on a separate line. Changes are saved to this quotation only.</p>
+        <textarea id="terms-editor" class="form-control" style="width:100%; min-height:300px; font-size:0.85rem; line-height:1.6; padding:12px; resize:vertical; font-family:'Inter',sans-serif;"></textarea>
+      </div>
+      
+      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeTermsModal()">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveTermsFromModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Terms</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SCOPE OF WORK EDITOR MODAL -->
+  <!-- ========================================== -->
+  <div class="pdf-modal" id="scope-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:700px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:90vh;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
+          📄 Edit Scope of Work
+        </h3>
+        <button type="button" class="btn btn-outline btn-xs" onclick="closeScopeModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+      </div>
+      
+      <div style="padding:24px;">
+        <p style="font-size:0.85rem; color:#64748B; margin-bottom:12px;">Describe the scope of work for this quotation.</p>
+        <textarea id="scope-editor" class="form-control" style="width:100%; min-height:200px; font-size:0.85rem; line-height:1.6; padding:12px; resize:vertical; font-family:'Inter',sans-serif;"></textarea>
+      </div>
+      
+      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeScopeModal()">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveScopeFromModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Scope</button>
       </div>
     </div>
   </div>

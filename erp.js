@@ -36,7 +36,17 @@ let wizardState = {
   specs: {},
   notRequired: {},
   status: 'Draft',
-  total: 0
+  total: 0,
+  terms: [
+    '1) Validity – 15 days',
+    '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
+    '3) Freight - Ex Price Hosur,.. Transportation in Customers Scope & is not considered in the above Price',
+    '4) Warrantee: Standard warranty against manufacturing defects of 12 Months from the date of delivery. Consumables, Glass & Rubber parts are not covered under the standard warranty',
+    '5) Taxes - All taxes & duties will be billed at actual applicable rates, at the time of billing',
+    '6) Payment terms – 50% advance and balance Prior to Delivery',
+    '7) Inspection: By Nexfra and share the report along with invoice'
+  ],
+  scopeOfWork: 'As Mentioned above'
 };
 
 // Master Vehicle Configurator Templates
@@ -467,8 +477,19 @@ function startNewQuotationWizard() {
     subtype: '',
     capacity: '',
     specs: {},
+    notRequired: {},
     status: 'Draft',
-    total: 0
+    total: 0,
+    terms: [
+      '1) Validity – 15 days',
+      '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
+      '3) Freight - Ex Price Hosur,.. Transportation in Customers Scope & is not considered in the above Price',
+      '4) Warrantee: Standard warranty against manufacturing defects of 12 Months from the date of delivery. Consumables, Glass & Rubber parts are not covered under the standard warranty',
+      '5) Taxes - All taxes & duties will be billed at actual applicable rates, at the time of billing',
+      '6) Payment terms – 50% advance and balance Prior to Delivery',
+      '7) Inspection: By Nexfra and share the report along with invoice'
+    ],
+    scopeOfWork: 'As Mentioned above'
   };
 
   // Reset inputs
@@ -2254,6 +2275,46 @@ function calculateWizardPricing() {
   }
 }
 
+window.openTermsModal = function() {
+  const textarea = document.getElementById('terms-editor');
+  if (textarea && wizardState.terms) {
+    textarea.value = wizardState.terms.join('\n');
+  }
+  document.getElementById('terms-modal').style.display = 'flex';
+};
+
+window.closeTermsModal = function() {
+  document.getElementById('terms-modal').style.display = 'none';
+};
+
+window.saveTermsFromModal = function() {
+  const textarea = document.getElementById('terms-editor');
+  if (textarea) {
+    wizardState.terms = textarea.value.split('\n').map(s => s.trim()).filter(s => s);
+  }
+  closeTermsModal();
+};
+
+window.openScopeModal = function() {
+  const textarea = document.getElementById('scope-editor');
+  if (textarea && wizardState.scopeOfWork) {
+    textarea.value = wizardState.scopeOfWork;
+  }
+  document.getElementById('scope-modal').style.display = 'flex';
+};
+
+window.closeScopeModal = function() {
+  document.getElementById('scope-modal').style.display = 'none';
+};
+
+window.saveScopeFromModal = function() {
+  const textarea = document.getElementById('scope-editor');
+  if (textarea) {
+    wizardState.scopeOfWork = textarea.value.trim() || 'As Mentioned above';
+  }
+  closeScopeModal();
+};
+
 // Step 5: Final Quotation Mock Preview Populate
 function generateQuotationFinalReview() {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
@@ -2354,6 +2415,18 @@ function generateQuotationFinalReview() {
     specsContainer.innerHTML = specsListHtml;
   }
 
+  // Populate Terms & Conditions from wizardState
+  const termsList = document.getElementById('w-pdf-terms-list');
+  if (termsList && wizardState.terms) {
+    termsList.innerHTML = wizardState.terms.map(t => `<li>${t}</li>`).join('');
+  }
+
+  // Populate Scope of Work from wizardState
+  const scopeVal = document.getElementById('w-pdf-scope-val');
+  if (scopeVal && wizardState.scopeOfWork) {
+    scopeVal.innerText = wizardState.scopeOfWork;
+  }
+
   // Toggle Work Order conversion block
   updateQuotationStatusState();
 }
@@ -2409,7 +2482,9 @@ window.saveWizardQuotation = function() {
     date: c.date,
     total: wizardState.total,
     status: wizardState.status,
-    specs: wizardState.specs
+    specs: wizardState.specs,
+    terms: wizardState.terms,
+    scopeOfWork: wizardState.scopeOfWork
   });
 
   // 3. Save invoice if approved
@@ -3040,5 +3115,18 @@ window.openPdfPreview = function(quoteId) {
   if (specsContainer) {
     specsContainer.innerHTML = specsHtml;
   }
+
+  // Populate Terms & Conditions from saved quotation
+  const pdfTermsList = document.getElementById('pdf-terms-list');
+  if (pdfTermsList && quote.terms) {
+    pdfTermsList.innerHTML = quote.terms.map(t => `<li>${t}</li>`).join('');
+  }
+
+  // Populate Scope of Work from saved quotation
+  const pdfScopeVal = document.getElementById('pdf-scope-val');
+  if (pdfScopeVal && quote.scopeOfWork) {
+    pdfScopeVal.innerText = quote.scopeOfWork;
+  }
+
   document.getElementById('pdf-preview-modal').classList.add('active');
 };
