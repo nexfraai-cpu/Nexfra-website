@@ -87,7 +87,10 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 179-5stage", priceDiffs: { "Hyva 179-5stage": 0, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "axles", name: "Axles Fitted", section: "chassis", type: "radio", options: ["York 3x13T", "York 3x16T", "York 2x13T", "Custom"], defaultValue: "York 3x13T", priceDiffs: { "York 3x13T": 0, "York 3x16T": 80000, "York 2x13T": -100000, "Custom": 40000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
-      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Royal Blue" }
+      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Royal Blue" },
+      { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
+      { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" }
     ]
   },
   boxbody: {
@@ -104,10 +107,10 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "pump", name: "Hydraulic Pump Type", section: "hydraulic", type: "dropdown", options: ["Included Gear Pump", "Included Piston Pump", "Custom"], defaultValue: "Included Gear Pump", priceDiffs: { "Included Gear Pump": 0, "Included Piston Pump": 28000, "Custom": 15000 } },
       { id: "lock_system", name: "Tail Door Lock System", section: "chassis", type: "radio", options: ["Horizontal Lock System", "Manual Lock", "Custom"], defaultValue: "Horizontal Lock System", priceDiffs: { "Horizontal Lock System": 0, "Manual Lock": -10000, "Custom": 15000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
+      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" },
       { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
       { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" },
-      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" }
+      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" }
     ]
   },
   rockbody: {
@@ -119,7 +122,9 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "side_sheet", name: "Side Sheet thickness", section: "material", type: "dropdown", options: ["8mm ST-52", "10mm Hardox 450", "Custom"], defaultValue: "8mm ST-52", priceDiffs: { "8mm ST-52": 0, "10mm Hardox 450": 120000, "Custom": 60000 } },
       { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 179-5stage", "Hyva 150-4stage", "Custom"], defaultValue: "Hyva 179-5stage", priceDiffs: { "Hyva 179-5stage": 0, "Hyva 150-4stage": -25000, "Custom": 20000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
-      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Crimson Red" }
+      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Crimson Red" },
+      { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
+      { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } }
     ]
   },
   rigid28: {
@@ -753,16 +758,22 @@ function renderConfiguratorFormInputs(template) {
     const secSpecs = template.specs.filter(s => s.section === secId);
     
     if (secSpecs.length === 0) {
-      container.innerHTML = '<span class="section-hint col-span-2">No specifications modifications needed for this module.</span>';
+      container.innerHTML = '<span class="section-hint col-span-2" style="font-size:0.8rem; color:#64748B; padding:8px 0; display:block;">No extra modifications needed for this module.</span>';
       return;
     }
 
     container.innerHTML = secSpecs.map(spec => {
       const isNr = !!wizardState.notRequired[spec.id];
-      const nrBadgeHtml = `<span class="nr-badge${isNr ? ' active' : ''}" id="nr-badge-${spec.id}" onclick="toggleFieldRequired('${spec.id}")">${isNr ? 'Not Required' : 'Required'}</span>`;
+      const nrBadgeHtml = `<span class="nr-badge${isNr ? ' active' : ''}" id="nr-badge-${spec.id}" onclick="toggleFieldRequired('${spec.id}')">${isNr ? 'Not Required' : 'Required'}</span>`;
       let controlHtml = '';
 
-      const hasCustom = spec.options && spec.options.some(o => o.toLowerCase() === 'custom');
+      const rawOpts = (spec.options && Array.isArray(spec.options) && spec.options.length > 0)
+        ? spec.options 
+        : (spec.priceDiffs && Object.keys(spec.priceDiffs).length > 0)
+          ? Object.keys(spec.priceDiffs)
+          : ['Standard', 'Custom'];
+
+      const hasCustom = rawOpts.some(o => typeof o === 'string' && o.toLowerCase() === 'custom');
       const customOpts = getCustomFieldOptions(spec.id);
       const curCustomDesc = wizardState.specs[spec.id + '_custom_desc'] || '';
       const curCustomPrice = wizardState.specs[spec.id + '_custom_price'] || '';
@@ -779,19 +790,18 @@ function renderConfiguratorFormInputs(template) {
         </div>
       ` : '';
 
-      // Build options list: exclude original "Custom" entry, include saved custom options
       const allOpts = [
-        ...spec.options.filter(o => o.toLowerCase() !== 'custom'),
+        ...rawOpts.filter(o => typeof o === 'string' && o.toLowerCase() !== 'custom'),
         ...customOpts.map(c => c.name)
       ];
-      const selectedVal = wizardState.specs[spec.id] || spec.defaultValue;
+      const selectedVal = wizardState.specs[spec.id] !== undefined ? wizardState.specs[spec.id] : spec.defaultValue;
       if (wizardState.specs[spec.id] === undefined) {
         wizardState.specs[spec.id] = selectedVal;
       }
 
       if (spec.type === 'dropdown') {
         controlHtml = `
-          <select id="w-spec-${spec.id}" class="form-control" onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
+          <select id="w-spec-${spec.id}" class="form-control" onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; height:38px; font-weight:600;">
             ${allOpts.map(opt => {
               const diff = getEffectiveSpecPriceDiff(spec, opt);
               return `<option value="${opt}" ${opt === selectedVal ? 'selected' : ''}>
@@ -804,18 +814,18 @@ function renderConfiguratorFormInputs(template) {
         `;
       } else if (spec.type === 'radio') {
         controlHtml = `
-          <div class="radio-group">
+          <div class="radio-group" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
             ${allOpts.map((opt, i) => {
               const diff = getEffectiveSpecPriceDiff(spec, opt);
               return `
-                <label class="radio-label">
+                <label class="radio-label" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.825rem; font-weight:600; color:#334155; background:#F8FAFC; padding:6px 12px; border-radius:6px; border:1px solid #CBD5E1;">
                   <input type="radio" name="w-spec-radio-${spec.id}" value="${opt}" ${opt === selectedVal ? 'checked' : ''} onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
-                  ${opt} ${diff !== 0 ? `<span style="font-size:0.75rem;color:var(--color-text-muted);">(${diff > 0 ? '+' : ''}₹${diff.toLocaleString('en-IN')})</span>` : ''}
+                  ${opt} ${diff !== 0 ? `<span style="font-size:0.75rem; color:#64748B;">(${diff > 0 ? '+' : ''}₹${diff.toLocaleString('en-IN')})</span>` : ''}
                 </label>
               `;
             }).join('')}
             ${hasCustom ? `
-              <label class="radio-label">
+              <label class="radio-label" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.825rem; font-weight:600; color:#334155; background:#F8FAFC; padding:6px 12px; border-radius:6px; border:1px solid #CBD5E1;">
                 <input type="radio" name="w-spec-radio-${spec.id}" value="Custom" ${selectedVal === 'Custom' ? 'checked' : ''} onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
                 Custom
               </label>
@@ -824,16 +834,16 @@ function renderConfiguratorFormInputs(template) {
           ${customDetailsHtml}
         `;
       } else if (spec.type === 'checkbox') {
-        const checkboxOpts = Object.keys(spec.priceDiffs || {});
+        const checkboxOpts = (allOpts && allOpts.length > 0) ? allOpts : ["Yes", "No"];
         controlHtml = `
-          <div class="checkbox-group">
+          <div class="checkbox-group" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
             ${checkboxOpts.map(opt => {
               const isChecked = selectedVal === opt;
-              const pd = spec.priceDiffs ? spec.priceDiffs[opt] : 0;
+              const pd = getEffectiveSpecPriceDiff(spec, opt);
               return `
-                <label class="checkbox-label">
+                <label class="checkbox-label" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.825rem; font-weight:600; color:#334155; background:#F8FAFC; padding:6px 12px; border-radius:6px; border:1px solid #CBD5E1;">
                   <input type="radio" name="w-spec-radio-${spec.id}" value="${opt}" ${isChecked ? 'checked' : ''} onchange="onSpecChange('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
-                  ${opt} ${pd !== 0 ? `<span style="font-size:0.75rem;color:var(--color-text-muted);">(${pd > 0 ? '+' : ''}₹${pd.toLocaleString('en-IN')})</span>` : ''}
+                  ${opt} ${pd !== 0 ? `<span style="font-size:0.75rem; color:#64748B;">(${pd > 0 ? '+' : ''}₹${pd.toLocaleString('en-IN')})</span>` : ''}
                 </label>
               `;
             }).join('')}
@@ -841,13 +851,16 @@ function renderConfiguratorFormInputs(template) {
         `;
       } else if (spec.type === 'text') {
         controlHtml = `
-          <input type="text" id="w-spec-${spec.id}" class="form-control" value="${selectedVal}" oninput="updateSpecValueState('${spec.id}', this.value)" ${isNr ? 'disabled' : ''}>
+          <input type="text" id="w-spec-${spec.id}" class="form-control" value="${selectedVal}" placeholder="e.g. Golden Green, Nippon PU Paint" oninput="updateSpecValueState('${spec.id}', this.value)" ${isNr ? 'disabled' : ''} style="width:100%; height:38px; font-weight:600; margin-top:4px;">
         `;
       }
 
       return `
-        <div class="spec-control-group">
-          <label style="font-size:0.775rem;font-weight:600;color:var(--color-text-dark);">${spec.name} ${nrBadgeHtml}</label>
+        <div class="spec-control-group" style="margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label style="font-size:0.8rem; font-weight:700; color:#1E293B; margin:0;">${spec.name}</label>
+            ${nrBadgeHtml}
+          </div>
           ${controlHtml}
         </div>
       `;
