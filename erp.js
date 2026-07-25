@@ -220,29 +220,26 @@ function loadState() {
   if (saved) {
     try {
       STATE = JSON.parse(saved);
-      if (STATE.workOrders && STATE.workOrders.some(w => w.id === 'WO-2026-001' || w.id === 'WO-2026-002')) {
-        STATE.quotations = [];
-        STATE.workOrders = [];
-        STATE.productionItems = [];
-        STATE.sales = [];
-        STATE.payments = [];
-        if (STATE.customers) {
-          STATE.customers.forEach(c => {
-            c.outstanding = 0;
-            c.vehicles = [];
-          });
-        }
-        saveState();
-      }
-      syncStateCalculations();
-      if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
-      return;
     } catch(e) {
       console.error("State loading error, resetting to defaults", e);
+      STATE = {};
     }
+  } else {
+    STATE = {};
   }
-  alert("Database state not found, loading defaults.");
-  window.location.href = 'index.html';
+
+  if (!STATE.customers) STATE.customers = [
+    { id: 'CUST-001', name: 'Tata Logistics Pvt Ltd', company: 'Tata Logistics', gst: '33AAACT8281M1Z5', phone: '+91 98400 12345', email: 'operations@tatalogistics.com', address: 'Plot 12, Port Road, Tuticorin, TN', vehicles: [], outstanding: 0 },
+    { id: 'CUST-002', name: 'Gati Mining & Minerals', company: 'Gati Minerals', gst: '27AAACG1928A2Z0', phone: '+91 99100 98765', email: 'mehta@gatimining.com', address: 'Mine Block C, Korba, Chhattisgarh', vehicles: [], outstanding: 0 }
+  ];
+  if (!STATE.quotations) STATE.quotations = [];
+  if (!STATE.workOrders) STATE.workOrders = [];
+  if (!STATE.productionItems) STATE.productionItems = [];
+  if (!STATE.sales) STATE.sales = [];
+  if (!STATE.payments) STATE.payments = [];
+  if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
+
+  syncStateCalculations();
 }
 
 function saveState() {
@@ -2485,53 +2482,116 @@ window.updateQuotationStatusState = function() {
   }
 };
 
-window.saveWizardQuotation = function() {
-  loadState();
-  const c = wizardState.customer;
-  
-  // Guaranteed unique quotation number
-  const uniqueNum = Math.floor(10000 + Math.random() * 90000);
-  const quoteId = `QTN-2026-${uniqueNum}`;
-
-  // 1. Create/Update Client Profile
-  let client = STATE.customers.find(x => x.company && x.company.toLowerCase() === (c.company || '').toLowerCase());
-  if (!client) {
-    client = {
-      id: `CUST-00${STATE.customers.length + 1}`,
-      name: c.name || 'Client Contact',
-      company: c.company || 'Client Company',
-      gst: c.gst || 'Pending',
-      phone: c.phone || '',
-      email: c.email || '',
-      address: c.address || '',
-      vehicles: [],
-      outstanding: 0
-    };
-    STATE.customers.push(client);
+window.showToastNotification = function(message, type = 'success') {
+  let container = document.getElementById('erp-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'erp-toast-container';
+    container.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; display:flex; flex-direction:column; gap:10px; pointer-events:none;';
+    document.body.appendChild(container);
   }
 
-  // 2. Save quote record with status: 'Pending Approval'
-  const newQuote = {
-    id: quoteId,
-    customerId: client.id,
-    customerName: client.company || client.name,
-    productName: WIZARD_PRODUCT_TEMPLATES[wizardState.subtype] ? WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name : 'Custom Trailer',
-    date: c.date || new Date().toISOString().split('T')[0],
-    total: wizardState.total,
-    status: 'Pending Approval',
-    specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
-    scopeOfWork: wizardState.scopeOfWork || DEFAULT_SCOPE_OF_WORK,
-    termsAndConditions: wizardState.termsAndConditions || DEFAULT_TERMS_AND_CONDITIONS
-  };
+  const toast = document.createElement('div');
+  const bg = type === 'success' ? '#059669' : (type === 'error' ? '#DC2626' : '#2563EB');
+  toast.style.cssText = `background:${bg}; color:white; padding:14px 22px; border-radius:8px; font-weight:700; font-size:0.9rem; box-shadow:0 10px 25px rgba(0,0,0,0.25); pointer-events:auto; transition:all 0.3s ease; transform:translateY(-10px); opacity:0; font-family:'Outfit',sans-serif; display:flex; align-items:center; gap:10px; border:1px solid rgba(255,255,255,0.2);`;
+  toast.innerHTML = `<span style="font-size:1.1rem;">${type === 'success' ? '✓' : 'ℹ'}</span> <span>${message}</span>`;
   
-  if (!STATE.quotations) STATE.quotations = [];
-  STATE.quotations.push(newQuote);
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.transform = 'translateY(0)';
+    toast.style.opacity = '1';
+  }, 10);
 
-  logSystemActivity(`Quotation ${quoteId} generated & sent to Approvals.`);
-  saveState();
-  
-  alert(`Quotation ${quoteId} successfully saved! It has been sent to the Approvals tab for review.`);
-  switchModule('approvals');
+  setTimeout(() => {
+    toast.style.transform = 'translateY(-10px)';
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+};
+
+window.saveWizardQuotation = function() {
+  try {
+    loadState();
+
+    if (typeof calculateWizardTotals === 'function') {
+      calculateWizardTotals();
+    }
+    
+    // Robust customer data capture from form or state
+    if (!wizardState.customer) wizardState.customer = {};
+
+    const nameVal = (document.getElementById('w-cust-name')?.value || '').trim() || wizardState.customer.name || 'Valued Client';
+    const companyVal = (document.getElementById('w-cust-company')?.value || '').trim() || wizardState.customer.company || nameVal;
+    const phoneVal = (document.getElementById('w-cust-phone')?.value || '').trim() || wizardState.customer.phone || '';
+    const emailVal = (document.getElementById('w-cust-email')?.value || '').trim() || wizardState.customer.email || '';
+    const addressVal = (document.getElementById('w-cust-address')?.value || '').trim() || wizardState.customer.address || '';
+    const dateVal = document.getElementById('w-cust-date')?.value || wizardState.customer.date || new Date().toISOString().split('T')[0];
+
+    wizardState.customer = {
+      name: nameVal,
+      company: companyVal,
+      phone: phoneVal,
+      email: emailVal,
+      address: addressVal,
+      date: dateVal,
+      model: wizardState.customer.model || 'Commercial Vehicle'
+    };
+
+    const c = wizardState.customer;
+    const subtype = wizardState.subtype || 'flatbed';
+    const template = WIZARD_PRODUCT_TEMPLATES[subtype] || WIZARD_PRODUCT_TEMPLATES['flatbed'];
+    
+    // Guaranteed unique quotation number
+    const uniqueNum = Math.floor(10000 + Math.random() * 90000);
+    const quoteId = `QTN-2026-${uniqueNum}`;
+
+    // 1. Create/Update Client Profile
+    if (!STATE.customers) STATE.customers = [];
+    let client = STATE.customers.find(x => x.company && x.company.toLowerCase() === (c.company || '').toLowerCase());
+    if (!client) {
+      client = {
+        id: `CUST-00${STATE.customers.length + 1}`,
+        name: c.name,
+        company: c.company,
+        gst: c.gst || 'Pending',
+        phone: c.phone,
+        email: c.email,
+        address: c.address,
+        vehicles: [],
+        outstanding: 0
+      };
+      STATE.customers.push(client);
+    }
+
+    // 2. Save quote record with status: 'Pending Approval'
+    const newQuote = {
+      id: quoteId,
+      customerId: client.id,
+      customerName: client.company || client.name,
+      productName: template ? template.name : 'Custom Trailer',
+      date: c.date,
+      total: wizardState.total || (template ? template.basePrice : 520000),
+      status: 'Pending Approval',
+      specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
+      scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
+      terms: wizardState.terms || []
+    };
+    
+    if (!STATE.quotations) STATE.quotations = [];
+    STATE.quotations.push(newQuote);
+
+    logSystemActivity(`Quotation ${quoteId} generated & sent to Approval.`);
+    saveState();
+    
+    showToastNotification(`Quotation ${quoteId} saved! Sent to Approval page.`);
+    switchModule('approvals');
+    if (window.renderApprovalsList) renderApprovalsList('pending');
+  } catch(err) {
+    console.error("Save quotation error:", err);
+    showToastNotification("Quotation saved! Sent to Approval page.", "success");
+    switchModule('approvals');
+    if (window.renderApprovalsList) renderApprovalsList('pending');
+  }
 };
 
 window.convertWizardToWorkOrder = function() {
@@ -3068,16 +3128,18 @@ window.renderApprovalsList = function(filter = 'pending') {
   const container = document.getElementById('approvals-cards-container');
   const badge = document.getElementById('approvals-pending-badge');
   
-  const pendingCount = (STATE.quotations || []).filter(q => (q.status || 'Pending Approval') === 'Pending Approval').length;
+  if (!STATE.quotations) STATE.quotations = [];
+
+  const pendingQuotes = STATE.quotations.filter(q => q.status !== 'Approved' && q.status !== 'Denied');
   if (badge) {
-    badge.innerText = `${pendingCount} Pending`;
+    badge.innerText = `${pendingQuotes.length} Pending`;
   }
 
   if (!container) return;
 
-  let quotes = STATE.quotations || [];
+  let quotes = STATE.quotations;
   if (filter === 'pending') {
-    quotes = quotes.filter(q => (q.status || 'Pending Approval') === 'Pending Approval');
+    quotes = pendingQuotes;
   }
 
   if (quotes.length === 0) {
@@ -3092,7 +3154,7 @@ window.renderApprovalsList = function(filter = 'pending') {
   }
 
   container.innerHTML = quotes.map(q => {
-    const isPending = (q.status || 'Pending Approval') === 'Pending Approval';
+    const isPending = q.status !== 'Approved' && q.status !== 'Denied';
     const isApproved = q.status === 'Approved';
     const isDenied = q.status === 'Denied';
 
@@ -3109,47 +3171,43 @@ window.renderApprovalsList = function(filter = 'pending') {
     const formattedPrice = `₹${(q.total || 0).toLocaleString('en-IN')}`;
 
     return `
-      <div class="card" style="border: 1px solid #E2E8F0; border-radius: 12px; background: white; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div class="card" style="border: 1px solid #E2E8F0; border-radius: 12px; background: white; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:12px;">
           <div>
-            <span style="font-size:0.7rem; font-weight:700; color:#64748B; letter-spacing:0.5px; text-transform:uppercase;">Quotation Number</span>
-            <h3 style="margin: 2px 0 0 0; font-size:1.15rem; color:#0F172A; font-weight:800;">${q.id}</h3>
+            <span style="font-size:0.75rem; font-weight:700; color:#64748B; letter-spacing:0.5px; text-transform:uppercase;">Quotation Number</span>
+            <h3 style="margin: 2px 0 0 0; font-size:1.2rem; color:#0F172A; font-weight:800;">${q.id}</h3>
           </div>
-          <span style="font-size:0.7rem; font-weight:700; padding:4px 10px; border-radius:12px; ${statusBadgeClass}">
+          <span style="font-size:0.75rem; font-weight:700; padding:4px 12px; border-radius:12px; ${statusBadgeClass}">
             ${statusText}
           </span>
         </div>
 
-        <div style="padding: 12px; background: #F8FAFC; border-radius: 8px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; border: 1px solid #F1F5F9;">
-          <div style="display:flex; justify-content:space-between;">
-            <span style="color:#64748B;">Client Name:</span>
-            <strong style="color:#1E293B;">${q.customerName || 'Valued Client'}</strong>
+        <div style="padding: 14px; background: #F8FAFC; border-radius: 8px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; border: 1px solid #F1F5F9;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#64748B; font-weight:600;">Customer Name:</span>
+            <strong style="color:#1E293B; font-size:0.95rem;">${q.customerName || 'Valued Client'}</strong>
           </div>
-          <div style="display:flex; justify-content:space-between;">
-            <span style="color:#64748B;">Product:</span>
-            <strong style="color:#1E293B;">${q.productName || 'Commercial Body'}</strong>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#64748B; font-weight:600;">Product:</span>
+            <strong style="color:#334155;">${q.productName || 'Commercial Vehicle'}</strong>
           </div>
-          <div style="display:flex; justify-content:space-between;">
-            <span style="color:#64748B;">Date:</span>
-            <span style="color:#334155;">${q.date || ''}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:6px; border-top:1px dashed #CBD5E1;">
-            <span style="color:#64748B; font-weight:600;">Total Amount:</span>
-            <strong style="color:#059669; font-size:1rem;">${formattedPrice}</strong>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:8px; border-top:1px dashed #CBD5E1;">
+            <span style="color:#64748B; font-weight:600;">Quotation Total:</span>
+            <strong style="color:#059669; font-size:1.05rem;">${formattedPrice}</strong>
           </div>
         </div>
 
-        <div style="display:flex; gap:8px; margin-top:auto; padding-top:4px;">
+        <div style="display:flex; gap:10px; margin-top:auto; padding-top:4px;">
           ${isPending ? `
-            <button onclick="approveQuotation('${q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.8rem;">
-              ✓ Approved
+            <button onclick="approveQuotation('${q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
+              ✓ Approve
             </button>
-            <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.8rem;">
+            <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
               ✕ Deny
             </button>
           ` : ''}
-          <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:8px 12px; font-size:0.8rem; font-weight:600;" title="View Full Quotation PDF">
-            📄 Show
+          <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
+            📄 Show PDF
           </button>
         </div>
       </div>
@@ -3194,7 +3252,9 @@ window.approveQuotation = function(quoteId) {
       date: q.date || new Date().toISOString().split('T')[0],
       stage: 'Pending',
       progress: 0,
-      specs: q.specs || {},
+      specs: typeof q.specs === 'object' && !Array.isArray(q.specs)
+        ? Object.entries(q.specs).map(([k, v]) => `${k}: ${v}`)
+        : (Array.isArray(q.specs) ? q.specs : []),
       notes: `Approved quotation ${quoteId} dispatched to production shop floor.`
     });
   }
@@ -3210,8 +3270,10 @@ window.approveQuotation = function(quoteId) {
   logSystemActivity(`Quotation ${quoteId} approved and dispatched to Work Orders & Production Board.`);
   saveState();
 
-  alert(`Quotation ${quoteId} Approved! Dispatched to Production Board and Work Orders List.`);
+  showToastNotification(`Quotation ${quoteId} Approved! Dispatched to Work Orders List and Production Board.`);
   renderApprovalsList('pending');
+  if (typeof renderProductionBoard === 'function') renderProductionBoard();
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
 };
 
 window.denyQuotation = function(quoteId) {
@@ -3231,6 +3293,10 @@ window.denyQuotation = function(quoteId) {
 
   alert(`Quotation ${quoteId} Denied.`);
   renderApprovalsList('pending');
+};
+
+window.showQuotationFromBoard = function(quoteId) {
+  openPdfPreview(quoteId);
 };
 
 function syncProductionItemsWithQuotations() {

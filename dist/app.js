@@ -117,29 +117,13 @@ const DEFAULT_STATE = {
       ]
     }
   },
-  quotations: [
-    { id: 'QT-2026-001', customerId: 'CUST-001', productName: 'Flat Bed Trailer', date: '2026-07-15', total: 882000, status: 'Approved', specs: { length: '40 Feet', floor: '6mm Chequered MS', axles: '3 x 13T York Axles', suspension: 'Heavy Duty Mechanical' }, customItems: [{ name: 'GPS Tracker', price: 15000 }] },
-    { id: 'QT-2026-002', customerId: 'CUST-002', productName: 'Rock Body Tipper', date: '2026-07-20', total: 1270000, status: 'Approved', specs: { capacity: '14 CBM', steel: 'Hardox 450 Plate', floor: '12 mm Heavy Plate', breakers: 'Standard Grated' }, customItems: [{ name: 'Rear Bumper Guard', price: 20000 }, { name: 'Automatic Tail Lock', price: 60000 }] },
-    { id: 'QT-2026-003', customerId: 'CUST-003', productName: 'Tip Trailer', date: '2026-07-22', total: 1625000, status: 'Draft', specs: { capacity: '36 CBM', cylinder: 'Hyva 191 Cylinder', steel: 'ST52 High Tensile Steel', suspension: 'Air Suspension with Lift Axle' }, customItems: [] }
-  ],
-  workOrders: [
-    { id: 'WO-2026-001', quoteId: 'QT-2026-001', customerName: 'Tata Logistics Pvt Ltd', product: 'Flat Bed Trailer', date: '2026-07-15', stage: 'Welding', progress: 50, specs: ['York Axles', '6mm Floor', '40 Ft Length'], notes: 'Expedite suspension alignment tests.' },
-    { id: 'WO-2026-002', quoteId: 'QT-2026-002', customerName: 'Gati Mining & Minerals', product: 'Rock Body Tipper', date: '2026-07-20', stage: 'Material Ordered', progress: 15, specs: ['Hardox 450', '12mm Floor', 'Automatic Lock'], notes: 'Double check side wall plates ultrasonic scan.' }
-  ],
-  sales: [
-    { invoiceId: 'INV-2026-881', customerName: 'Tata Logistics Pvt Ltd', product: 'Flat Bed Trailer (40 Ft)', date: '2026-07-15', amount: 882000, status: 'Partial' },
-    { invoiceId: 'INV-2026-882', customerName: 'Gati Mining & Minerals', product: 'Rock Body Tipper (14 CBM)', date: '2026-07-20', amount: 1270000, status: 'Partial' },
-    { invoiceId: 'INV-2026-879', customerName: 'V-Trans Cargo India', product: 'Side Wall Trailer (32 Ft)', date: '2026-06-18', amount: 980000, status: 'Paid' },
-    { invoiceId: 'INV-2026-880', customerName: 'Golden Roadlines', product: 'Tip Trailer (40 CBM)', date: '2026-07-02', amount: 1530000, status: 'Paid' }
-  ],
-  payments: [
-    { id: 'TXN-902102', invoiceId: 'INV-2026-881', date: '2026-07-16', amount: 300000, mode: 'RTGS', ref: 'UTIBR52829281' },
-    { id: 'TXN-902103', invoiceId: 'INV-2026-882', date: '2026-07-20', amount: 620000, mode: 'RTGS', ref: 'HDFCR52899120' }
-  ],
+  quotations: [],
+  workOrders: [],
+  productionItems: [],
+  sales: [],
+  payments: [],
   logs: [
-    { time: '02:15 AM', message: 'System DB synced 4 operational modules successfully.' },
-    { time: 'Yesterday', message: 'Work Order WO-2026-002 dispatched to Material Order pipeline.' },
-    { time: '2 days ago', message: 'Sales recorded draft quotation QT-2026-003 for V-Trans Cargo.' }
+    { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), message: 'Nexfra ERP Production System initialized.' }
   ],
   adminPricing: {
     floor6: -15000,
@@ -187,6 +171,11 @@ function loadState() {
   if (saved) {
     try {
       st = JSON.parse(saved);
+      if (!st.quotations) st.quotations = [];
+      if (!st.workOrders) st.workOrders = [];
+      if (!st.productionItems) st.productionItems = [];
+      if (!st.sales) st.sales = [];
+      if (!st.payments) st.payments = [];
     } catch(e) {
       console.error("Failed to parse state, using defaults.", e);
     }

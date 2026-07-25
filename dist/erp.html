@@ -48,21 +48,25 @@
           <svg class="sidebar-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           Overview
         </a>
-        <a href="#" class="sidebar-link" data-module="sales">
-          <svg class="sidebar-icon" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>
-          Sales ledger
-        </a>
         <a href="#" class="sidebar-link" data-module="quotations">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Quotation Builder
+        </a>
+        <a href="#" class="sidebar-link" data-module="approvals">
+          <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Approval
+        </a>
+        <a href="#" class="sidebar-link" data-module="status">
+          <svg class="sidebar-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Production Board
         </a>
         <a href="#" class="sidebar-link" data-module="workorders">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           Work Orders List
         </a>
-        <a href="#" class="sidebar-link" data-module="status">
-          <svg class="sidebar-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Production Board
+        <a href="#" class="sidebar-link" data-module="sales">
+          <svg class="sidebar-icon" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          Sales ledger
         </a>
         <a href="#" class="sidebar-link" data-module="accounts">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -92,9 +96,12 @@
             <h1>Administrative Overview</h1>
             <p>Welcome to Nexfra Heavy Engineering Operating System. Overview of today's shop floor activity.</p>
           </div>
-          <div class="header-indicator">
+          <div class="header-indicator" style="display:flex; align-items:center; gap:12px;">
             <span class="pulse-indicator"></span>
             <span>Live DB Connection</span>
+            <button onclick="resetAllSystemData()" class="btn" style="background:rgba(239, 68, 68, 0.1); color:#EF4444; border:1px solid rgba(239, 68, 68, 0.3); font-size:0.75rem; padding:4px 10px; border-radius:6px; font-weight:700; cursor:pointer;" title="Clear all test quotations & start fresh">
+              🗑 Reset Test Data
+            </button>
           </div>
         </div>
         
@@ -204,6 +211,27 @@
               <!-- Injected by JS -->
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- MODULE: APPROVALS -->
+      <div class="module-view" id="view-approvals">
+        <div class="module-header">
+          <div>
+            <h1 style="display:flex;align-items:center;gap:12px;">
+              <span>Quotation Approvals</span>
+              <span id="approvals-pending-badge" style="font-size:0.75rem;padding:4px 10px;border-radius:20px;background:#FEF3C7;color:#D97706;font-weight:700;">0 Pending</span>
+            </h1>
+            <p>Review newly generated quotations. Approved quotations are automatically dispatched to the Production Board and Work Orders List.</p>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="renderApprovalsList('all')">All History</button>
+            <button class="btn btn-primary" onclick="renderApprovalsList('pending')">Pending Only</button>
+          </div>
+        </div>
+
+        <div id="approvals-cards-container" class="grid grid-3-col gap-md" style="margin-top:20px;">
+          <!-- Dynamic Approvals Injected by JS -->
         </div>
       </div>
 
@@ -503,7 +531,7 @@
               <!-- SECTION B: CHASSIS & STRUCTURAL PANELS -->
               <div class="collapsible-section" id="spec-sec-chassis">
                 <div class="collapse-header" onclick="toggleCollapseSection('spec-sec-chassis')">
-                  <span>2. Structural Chassis & Suspension</span>
+                  <span>2. Structural Axil & Suspension</span>
                   <div style="display:flex;align-items:center;gap:8px;">
                     <span class="nr-badge" id="nr-badge-sec-chassis" onclick="event.stopPropagation();toggleSectionRequired('spec-sec-chassis')">Section Required</span>
                     <svg class="collapse-header-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
@@ -880,11 +908,14 @@
 
       <!-- MODULE: PRODUCTION STATUS -->
       <div class="module-view" id="view-status">
-        <div class="module-header">
+        <div class="module-header" style="display:flex; justify-content:space-between; align-items:center;">
           <div>
             <h1>Shop Floor Production Board</h1>
             <p>Advance work orders visually along progressive phases from steel framing, sandblasting, and painting to QC.</p>
           </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="openProgressionSettingsModal()" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; background:#ffffff; border-color:#CBD5E1; color:#0F172A; padding:8px 16px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            ⚙️ Pipeline Settings
+          </button>
         </div>
         
         <div class="board-container" id="production-board-container">
@@ -1401,6 +1432,90 @@
       <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeScopeModal()">Cancel</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="saveScopeFromModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Scope</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- ORDER PROGRESSION MODAL -->
+  <!-- ========================================== -->
+  <div class="pdf-modal" id="order-progression-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:900px; width:95%; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:92vh; display:flex; flex-direction:column;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div>
+          <h3 id="opm-title" style="margin:0; font-size:1.05rem; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:10px;">
+            Order Progression Tracker
+          </h3>
+          <p id="opm-subtitle" style="margin:4px 0 0 0; font-size:0.75rem; color:#94A3B8;"></p>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button type="button" class="btn btn-outline btn-xs" id="opm-view-quote-btn" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 12px; font-weight:700;">
+            📄 Show Quotation
+          </button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="closeOrderProgressionModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+        </div>
+      </div>
+
+      <!-- Overall Progress Bar Header -->
+      <div style="padding:16px 24px; background:#F8FAFC; border-bottom:1px solid #E2E8F0; flex-shrink:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Manufacturing Order Stage Progress</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span id="opm-status-badge" style="padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:800; text-transform:uppercase; background:#64748B; color:#ffffff;">Not Started</span>
+            <span id="opm-pct-text" style="font-weight:800; font-size:0.9rem; color:#0F172A;">0%</span>
+          </div>
+        </div>
+        <div style="width:100%; height:10px; background:#E2E8F0; border-radius:5px; overflow:hidden;">
+          <div id="opm-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #3B82F6 0%, #10B981 100%); transition:width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- 10 Progression Sections Body -->
+      <div style="padding:20px 24px; overflow-y:auto; flex:1;" id="opm-sections-body">
+        <!-- 10 progression sections injected by JS -->
+      </div>
+
+      <div style="padding:14px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <span style="font-size:0.75rem; color:#64748B;">Sub-section checkboxes automatically update the Production Board stage status.</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="closeOrderProgressionModal()" style="background:#0F172A; border:none; font-weight:700; color:#ffffff; padding:6px 16px; border-radius:6px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- PROGRESSION PIPELINE SETTINGS MODAL -->
+  <!-- ========================================== -->
+  <div class="pdf-modal" id="progression-pipeline-settings-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:950px; width:95%; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:92vh; display:flex; flex-direction:column;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div>
+          <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:8px;">
+            ⚙️ Customise Progression Pipeline & Sub-sections
+          </h3>
+          <p style="margin:4px 0 0 0; font-size:0.75rem; color:#94A3B8;">Add, rename, reorder or delete sections, sub-sections, and checkboxes in the progression tracker.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="resetDefaultProgressionSchema()" style="color:#FCA5A5; border-color:rgba(252,165,165,0.4); padding:4px 10px; font-weight:700;">
+            ↺ Reset Defaults
+          </button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="closeProgressionSettingsModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+        </div>
+      </div>
+
+      <div style="padding:20px 24px; overflow-y:auto; flex:1; background:#F8FAFC;" id="pipeline-settings-editor-body">
+        <!-- Sections editor injected by JS -->
+      </div>
+
+      <div style="padding:14px 24px; background:#ffffff; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="addNewPipelineSection()" style="font-weight:700; border-color:#0F172A; color:#0F172A;">
+          + Add New Section
+        </button>
+        <div style="display:flex; gap:12px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeProgressionSettingsModal()">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveProgressionSchemaSettings()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 18px; border-radius:6px;">
+            💾 Save Pipeline Settings
+          </button>
+        </div>
       </div>
     </div>
   </div>

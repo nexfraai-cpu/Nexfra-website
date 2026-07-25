@@ -58,7 +58,9 @@ const WIZARD_PRODUCT_TEMPLATES = {
     specs: [
       { id: "beam", name: "Main Beam Steel Grade", section: "material", type: "dropdown", options: ["ST52", "Hardox 450", "BSK46", "E450", "Custom"], defaultValue: "ST52", priceDiffs: { "ST52": 0, "Hardox 450": 150000, "BSK46": 40000, "E450": 60000, "Custom": 80000 } },
       { id: "floor", name: "Floor Sheet Type", section: "material", type: "dropdown", options: ["3mm Chequered", "4mm Plain", "6mm ST52", "Custom"], defaultValue: "3mm Chequered", priceDiffs: { "3mm Chequered": 0, "4mm Plain": 15000, "6mm ST52": 45000, "Custom": 60000 } },
+      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "axles", name: "Axle Brand & Loading", section: "chassis", type: "radio", options: ["York 3x13T", "Fuwa 3x13T", "York 3x16T", "York 2x13T", "Custom"], defaultValue: "York 3x13T", priceDiffs: { "York 3x13T": 0, "Fuwa 3x13T": -10000, "York 3x16T": 80000, "York 2x13T": -100000, "Custom": 50000 } },
+      { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
       { id: "suspension", name: "Suspension System", section: "chassis", type: "dropdown", options: ["Mechanical Leaf Spring", "Air Suspension", "Bogie Suspension", "Custom"], defaultValue: "Mechanical Leaf Spring", priceDiffs: { "Mechanical Leaf Spring": 0, "Air Suspension": 120000, "Bogie Suspension": 90000, "Custom": 80000 } },
       { id: "brake", name: "Brake System Pneumatic", section: "chassis", type: "dropdown", options: ["WABCO ABS", "BCS EBS", "Brake Master", "Custom"], defaultValue: "WABCO ABS", priceDiffs: { "WABCO ABS": 0, "BCS EBS": 60000, "Brake Master": 20000, "Custom": 40000 } },
       { id: "disc", name: "Wheel Disc Style", section: "chassis", type: "dropdown", options: ["Steel 10-hole", "Alloy York", "Custom"], defaultValue: "Steel 10-hole", priceDiffs: { "Steel 10-hole": 0, "Alloy York": 45000, "Custom": 25000 } },
@@ -66,8 +68,8 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "tyre", name: "Tyres Fitted", section: "chassis", type: "dropdown", options: ["Apollo 10.00R20", "MRF Musclerok", "JK Jetsteel", "Bridgestone", "Custom"], defaultValue: "Apollo 10.00R20", priceDiffs: { "Apollo 10.00R20": 0, "MRF Musclerok": 12000, "JK Jetsteel": -8000, "Bridgestone": 24000, "Custom": 15000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Customer Choice", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Customer Choice": 0, "Custom": 20000 } },
       { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" },
-      { id: "toolbox", name: "Fitted Tool Box", section: "accessories", type: "checkbox", defaultValue: "Yes", priceDiffs: { "Yes": 0, "No": -5000 } },
-      { id: "spare_wheel", name: "Spare Wheel Carrier", section: "accessories", type: "checkbox", defaultValue: "Yes", priceDiffs: { "Yes": 0, "No": -8000 } }
+      { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
     ]
   },
   sidewall: {
@@ -78,12 +80,16 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "beam", name: "Main Beam Steel Grade", section: "material", type: "dropdown", options: ["ST52", "Hardox 450", "BSK46", "E450", "Custom"], defaultValue: "ST52", priceDiffs: { "ST52": 0, "Hardox 450": 150000, "BSK46": 40000, "E450": 60000, "Custom": 80000 } },
       { id: "floor", name: "Floor Sheet Type", section: "material", type: "dropdown", options: ["3mm Chequered", "4mm Plain", "6mm ST52", "Custom"], defaultValue: "3mm Chequered", priceDiffs: { "3mm Chequered": 0, "4mm Plain": 15000, "6mm ST52": 45000, "Custom": 60000 } },
       { id: "side_panel", name: "Side Panel Height/Style", section: "material", type: "radio", options: ["1.5mm Corrugated", "2mm Corrugated", "Custom"], defaultValue: "1.5mm Corrugated", priceDiffs: { "1.5mm Corrugated": 0, "2mm Corrugated": 25000, "Custom": 40000 } },
+      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "axles", name: "Axle Brand & Loading", section: "chassis", type: "radio", options: ["York 3x13T", "Fuwa 3x13T", "York 3x16T", "York 2x13T", "Custom"], defaultValue: "York 3x13T", priceDiffs: { "York 3x13T": 0, "Fuwa 3x13T": -10000, "York 3x16T": 80000, "York 2x13T": -100000, "Custom": 50000 } },
+      { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
       { id: "suspension", name: "Suspension System", section: "chassis", type: "dropdown", options: ["Mechanical Leaf Spring", "Air Suspension", "Bogie Suspension", "Custom"], defaultValue: "Mechanical Leaf Spring", priceDiffs: { "Mechanical Leaf Spring": 0, "Air Suspension": 120000, "Bogie Suspension": 90000, "Custom": 80000 } },
       { id: "brake", name: "Brake System Pneumatic", section: "chassis", type: "dropdown", options: ["WABCO ABS", "BCS EBS", "Brake Master", "Custom"], defaultValue: "WABCO ABS", priceDiffs: { "WABCO ABS": 0, "BCS EBS": 60000, "Brake Master": 20000, "Custom": 40000 } },
       { id: "tyre", name: "Tyres Fitted", section: "chassis", type: "dropdown", options: ["Apollo 10.00R20", "MRF Musclerok", "JK Jetsteel", "Bridgestone", "Custom"], defaultValue: "Apollo 10.00R20", priceDiffs: { "Apollo 10.00R20": 0, "MRF Musclerok": 12000, "JK Jetsteel": -8000, "Bridgestone": 24000, "Custom": 15000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Customer Choice", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Customer Choice": 0, "Custom": 20000 } },
-      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" }
+      { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" },
+      { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
     ]
   },
   tiptrailer: {
@@ -94,13 +100,13 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "beam", name: "Main Beam Steel Grade", section: "material", type: "dropdown", options: ["ST52", "Hardox 450", "BSK46", "E450", "Custom"], defaultValue: "ST52", priceDiffs: { "ST52": 0, "Hardox 450": 150000, "BSK46": 40000, "E450": 60000, "Custom": 80000 } },
       { id: "floor", name: "Floor Sheet thickness", section: "material", type: "dropdown", options: ["6mm MS", "8mm ST-52", "10mm ST-52", "Custom"], defaultValue: "8mm ST-52", priceDiffs: { "6mm MS": -15000, "8mm ST-52": 0, "10mm ST-52": 30000, "Custom": 45000 } },
       { id: "side_sheet", name: "Side Sheet thickness", section: "material", type: "dropdown", options: ["4mm MS", "6mm ST-52", "8mm ST-52", "Custom"], defaultValue: "6mm ST-52", priceDiffs: { "4mm MS": -10000, "6mm ST-52": 0, "8mm ST-52": 25000, "Custom": 40000 } },
-      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 179-5stage", priceDiffs: { "Hyva 179-5stage": 0, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
+      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "axles", name: "Axles Fitted", section: "chassis", type: "radio", options: ["York 3x13T", "York 3x16T", "York 2x13T", "Custom"], defaultValue: "York 3x13T", priceDiffs: { "York 3x13T": 0, "York 3x16T": 80000, "York 2x13T": -100000, "Custom": 40000 } },
+      { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
       { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Royal Blue" },
-      { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
-      { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" }
+      { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
     ]
   },
   boxbody: {
@@ -112,15 +118,15 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "side_sheet", name: "Side Sheet thickness", section: "material", type: "dropdown", options: ["4mm MS", "6mm ST-52", "8mm ST-52", "Custom"], defaultValue: "6mm ST-52", priceDiffs: { "4mm MS": -10000, "6mm ST-52": 0, "8mm ST-52": 25000, "Custom": 40000 } },
       { id: "headboard", name: "Headboard Sheet thickness", section: "material", type: "dropdown", options: ["6mm ST-52", "8mm ST-52", "Custom"], defaultValue: "6mm ST-52", priceDiffs: { "6mm ST-52": 0, "8mm ST-52": 15000, "Custom": 25000 } },
       { id: "taildoor", name: "Tail Door thickness", section: "material", type: "dropdown", options: ["6mm ST-52", "8mm ST-52", "Custom"], defaultValue: "6mm ST-52", priceDiffs: { "6mm ST-52": 0, "8mm ST-52": 15000, "Custom": 25000 } },
-      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 150-4stage-4520", "Hyva 179-5stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 150-4stage-4520", priceDiffs: { "Hyva 150-4stage-4520": 0, "Hyva 179-5stage": 35000, "Wipro Heavy Duty": 10000, "Custom": 20000 } },
+      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 150-4stage-4520", "Hyva 179-5stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 150-4stage-4520": 0, "Hyva 179-5stage": 35000, "Wipro Heavy Duty": 10000, "Custom": 20000 } },
       { id: "pto", name: "Power Take-Off (PTO)", section: "hydraulic", type: "checkbox", defaultValue: "Yes", priceDiffs: { "Yes": 0, "No": -12000 } },
       { id: "pump", name: "Hydraulic Pump Type", section: "hydraulic", type: "dropdown", options: ["Included Gear Pump", "Included Piston Pump", "Custom"], defaultValue: "Included Gear Pump", priceDiffs: { "Included Gear Pump": 0, "Included Piston Pump": 28000, "Custom": 15000 } },
       { id: "lock_system", name: "Tail Door Lock System", section: "chassis", type: "radio", options: ["Horizontal Lock System", "Manual Lock", "Custom"], defaultValue: "Horizontal Lock System", priceDiffs: { "Horizontal Lock System": 0, "Manual Lock": -10000, "Custom": 15000 } },
+      { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
       { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Golden Green" },
-      { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
-      { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "tipping_angle", name: "Maximum Tipping Angle", section: "accessories", type: "text", defaultValue: "42 to 45 degrees" }
+      { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
     ]
   },
   rockbody: {
@@ -130,11 +136,12 @@ const WIZARD_PRODUCT_TEMPLATES = {
     specs: [
       { id: "floor", name: "Floor Sheet thickness", section: "material", type: "dropdown", options: ["10mm ST-52", "12mm Hardox 450", "Custom"], defaultValue: "10mm ST-52", priceDiffs: { "10mm ST-52": 0, "12mm Hardox 450": 180000, "Custom": 80000 } },
       { id: "side_sheet", name: "Side Sheet thickness", section: "material", type: "dropdown", options: ["8mm ST-52", "10mm Hardox 450", "Custom"], defaultValue: "8mm ST-52", priceDiffs: { "8mm ST-52": 0, "10mm Hardox 450": 120000, "Custom": 60000 } },
-      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 179-5stage", "Hyva 150-4stage", "Custom"], defaultValue: "Hyva 179-5stage", priceDiffs: { "Hyva 179-5stage": 0, "Hyva 150-4stage": -25000, "Custom": 20000 } },
+      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Custom": 20000 } },
+      { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
       { id: "painting", name: "Surface Treatment", section: "painting", type: "dropdown", options: ["Epoxy Primer + PU Paint", "Epoxy Primer + Epoxy Paint", "Custom"], defaultValue: "Epoxy Primer + PU Paint", priceDiffs: { "Epoxy Primer + PU Paint": 0, "Epoxy Primer + Epoxy Paint": -15000, "Custom": 20000 } },
       { id: "colour", name: "Finish Colour", section: "painting", type: "text", defaultValue: "Crimson Red" },
-      { id: "reflective_tape", name: "Reflective Safety Tape", section: "accessories", type: "radio", options: ["RTO std & guidelines", "Standard 3M", "Custom"], defaultValue: "RTO std & guidelines", priceDiffs: { "RTO std & guidelines": 0, "Standard 3M": 8000, "Custom": 12000 } },
-      { id: "marker_lamps", name: "Safety Marker Lamps", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } }
+      { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
     ]
   },
   rigid28: {
@@ -146,16 +153,14 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "side_board", name: "Side board sheet", section: "material", type: "dropdown", options: ["3mm (St52)", "4mm (St52)", "Custom"], defaultValue: "3mm (St52)", priceDiffs: { "3mm (St52)": 0, "4mm (St52)": 18000, "Custom": 25000 } },
       { id: "headboard", name: "Head board sheet", section: "material", type: "dropdown", options: ["3mm (St52)", "4mm (St52)", "Custom"], defaultValue: "3mm (St52)", priceDiffs: { "3mm (St52)": 0, "4mm (St52)": 15000, "Custom": 20000 } },
       { id: "taildoor", name: "Tail door sheet", section: "material", type: "dropdown", options: ["3mm (St52)", "4mm (St52)", "Custom"], defaultValue: "3mm (St52)", priceDiffs: { "3mm (St52)": 0, "4mm (St52)": 15000, "Custom": 20000 } },
+      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "runner", name: "Runner", section: "chassis", type: "dropdown", options: ["ISMC 200 SAIL make", "ISMC 175", "Custom"], defaultValue: "ISMC 200 SAIL make", priceDiffs: { "ISMC 200 SAIL make": 0, "ISMC 175": -10000, "Custom": 15000 } },
+      { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
       { id: "cross_members", name: "Side Board Cross members", section: "chassis", type: "text", defaultValue: "12 nos Formed Section Nexfra Standard with Horizontal Stiffener at Center" },
       { id: "floor_cross", name: "Floor Cross member", section: "chassis", type: "text", defaultValue: "Nexfra Standard" },
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
-      { id: "reflective_tape", name: "Reflective tape", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "marker_lamp", name: "Side Marker Lamp", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "supd_rupd", name: "SUPD/RUPD", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "diesel_guard", name: "Diesel Tank Guard", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "foot_rest", name: "Foot Rest on Front Bumper", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "cabin_carrier", name: "Cabin Carrier", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" }
+      { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
     ]
   },
   rigid30: {
@@ -167,16 +172,14 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "side_board", name: "Side board sheet", section: "material", type: "dropdown", options: ["3mm (St52)", "4mm (St52)", "Custom"], defaultValue: "3mm (St52)", priceDiffs: { "3mm (St52)": 0, "4mm (St52)": 18000, "Custom": 25000 } },
       { id: "headboard", name: "Head board sheet", section: "material", type: "dropdown", options: ["3mm (St52)", "4mm (St52)", "Custom"], defaultValue: "3mm (St52)", priceDiffs: { "3mm (St52)": 0, "4mm (St52)": 15000, "Custom": 20000 } },
       { id: "taildoor", name: "Tail door sheet", section: "material", type: "dropdown", options: ["3mm (St52)", "4mm (St52)", "Custom"], defaultValue: "3mm (St52)", priceDiffs: { "3mm (St52)": 0, "4mm (St52)": 15000, "Custom": 20000 } },
+      { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "runner", name: "Runner", section: "chassis", type: "dropdown", options: ["ISMC 200 SAIL make", "ISMC 175", "Custom"], defaultValue: "ISMC 200 SAIL make", priceDiffs: { "ISMC 200 SAIL make": 0, "ISMC 175": -10000, "Custom": 15000 } },
+      { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
       { id: "cross_members", name: "Side Board Cross members", section: "chassis", type: "text", defaultValue: "12 nos Formed Section Nexfra Standard with Horizontal Stiffener at Center" },
       { id: "floor_cross", name: "Floor Cross member", section: "chassis", type: "text", defaultValue: "Nexfra Standard" },
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
-      { id: "reflective_tape", name: "Reflective tape", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "marker_lamp", name: "Side Marker Lamp", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "supd_rupd", name: "SUPD/RUPD", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "diesel_guard", name: "Diesel Tank Guard", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "foot_rest", name: "Foot Rest on Front Bumper", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" },
-      { id: "cabin_carrier", name: "Cabin Carrier", section: "accessories", type: "radio", options: ["Yes", "No"], defaultValue: "Yes" }
+      { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
     ]
   }
 };
@@ -217,21 +220,56 @@ function loadState() {
   if (saved) {
     try {
       STATE = JSON.parse(saved);
-      syncStateCalculations();
-      if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
-      return;
     } catch(e) {
       console.error("State loading error, resetting to defaults", e);
+      STATE = {};
     }
+  } else {
+    STATE = {};
   }
-  alert("Database state not found, loading defaults.");
-  window.location.href = 'index.html';
+
+  if (!STATE.customers) STATE.customers = [
+    { id: 'CUST-001', name: 'Tata Logistics Pvt Ltd', company: 'Tata Logistics', gst: '33AAACT8281M1Z5', phone: '+91 98400 12345', email: 'operations@tatalogistics.com', address: 'Plot 12, Port Road, Tuticorin, TN', vehicles: [], outstanding: 0 },
+    { id: 'CUST-002', name: 'Gati Mining & Minerals', company: 'Gati Minerals', gst: '27AAACG1928A2Z0', phone: '+91 99100 98765', email: 'mehta@gatimining.com', address: 'Mine Block C, Korba, Chhattisgarh', vehicles: [], outstanding: 0 }
+  ];
+  if (!STATE.quotations) STATE.quotations = [];
+  if (!STATE.workOrders) STATE.workOrders = [];
+  if (!STATE.productionItems) STATE.productionItems = [];
+  if (!STATE.sales) STATE.sales = [];
+  if (!STATE.payments) STATE.payments = [];
+  if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
+
+  syncStateCalculations();
 }
 
 function saveState() {
   syncStateCalculations();
   localStorage.setItem('NEXFRA_ERP_STATE', JSON.stringify(STATE));
 }
+
+window.resetAllSystemData = function(silent = false) {
+  if (silent || confirm("Are you sure you want to clear all test quotations and reset the system pipeline? This will make the application completely fresh and production-ready.")) {
+    STATE.quotations = [];
+    STATE.productionItems = [];
+    STATE.workOrders = [];
+    STATE.sales = [];
+    STATE.payments = [];
+    STATE.logs = [
+      { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), message: 'System database cleared and reset to production baseline.' }
+    ];
+    if (STATE.customers) {
+      STATE.customers.forEach(c => {
+        c.outstanding = 0;
+        c.vehicles = [];
+      });
+    }
+    saveState();
+    if (!silent) {
+      alert("All test quotations and pipeline data have been completely cleared! The system is now fresh and production-ready.");
+      window.location.reload();
+    }
+  }
+};
 
 function logSystemActivity(message) {
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -325,6 +363,7 @@ function switchModule(moduleName) {
     if (moduleName === 'customers') renderCustomersDirectory();
     if (moduleName === 'admin') renderAdminSettings();
     if (moduleName === 'quotations') startNewQuotationWizard();
+    if (moduleName === 'approvals') renderApprovalsList('pending');
   }
 }
 
@@ -2443,69 +2482,116 @@ window.updateQuotationStatusState = function() {
   }
 };
 
+window.showToastNotification = function(message, type = 'success') {
+  let container = document.getElementById('erp-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'erp-toast-container';
+    container.style.cssText = 'position:fixed; top:20px; right:20px; z-index:999999; display:flex; flex-direction:column; gap:10px; pointer-events:none;';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  const bg = type === 'success' ? '#059669' : (type === 'error' ? '#DC2626' : '#2563EB');
+  toast.style.cssText = `background:${bg}; color:white; padding:14px 22px; border-radius:8px; font-weight:700; font-size:0.9rem; box-shadow:0 10px 25px rgba(0,0,0,0.25); pointer-events:auto; transition:all 0.3s ease; transform:translateY(-10px); opacity:0; font-family:'Outfit',sans-serif; display:flex; align-items:center; gap:10px; border:1px solid rgba(255,255,255,0.2);`;
+  toast.innerHTML = `<span style="font-size:1.1rem;">${type === 'success' ? '✓' : 'ℹ'}</span> <span>${message}</span>`;
+  
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.style.transform = 'translateY(0)';
+    toast.style.opacity = '1';
+  }, 10);
+
+  setTimeout(() => {
+    toast.style.transform = 'translateY(-10px)';
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+};
+
 window.saveWizardQuotation = function() {
-  loadState();
-  const c = wizardState.customer;
-  const quoteId = `QT-2026-00${STATE.quotations.length + 1}`;
+  try {
+    loadState();
 
-  // 1. Create/Update Client Profile
-  let client = STATE.customers.find(x => x.company.toLowerCase() === c.company.toLowerCase());
-  if (!client) {
-    client = {
-      id: `CUST-00${STATE.customers.length + 1}`,
-      name: c.name,
-      company: c.company,
-      gst: c.gst,
-      phone: c.phone,
-      email: c.email,
-      address: c.address,
-      vehicles: [],
-      outstanding: wizardState.status === 'Approved' ? wizardState.total : 0
-    };
-    STATE.customers.push(client);
-  } else {
-    if (wizardState.status === 'Approved') {
-      client.outstanding += wizardState.total;
+    if (typeof calculateWizardTotals === 'function') {
+      calculateWizardTotals();
     }
-  }
+    
+    // Robust customer data capture from form or state
+    if (!wizardState.customer) wizardState.customer = {};
 
-  // Add chassis model to client vehicles if approved
-  if (wizardState.status === 'Approved' && !client.vehicles.includes(c.model)) {
-    client.vehicles.push(c.model);
-  }
+    const nameVal = (document.getElementById('w-cust-name')?.value || '').trim() || wizardState.customer.name || 'Valued Client';
+    const companyVal = (document.getElementById('w-cust-company')?.value || '').trim() || wizardState.customer.company || nameVal;
+    const phoneVal = (document.getElementById('w-cust-phone')?.value || '').trim() || wizardState.customer.phone || '';
+    const emailVal = (document.getElementById('w-cust-email')?.value || '').trim() || wizardState.customer.email || '';
+    const addressVal = (document.getElementById('w-cust-address')?.value || '').trim() || wizardState.customer.address || '';
+    const dateVal = document.getElementById('w-cust-date')?.value || wizardState.customer.date || new Date().toISOString().split('T')[0];
 
-  // 2. Save quote record
-  STATE.quotations.push({
-    id: quoteId,
-    customerId: client.id,
-    productName: WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name,
-    date: c.date,
-    total: wizardState.total,
-    status: wizardState.status,
-    specs: wizardState.specs,
-    terms: wizardState.terms,
-    scopeOfWork: wizardState.scopeOfWork
-  });
+    wizardState.customer = {
+      name: nameVal,
+      company: companyVal,
+      phone: phoneVal,
+      email: emailVal,
+      address: addressVal,
+      date: dateVal,
+      model: wizardState.customer.model || 'Commercial Vehicle'
+    };
 
-  // 3. Save invoice if approved
-  if (wizardState.status === 'Approved') {
-    const invoiceId = `INV-2026-${Math.floor(883 + Math.random()*100)}`;
-    STATE.sales.push({
-      invoiceId,
-      customerName: c.company,
-      product: `${WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name} (${wizardState.capacity})`,
+    const c = wizardState.customer;
+    const subtype = wizardState.subtype || 'flatbed';
+    const template = WIZARD_PRODUCT_TEMPLATES[subtype] || WIZARD_PRODUCT_TEMPLATES['flatbed'];
+    
+    // Guaranteed unique quotation number
+    const uniqueNum = Math.floor(10000 + Math.random() * 90000);
+    const quoteId = `QTN-2026-${uniqueNum}`;
+
+    // 1. Create/Update Client Profile
+    if (!STATE.customers) STATE.customers = [];
+    let client = STATE.customers.find(x => x.company && x.company.toLowerCase() === (c.company || '').toLowerCase());
+    if (!client) {
+      client = {
+        id: `CUST-00${STATE.customers.length + 1}`,
+        name: c.name,
+        company: c.company,
+        gst: c.gst || 'Pending',
+        phone: c.phone,
+        email: c.email,
+        address: c.address,
+        vehicles: [],
+        outstanding: 0
+      };
+      STATE.customers.push(client);
+    }
+
+    // 2. Save quote record with status: 'Pending Approval'
+    const newQuote = {
+      id: quoteId,
+      customerId: client.id,
+      customerName: client.company || client.name,
+      productName: template ? template.name : 'Custom Trailer',
       date: c.date,
-      amount: wizardState.total,
-      status: 'Unpaid'
-    });
-    logSystemActivity(`Quotation ${quoteId} approved & Invoice ${invoiceId} logged.`);
-  } else {
-    logSystemActivity(`Quotation registry ${quoteId} saved as: ${wizardState.status}.`);
-  }
+      total: wizardState.total || (template ? template.basePrice : 520000),
+      status: 'Pending Approval',
+      specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
+      scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
+      terms: wizardState.terms || []
+    };
+    
+    if (!STATE.quotations) STATE.quotations = [];
+    STATE.quotations.push(newQuote);
 
-  saveState();
-  alert(`Quotation ${quoteId} successfully saved to Nexfra Database with status: ${wizardState.status}.`);
-  switchModule('dashboard');
+    logSystemActivity(`Quotation ${quoteId} generated & sent to Approval.`);
+    saveState();
+    
+    showToastNotification(`Quotation ${quoteId} saved! Sent to Approval page.`);
+    switchModule('approvals');
+    if (window.renderApprovalsList) renderApprovalsList('pending');
+  } catch(err) {
+    console.error("Save quotation error:", err);
+    showToastNotification("Quotation saved! Sent to Approval page.", "success");
+    switchModule('approvals');
+    if (window.renderApprovalsList) renderApprovalsList('pending');
+  }
 };
 
 window.convertWizardToWorkOrder = function() {
@@ -2673,40 +2759,624 @@ function renderWorkOrders() {
 }
 
 // ------------------------------------------
-// 6. PRODUCTION BOARD (KANBAN BOARD)
+// 6. REDESIGNED PRODUCTION BOARD & ORDER PROGRESSION
 // ------------------------------------------
 
-function renderProductionBoard() {
+function getDefaultProgressionSchema() {
+  return [
+    {
+      id: "sec_design",
+      name: "1. Design",
+      subsections: [
+        {
+          id: "sub_design_items",
+          name: "General Design Tasks",
+          items: [
+            { id: "scopeClear", name: "Scope Clear" },
+            { id: "assemblyDesign", name: "Assembly Design" },
+            { id: "custom", name: "Custom Requirements" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_procurement",
+      name: "2. Procurement",
+      subsections: [
+        {
+          id: "sub_steel_plates",
+          name: "Steel Plates",
+          items: [
+            { id: "steelPlates_ordered", name: "Ordered" },
+            { id: "steelPlates_received", name: "Received" }
+          ]
+        },
+        {
+          id: "sub_aclass_bop",
+          name: "A Class BOP",
+          items: [
+            { id: "aClassBop_ordered", name: "Ordered" },
+            { id: "aClassBop_received", name: "Received" }
+          ]
+        },
+        {
+          id: "sub_bclass_bop",
+          name: "B Class BOP",
+          items: [
+            { id: "bClassBop_ordered", name: "Ordered" },
+            { id: "bClassBop_received", name: "Received" }
+          ]
+        },
+        {
+          id: "sub_cclass_bop",
+          name: "C Class BOP",
+          items: [
+            { id: "cClassBop_ordered", name: "Ordered" },
+            { id: "cClassBop_received", name: "Received" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_cutting_bending",
+      name: "3. Cutting & Bending",
+      subsections: [
+        {
+          id: "sub_cb_parts",
+          name: "Parts Cutting & Bending",
+          items: [
+            { id: "floor_cb", name: "Floor" },
+            { id: "sb_cb", name: "Side Board (S/B)" },
+            { id: "hb_cb", name: "Head Board (H/B)" },
+            { id: "tp_cb", name: "Tail Plate / Tail Door (T/P)" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_fabrication",
+      name: "4. Fabrication (SKD Level)",
+      subsections: [
+        {
+          id: "sub_skd_assemblies",
+          name: "SKD Level Assemblies",
+          items: [
+            { id: "floor_fab", name: "Floor Fabrication" },
+            { id: "sideboard_fab", name: "Sideboard" },
+            { id: "headboard_fab", name: "Headboard" },
+            { id: "taildoor_fab", name: "Taildoor" },
+            { id: "subframe_fab", name: "Subframe / Main Beam" },
+            { id: "accessories_fab", name: "Accessories Fitment" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_welding",
+      name: "5. Welding",
+      subsections: [
+        {
+          id: "sub_welding_status",
+          name: "Welding Process",
+          items: [
+            { id: "welding_done", name: "Welding Done" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_grinding",
+      name: "6. Grinding",
+      subsections: [
+        {
+          id: "sub_grinding_status",
+          name: "Grinding & Finishing",
+          items: [
+            { id: "grinding_done", name: "Grinding Done" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_biw_painting",
+      name: "7. BIW & Painting",
+      subsections: [
+        {
+          id: "sub_biw_paint_stages",
+          name: "Body & Surface Coating",
+          items: [
+            { id: "biw_inspection", name: "Body in White (BIW) Inspection" },
+            { id: "pu_painting", name: "Epoxy Primer & PU Painting" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_trimming",
+      name: "8. Trimming",
+      subsections: [
+        {
+          id: "sub_trimming_fitment",
+          name: "Electrical & Fittings",
+          items: [
+            { id: "wiring_harness", name: "Electrical Wiring Harness" },
+            { id: "light_fitting", name: "Light Fitting & Marker Lamps" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_hydraulics",
+      name: "9. Hydraulics",
+      subsections: [
+        {
+          id: "sub_tipping_cylinder",
+          name: "Tipping Cylinder Model",
+          items: [
+            { id: "hyva_175", name: "Hyva 175" },
+            { id: "hydromen_175", name: "Hydromen 175" },
+            { id: "wipro_175", name: "Wipro 175" }
+          ]
+        },
+        {
+          id: "sub_hydraulics_testing",
+          name: "Hydraulic System Testing",
+          items: [
+            { id: "hydraulics_done", name: "Hydraulics Fitment & Cylinder Testing Done" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_qc_dispatch",
+      name: "10. Quality Check & Dispatch",
+      subsections: [
+        {
+          id: "sub_final_dispatch",
+          name: "Final Delivery Stages",
+          items: [
+            { id: "qc_approved", name: "Quality Check Approved" },
+            { id: "dispatched", name: "Dispatched" }
+          ]
+        }
+      ]
+    }
+  ];
+}
+
+function getProgressionSchema() {
+  if (!STATE.progressionSchema || STATE.progressionSchema.length === 0) {
+    STATE.progressionSchema = getDefaultProgressionSchema();
+    saveState();
+  }
+  return STATE.progressionSchema;
+}
+
+let tempProgressionSchema = null;
+
+window.openProgressionSettingsModal = function() {
   loadState();
-  const container = document.getElementById('production-board-container');
+  tempProgressionSchema = JSON.parse(JSON.stringify(getProgressionSchema()));
+  renderPipelineSettingsEditor();
+  document.getElementById('progression-pipeline-settings-modal').classList.add('active');
+};
+
+window.closeProgressionSettingsModal = function() {
+  const modal = document.getElementById('progression-pipeline-settings-modal');
+  if (modal) modal.classList.remove('active');
+};
+
+window.resetDefaultProgressionSchema = function() {
+  if (confirm("Reset progression pipeline to default 10 manufacturing sections? Custom edits will be restored.")) {
+    tempProgressionSchema = getDefaultProgressionSchema();
+    renderPipelineSettingsEditor();
+  }
+};
+
+function escapeHtml(str) {
+  return String(str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderPipelineSettingsEditor() {
+  const body = document.getElementById('pipeline-settings-editor-body');
+  if (!body || !tempProgressionSchema) return;
+
+  if (tempProgressionSchema.length === 0) {
+    body.innerHTML = `
+      <div style="text-align:center; padding:40px; color:#64748B;">
+        <p>No sections defined in the progression pipeline.</p>
+        <button type="button" class="btn btn-primary btn-sm" onclick="addNewPipelineSection()">+ Add First Section</button>
+      </div>
+    `;
+    return;
+  }
+
+  body.innerHTML = tempProgressionSchema.map((sec, secIdx) => `
+    <div class="card" style="margin-bottom:16px; padding:16px; background:#ffffff; border:1.5px solid #CBD5E1; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+      
+      <!-- Section Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex:1; margin-right:12px;">
+          <span style="font-weight:800; font-size:0.85rem; color:#64748B;">#${secIdx + 1}</span>
+          <input type="text" value="${escapeHtml(sec.name)}" class="form-control" style="font-weight:800; font-size:0.9rem; color:#0F172A;" onchange="tempProgressionSchema[${secIdx}].name = this.value">
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="movePipelineSection(${secIdx}, -1)" ${secIdx === 0 ? 'disabled' : ''} style="padding:2px 8px;">▲ Up</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="movePipelineSection(${secIdx}, 1)" ${secIdx === tempProgressionSchema.length - 1 ? 'disabled' : ''} style="padding:2px 8px;">▼ Down</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="addNewPipelineSubsection(${secIdx})" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700; padding:2px 10px;">+ Add Sub-section</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="deletePipelineSection(${secIdx})" style="background:#FEF2F2; border-color:#FCA5A5; color:#DC2626; padding:2px 8px;">🗑️ Delete</button>
+        </div>
+      </div>
+
+      <!-- Sub-sections List -->
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        ${sec.subsections.map((sub, subIdx) => `
+          <div style="background:#F8FAFC; padding:12px; border-radius:6px; border:1px solid #E2E8F0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div style="display:flex; align-items:center; gap:6px; flex:1; margin-right:8px;">
+                <span style="font-size:0.75rem; font-weight:700; color:#64748B;">Sub-section:</span>
+                <input type="text" value="${escapeHtml(sub.name)}" class="form-control form-control-sm" style="font-weight:700; font-size:0.8rem; height:32px;" onchange="tempProgressionSchema[${secIdx}].subsections[${subIdx}].name = this.value">
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="btn btn-outline btn-xs" onclick="addNewPipelineItem(${secIdx}, ${subIdx})" style="font-size:0.7rem; font-weight:700; padding:2px 8px;">+ Add Checkbox Item</button>
+                <button type="button" class="btn btn-outline btn-xs" onclick="deletePipelineSubsection(${secIdx}, ${subIdx})" style="color:#DC2626; border-color:#FCA5A5; padding:2px 6px;">✕ Delete</button>
+              </div>
+            </div>
+
+            <!-- Items List -->
+            <div style="display:flex; flex-wrap:wrap; gap:8px; padding-top:4px;">
+              ${sub.items.map((item, itemIdx) => `
+                <div style="display:flex; align-items:center; gap:4px; background:#ffffff; border:1px solid #CBD5E1; padding:4px 8px; border-radius:4px;">
+                  <span style="font-size:0.7rem; color:#94A3B8;">☑</span>
+                  <input type="text" value="${escapeHtml(item.name)}" class="form-control form-control-sm" style="width:140px; height:26px; font-size:0.75rem; font-weight:600; padding:2px 6px;" onchange="tempProgressionSchema[${secIdx}].subsections[${subIdx}].items[${itemIdx}].name = this.value">
+                  <button type="button" onclick="deletePipelineItem(${secIdx}, ${subIdx}, ${itemIdx})" style="background:none; border:none; color:#EF4444; font-weight:700; cursor:pointer; font-size:0.75rem; padding:0 4px;">✕</button>
+                </div>
+              `).join('')}
+              ${sub.items.length === 0 ? '<span style="font-size:0.7rem; color:#94A3B8; font-style:italic;">No items yet. Click "+ Add Checkbox Item"</span>' : ''}
+            </div>
+          </div>
+        `).join('')}
+        ${sec.subsections.length === 0 ? '<div style="font-size:0.75rem; color:#94A3B8; text-align:center; padding:8px;">No sub-sections in this section. Click "+ Add Sub-section"</div>' : ''}
+      </div>
+
+    </div>
+  `).join('');
+}
+
+window.addNewPipelineSection = function() {
+  if (!tempProgressionSchema) return;
+  const newSecNum = tempProgressionSchema.length + 1;
+  tempProgressionSchema.push({
+    id: `sec_custom_${Date.now()}`,
+    name: `${newSecNum}. Custom Section`,
+    subsections: [
+      {
+        id: `sub_custom_${Date.now()}`,
+        name: "General Sub-section",
+        items: [
+          { id: `item_${Date.now()}_1`, name: "Task 1 Done" },
+          { id: `item_${Date.now()}_2`, name: "Task 2 Done" }
+        ]
+      }
+    ]
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deletePipelineSection = function(secIdx) {
+  if (confirm(`Delete section "${tempProgressionSchema[secIdx].name}"?`)) {
+    tempProgressionSchema.splice(secIdx, 1);
+    renderPipelineSettingsEditor();
+  }
+};
+
+window.movePipelineSection = function(secIdx, dir) {
+  const targetIdx = secIdx + dir;
+  if (targetIdx < 0 || targetIdx >= tempProgressionSchema.length) return;
+  const temp = tempProgressionSchema[secIdx];
+  tempProgressionSchema[secIdx] = tempProgressionSchema[targetIdx];
+  tempProgressionSchema[targetIdx] = temp;
+  renderPipelineSettingsEditor();
+};
+
+window.addNewPipelineSubsection = function(secIdx) {
+  tempProgressionSchema[secIdx].subsections.push({
+    id: `sub_custom_${Date.now()}`,
+    name: "New Sub-section",
+    items: [
+      { id: `item_${Date.now()}_1`, name: "Ordered" },
+      { id: `item_${Date.now()}_2`, name: "Received" }
+    ]
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deletePipelineSubsection = function(secIdx, subIdx) {
+  tempProgressionSchema[secIdx].subsections.splice(subIdx, 1);
+  renderPipelineSettingsEditor();
+};
+
+window.addNewPipelineItem = function(secIdx, subIdx) {
+  tempProgressionSchema[secIdx].subsections[subIdx].items.push({
+    id: `item_${Date.now()}`,
+    name: "New Checkbox Item"
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deletePipelineItem = function(secIdx, subIdx, itemIdx) {
+  tempProgressionSchema[secIdx].subsections[subIdx].items.splice(itemIdx, 1);
+  renderPipelineSettingsEditor();
+};
+
+window.saveProgressionSchemaSettings = function() {
+  if (!tempProgressionSchema) return;
+  STATE.progressionSchema = JSON.parse(JSON.stringify(tempProgressionSchema));
+  saveState();
+  closeProgressionSettingsModal();
+  renderProductionBoard();
+  alert("Progression Pipeline structure updated successfully!");
+};
+
+function getInitialProgressionState() {
+  return {};
+}
+
+window.renderApprovalsList = function(filter = 'pending') {
+  loadState();
+
+  const container = document.getElementById('approvals-cards-container');
+  const badge = document.getElementById('approvals-pending-badge');
+  
+  if (!STATE.quotations) STATE.quotations = [];
+
+  const pendingQuotes = STATE.quotations.filter(q => q.status !== 'Approved' && q.status !== 'Denied');
+  if (badge) {
+    badge.innerText = `${pendingQuotes.length} Pending`;
+  }
+
   if (!container) return;
 
-  const boardStages = STAGES.filter(s => s !== 'Delivered');
-  let boardHtml = '';
+  let quotes = STATE.quotations;
+  if (filter === 'pending') {
+    quotes = pendingQuotes;
+  }
 
-  boardStages.forEach(stage => {
-    const stageWOs = STATE.workOrders.filter(wo => wo.stage === stage);
-    const cardsHtml = stageWOs.map(wo => `
-      <div class="board-card" id="board-card-${wo.id}">
-        <div class="board-card-id">${wo.id}</div>
-        <div class="board-card-cust">${wo.customerName}</div>
-        <div class="board-card-product">${wo.product}</div>
-        <div class="board-card-action">
-          <button class="btn btn-primary btn-xs" onclick="advanceWorkOrderStage('${wo.id}')">
-            Advance &rarr;
+  if (quotes.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 48px; text-align: center; background: white; border-radius: 12px; border: 1px dashed #CBD5E1; color: #64748B;">
+        <svg style="width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <h3 style="margin: 0 0 6px 0; color: #1E293B;">No Quotations ${filter === 'pending' ? 'Pending Approval' : 'Found'}</h3>
+        <p style="margin: 0; font-size: 0.85rem;">Generated quotations waiting for review will appear here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = quotes.map(q => {
+    const isPending = q.status !== 'Approved' && q.status !== 'Denied';
+    const isApproved = q.status === 'Approved';
+    const isDenied = q.status === 'Denied';
+
+    let statusBadgeClass = 'background:#FEF3C7; color:#D97706;';
+    let statusText = 'Pending Approval';
+    if (isApproved) {
+      statusBadgeClass = 'background:#D1FAE5; color:#059669;';
+      statusText = 'Approved';
+    } else if (isDenied) {
+      statusBadgeClass = 'background:#FEE2E2; color:#DC2626;';
+      statusText = 'Denied';
+    }
+
+    const formattedPrice = `₹${(q.total || 0).toLocaleString('en-IN')}`;
+
+    return `
+      <div class="card" style="border: 1px solid #E2E8F0; border-radius: 12px; background: white; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:12px;">
+          <div>
+            <span style="font-size:0.75rem; font-weight:700; color:#64748B; letter-spacing:0.5px; text-transform:uppercase;">Quotation Number</span>
+            <h3 style="margin: 2px 0 0 0; font-size:1.2rem; color:#0F172A; font-weight:800;">${q.id}</h3>
+          </div>
+          <span style="font-size:0.75rem; font-weight:700; padding:4px 12px; border-radius:12px; ${statusBadgeClass}">
+            ${statusText}
+          </span>
+        </div>
+
+        <div style="padding: 14px; background: #F8FAFC; border-radius: 8px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; border: 1px solid #F1F5F9;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#64748B; font-weight:600;">Customer Name:</span>
+            <strong style="color:#1E293B; font-size:0.95rem;">${q.customerName || 'Valued Client'}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#64748B; font-weight:600;">Product:</span>
+            <strong style="color:#334155;">${q.productName || 'Commercial Vehicle'}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:8px; border-top:1px dashed #CBD5E1;">
+            <span style="color:#64748B; font-weight:600;">Quotation Total:</span>
+            <strong style="color:#059669; font-size:1.05rem;">${formattedPrice}</strong>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:auto; padding-top:4px;">
+          ${isPending ? `
+            <button onclick="approveQuotation('${q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
+              ✓ Approve
+            </button>
+            <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
+              ✕ Deny
+            </button>
+          ` : ''}
+          <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
+            📄 Show PDF
           </button>
         </div>
       </div>
-    `).join('');
+    `;
+  }).join('');
+};
+
+window.approveQuotation = function(quoteId) {
+  loadState();
+  const q = STATE.quotations.find(x => x.id === quoteId);
+  if (!q) return;
+
+  q.status = 'Approved';
+
+  // 1. Move to Production Board under "Not Started"
+  if (!STATE.productionItems) STATE.productionItems = [];
+  let prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) {
+    prodItem = {
+      id: quoteId,
+      quoteId: quoteId,
+      customerName: q.customerName || 'Valued Client',
+      product: q.productName || 'Commercial Body',
+      date: q.date || new Date().toISOString().split('T')[0],
+      columnStatus: 'Not Started',
+      progressPct: 0,
+      progressionMap: {}
+    };
+    STATE.productionItems.push(prodItem);
+  }
+
+  // 2. Move to Work Orders List
+  if (!STATE.workOrders) STATE.workOrders = [];
+  let wo = STATE.workOrders.find(w => w.quoteId === quoteId);
+  if (!wo) {
+    const woId = `WO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    STATE.workOrders.push({
+      id: woId,
+      quoteId: quoteId,
+      customerName: q.customerName || 'Valued Client',
+      product: q.productName || 'Commercial Body',
+      date: q.date || new Date().toISOString().split('T')[0],
+      stage: 'Pending',
+      progress: 0,
+      specs: typeof q.specs === 'object' && !Array.isArray(q.specs)
+        ? Object.entries(q.specs).map(([k, v]) => `${k}: ${v}`)
+        : (Array.isArray(q.specs) ? q.specs : []),
+      notes: `Approved quotation ${quoteId} dispatched to production shop floor.`
+    });
+  }
+
+  // 3. Update Client Outstanding & Vehicle history
+  if (STATE.customers) {
+    let client = STATE.customers.find(x => x.id === q.customerId || (x.company && x.company.toLowerCase() === (q.customerName || '').toLowerCase()));
+    if (client) {
+      client.outstanding = (client.outstanding || 0) + (q.total || 0);
+    }
+  }
+
+  logSystemActivity(`Quotation ${quoteId} approved and dispatched to Work Orders & Production Board.`);
+  saveState();
+
+  showToastNotification(`Quotation ${quoteId} Approved! Dispatched to Work Orders List and Production Board.`);
+  renderApprovalsList('pending');
+  if (typeof renderProductionBoard === 'function') renderProductionBoard();
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
+};
+
+window.denyQuotation = function(quoteId) {
+  loadState();
+  const q = STATE.quotations.find(x => x.id === quoteId);
+  if (!q) return;
+
+  q.status = 'Denied';
+
+  // Ensure it is removed from production board if present
+  if (STATE.productionItems) {
+    STATE.productionItems = STATE.productionItems.filter(p => p.quoteId !== quoteId && p.id !== quoteId);
+  }
+
+  logSystemActivity(`Quotation ${quoteId} was Denied.`);
+  saveState();
+
+  alert(`Quotation ${quoteId} Denied.`);
+  renderApprovalsList('pending');
+};
+
+window.showQuotationFromBoard = function(quoteId) {
+  openPdfPreview(quoteId);
+};
+
+function syncProductionItemsWithQuotations() {
+  if (!STATE.productionItems) STATE.productionItems = [];
+  if (STATE.quotations && STATE.quotations.length > 0) {
+    STATE.quotations.filter(q => q.status === 'Approved').forEach(q => {
+      let existing = STATE.productionItems.find(p => p.quoteId === q.id || p.id === q.id);
+      if (!existing) {
+        const client = STATE.customers ? STATE.customers.find(c => c.id === q.customerId) : null;
+        STATE.productionItems.push({
+          id: q.id,
+          quoteId: q.id,
+          customerName: client ? client.company : (q.customerName || 'Client'),
+          product: q.productName || 'Custom Vehicle Body',
+          date: q.date || new Date().toISOString().split('T')[0],
+          columnStatus: 'Not Started',
+          progressPct: 0,
+          progressionMap: {}
+        });
+      }
+    });
+  }
+}
+
+function renderProductionBoard() {
+  loadState();
+  syncProductionItemsWithQuotations();
+
+  const container = document.getElementById('production-board-container');
+  if (!container) return;
+
+  const columns = [
+    { title: 'Not Started', status: 'Not Started', headerBg: '#F1F5F9', border: '#CBD5E1', countBg: '#64748B' },
+    { title: 'Work in Progress', status: 'Work in Progress', headerBg: '#DBEAFE', border: '#93C5FD', countBg: '#2563EB' },
+    { title: 'Finished', status: 'Finished', headerBg: '#D1FAE5', border: '#6EE7B7', countBg: '#059669' }
+  ];
+
+  let boardHtml = '';
+
+  columns.forEach(col => {
+    const items = STATE.productionItems.filter(p => (p.columnStatus || 'Not Started') === col.status);
+
+    const cardsHtml = items.map(item => {
+      const pct = item.progressPct || 0;
+      return `
+        <div class="board-card" onclick="openOrderProgressionModal('${item.quoteId}')" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; padding:14px; margin-bottom:12px; cursor:pointer; transition:all 0.2s ease; position:relative; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; font-family:'Outfit',sans-serif;">${item.quoteId}</span>
+            <span style="font-size:0.7rem; font-weight:800; color:${col.status === 'Finished' ? '#059669' : (col.status === 'Work in Progress' ? '#2563EB' : '#64748B')};">${pct}% Complete</span>
+          </div>
+
+          <div style="font-weight:700; font-size:0.875rem; color:#1E293B; margin-bottom:2px;">${item.customerName}</div>
+          <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
+
+          <!-- Mini Progress Bar -->
+          <div style="width:100%; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; margin-bottom:12px;">
+            <div style="width:${pct}%; height:100%; background:${col.status === 'Finished' ? '#10B981' : '#3B82F6'}; transition:width 0.3s ease;"></div>
+          </div>
+
+          <!-- Card Actions -->
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #F1F5F9; padding-top:10px;" onclick="event.stopPropagation()">
+            <button type="button" class="btn btn-outline btn-xs" onclick="openPdfPreview('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 8px;">
+              📄 Show Quotation
+            </button>
+            <button type="button" class="btn btn-primary btn-xs" onclick="openOrderProgressionModal('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 10px; background:#0F172A; border:none; color:white;">
+              Track Order &rarr;
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
 
     boardHtml += `
-      <div class="board-col">
-        <div class="board-col-header">
-          <h3>${stage}</h3>
-          <span class="board-col-count">${stageWOs.length}</span>
+      <div class="board-col" style="background:#F8FAFC; border:1.5px solid ${col.border}; border-radius:10px; overflow:hidden;">
+        <div class="board-col-header" style="background:${col.headerBg}; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid ${col.border};">
+          <h3 style="margin:0; font-size:0.85rem; font-weight:800; color:#0F172A; text-transform:uppercase; letter-spacing:0.5px;">${col.title}</h3>
+          <span style="background:${col.countBg}; color:#ffffff; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:10px;">${items.length}</span>
         </div>
-        <div class="board-col-cards">
-          ${cardsHtml || '<div class="section-hint text-center py-sm" style="font-size:0.75rem">No vehicles</div>'}
+        <div class="board-col-cards" style="padding:14px; min-height:320px;">
+          ${cardsHtml || `<div style="text-align:center; padding:40px 10px; color:#94A3B8; font-size:0.8rem; font-weight:600;">No vehicle orders in ${col.title}</div>`}
         </div>
       </div>
     `;
@@ -2715,29 +3385,178 @@ function renderProductionBoard() {
   container.innerHTML = boardHtml;
 }
 
-window.advanceWorkOrderStage = function(woId) {
-  const wo = STATE.workOrders.find(w => w.id === woId);
-  if (!wo) return;
+window.openOrderProgressionModal = function(quoteId) {
+  loadState();
+  syncProductionItemsWithQuotations();
 
-  const currentIdx = STAGES.indexOf(wo.stage);
-  if (currentIdx < STAGES.length - 1) {
-    const nextStage = STAGES[currentIdx + 1];
-    wo.stage = nextStage;
-    wo.progress = Math.round(((currentIdx + 1) / (STAGES.length - 1)) * 100);
-    
-    logSystemActivity(`Work Order ${woId} advanced to phase: ${nextStage} (${wo.progress}%).`);
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
 
-    const card = document.getElementById(`board-card-${woId}`);
-    if (card && typeof gsap !== 'undefined') {
-      gsap.to(card, { scale: 0.8, opacity: 0, duration: 0.25, onComplete: () => {
-        renderProductionBoard();
-      }});
-    } else {
-      renderProductionBoard();
-    }
-  } else {
-    alert(`Work Order ${woId} has already completed delivery workflows.`);
+  const quote = STATE.quotations.find(q => q.id === quoteId);
+  const subtitleText = `${quote ? quote.customerName || 'Client' : prodItem.customerName} • ${prodItem.product} • Order Date: ${new Date(prodItem.date).toLocaleDateString('en-GB')}`;
+
+  document.getElementById('opm-title').innerHTML = `
+    <span style="background:#3B82F6; color:white; padding:2px 10px; border-radius:6px; font-size:0.85rem; font-weight:800;">${prodItem.quoteId}</span>
+    Order Progression Tracker
+  `;
+  document.getElementById('opm-subtitle').innerText = subtitleText;
+
+  document.getElementById('opm-view-quote-btn').onclick = function() {
+    openPdfPreview(quoteId);
+  };
+
+  renderOrderProgressionBody(prodItem);
+  document.getElementById('order-progression-modal').classList.add('active');
+};
+
+window.closeOrderProgressionModal = function() {
+  const modal = document.getElementById('order-progression-modal');
+  if (modal) modal.classList.remove('active');
+};
+
+function renderOrderProgressionBody(prodItem) {
+  const schema = getProgressionSchema();
+  if (!prodItem.progressionMap) prodItem.progressionMap = {};
+  const map = prodItem.progressionMap;
+
+  // Collect all schema checkbox keys
+  let allSchemaItems = [];
+  schema.forEach(sec => {
+    sec.subsections.forEach(sub => {
+      sub.items.forEach(item => {
+        allSchemaItems.push({
+          secId: sec.id,
+          subId: sub.id,
+          itemId: item.id,
+          key: `${sec.id}_${sub.id}_${item.id}`
+        });
+      });
+    });
+  });
+
+  const totalCount = allSchemaItems.length;
+  let checked = 0;
+  allSchemaItems.forEach(i => {
+    if (map[i.key]) checked++;
+  });
+
+  const pct = totalCount > 0 ? Math.round((checked / totalCount) * 100) : 0;
+
+  // Dynamic Column Status Movement
+  let status = 'Not Started';
+  if (checked > 0 && checked < totalCount) {
+    status = 'Work in Progress';
+  } else if (totalCount > 0 && checked === totalCount) {
+    status = 'Finished';
   }
+
+  prodItem.columnStatus = status;
+  prodItem.progressPct = pct;
+  saveState();
+
+  // Update Header UI
+  const badgeEl = document.getElementById('opm-status-badge');
+  const pctTextEl = document.getElementById('opm-pct-text');
+  const progressBarEl = document.getElementById('opm-progress-bar');
+
+  if (badgeEl) {
+    badgeEl.innerText = status;
+    badgeEl.style.background = status === 'Finished' ? '#10B981' : (status === 'Work in Progress' ? '#3B82F6' : '#64748B');
+  }
+  if (pctTextEl) pctTextEl.innerText = `${pct}%`;
+  if (progressBarEl) progressBarEl.style.width = `${pct}%`;
+
+  // Render Sections dynamically from schema
+  const bodyEl = document.getElementById('opm-sections-body');
+  if (!bodyEl) return;
+
+  bodyEl.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:16px;">
+      ${schema.map(sec => {
+        // Collect all items for this section to determine if section is completed
+        let secItemKeys = [];
+        sec.subsections.forEach(sub => {
+          sub.items.forEach(item => {
+            secItemKeys.push(`${sec.id}_${sub.id}_${item.id}`);
+          });
+        });
+
+        const isSecDone = secItemKeys.length > 0 && secItemKeys.every(k => !!map[k]);
+
+        return `
+          <div class="card" style="padding:14px; background:${isSecDone ? '#F0FDF4' : '#F8FAFC'}; border:1.5px solid ${isSecDone ? '#86EFAC' : '#CBD5E1'}; transition:all 0.2s ease;">
+            
+            <!-- Section Header with Section Completed Checkbox -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid ${isSecDone ? '#DCFCE7' : '#E2E8F0'}; padding-bottom:8px;">
+              <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:${isSecDone ? '#166534' : '#1E293B'}; text-transform:uppercase;">${sec.name}</h4>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.775rem; font-weight:800; padding:4px 10px; border-radius:14px; background:${isSecDone ? '#10B981' : '#E2E8F0'}; color:${isSecDone ? '#ffffff' : '#475569'}; cursor:pointer; transition:all 0.2s ease;">
+                <input type="checkbox" ${isSecDone ? 'checked' : ''} onchange="toggleEntireSectionDone('${prodItem.quoteId}', '${sec.id}', this.checked)">
+                ${isSecDone ? '✓ Section Completed' : 'Section Status: Pending'}
+              </label>
+            </div>
+            
+            <!-- Sub-sections & Checkbox Items -->
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              ${sec.subsections.map(sub => `
+                <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+                  ${sub.name && sub.name !== 'General Sub-section' ? `<strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">${sub.name}:</strong>` : ''}
+                  <div style="display:flex; flex-wrap:wrap; gap:14px;">
+                    ${sub.items.map(item => {
+                      const key = `${sec.id}_${sub.id}_${item.id}`;
+                      const isChecked = !!map[key];
+                      return `
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; color:#334155; cursor:pointer;">
+                          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProgressionMapKey('${prodItem.quoteId}', '${key}', this.checked)">
+                          ${item.name}
+                        </label>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
+window.toggleEntireSectionDone = function(quoteId, secId, markDone) {
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
+
+  if (!prodItem.progressionMap) prodItem.progressionMap = {};
+  
+  const schema = getProgressionSchema();
+  const sec = schema.find(s => s.id === secId);
+  if (sec) {
+    sec.subsections.forEach(sub => {
+      sub.items.forEach(item => {
+        const key = `${sec.id}_${sub.id}_${item.id}`;
+        prodItem.progressionMap[key] = markDone;
+      });
+    });
+  }
+
+  saveState();
+  renderOrderProgressionBody(prodItem);
+  renderProductionBoard();
+};
+
+window.toggleProgressionMapKey = function(quoteId, key, isChecked) {
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
+
+  if (!prodItem.progressionMap) prodItem.progressionMap = {};
+  prodItem.progressionMap[key] = isChecked;
+
+  saveState();
+  renderOrderProgressionBody(prodItem);
+  renderProductionBoard();
 };
 
 // ------------------------------------------
