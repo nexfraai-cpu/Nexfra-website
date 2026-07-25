@@ -1471,6 +1471,11 @@ window.openEditComponentsModal = function() {
       <h4 style="margin:0; font-size:0.85rem; color:#1E40AF;">Editing Components for: <strong>${template.name}</strong></h4>
       <p style="margin:4px 0 0 0; font-size:0.75rem; color:#1D4ED8;">Add, edit, or remove sections and specs. Each spec can be a dropdown, radio, checkbox, or text field with custom options and pricing.</p>
     </div>
+    <div style="margin-bottom:16px; padding:12px 16px; background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:8px; display:flex; align-items:center; gap:12px;">
+      <label style="font-size:0.85rem; font-weight:700; color:#9A3412; white-space:nowrap;">Metal Price (₹/kg)</label>
+      <input type="text" id="ec-metal-price" class="form-control form-control-sm" value="${STATE.metalPricePerKg || 100}" step="1" min="1" inputmode="decimal" oninput="this.value=this.value.replace(/[^0-9.]/g,'')" style="width:120px; text-align:right; font-weight:700; border:1px solid #FDBA74;">
+      <span style="font-size:0.75rem; color:#9A3412;">Used as the per-kilogram rate for steel and raw material costing.</span>
+    </div>
     <div id="ec-sections-container">
   `;
 
@@ -1764,6 +1769,12 @@ window.saveEditComponentsModal = function() {
     }
   });
 
+  // Save metal price per kg
+  const metalPriceInput = document.getElementById('ec-metal-price');
+  if (metalPriceInput) {
+    STATE.metalPricePerKg = parseFloat(metalPriceInput.value) || 100;
+  }
+
   // Save to STATE
   loadState();
   if (!STATE.productSpecOverrides) STATE.productSpecOverrides = {};
@@ -1805,6 +1816,7 @@ window.resetEditComponentsModal = function() {
     delete STATE.productSpecOverrides[groupKey];
   }
   STATE.customItemDefinitions = [];
+  delete STATE.metalPricePerKg;
   saveState();
 
   // Restore original templates in memory
