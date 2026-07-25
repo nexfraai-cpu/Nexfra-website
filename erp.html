@@ -608,9 +608,25 @@
                 </div>
               </div>
 
-              <!-- SECTION G: CUSTOM ITEMS (User-Defined Sections) -->
+              <!-- SECTION G: SUBFRAME -->
+              <div class="collapsible-section" id="spec-sec-subframe">
+                <div class="collapse-header" onclick="toggleCollapseSection('spec-sec-subframe')">
+                  <span>7. Subframe</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="nr-badge" id="nr-badge-sec-subframe" onclick="event.stopPropagation();toggleSectionRequired('spec-sec-subframe')">Section Required</span>
+                    <svg class="collapse-header-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                </div>
+                <div class="collapse-content">
+                  <div class="spec-grid-control" id="specs-subframe-controls-inject">
+                    <!-- Dynamic Subframe Inputs injected by JS -->
+                  </div>
+                </div>
+              </div>
+
+              <!-- SECTION H: CUSTOM ITEMS (User-Defined Sections) -->
               <div class="card mt-md" style="padding: 24px;">
-                <h3 class="mb-sm text-uppercase" style="font-size:0.8rem;letter-spacing:0.5px;color:var(--color-primary)">7. Custom Spec Sections</h3>
+                <h3 class="mb-sm text-uppercase" style="font-size:0.8rem;letter-spacing:0.5px;color:var(--color-primary)">8. Custom Spec Sections</h3>
                 <p class="section-hint mb-md">Add reusable custom spec sections (e.g. electrical system, additional body options). These persist and are available for all products.</p>
                 
                 <div id="w-custom-items-sections-list">

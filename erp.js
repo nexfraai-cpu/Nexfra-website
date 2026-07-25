@@ -160,7 +160,8 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "floor_cross", name: "Floor Cross member", section: "chassis", type: "text", defaultValue: "Nexfra Standard" },
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
       { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } },
+      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm formed section Nexfra standard", "8mm formed section Nexfra standard", "Custom"], defaultValue: "6mm formed section Nexfra standard", priceDiffs: { "6mm formed section Nexfra standard": 0, "8mm formed section Nexfra standard": 25000, "Custom": 30000 } }
     ]
   },
   rigid30: {
@@ -179,7 +180,8 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "floor_cross", name: "Floor Cross member", section: "chassis", type: "text", defaultValue: "Nexfra Standard" },
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
       { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } },
+      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm formed section Nexfra standard", "8mm formed section Nexfra standard", "Custom"], defaultValue: "6mm formed section Nexfra standard", priceDiffs: { "6mm formed section Nexfra standard": 0, "8mm formed section Nexfra standard": 25000, "Custom": 30000 } }
     ]
   }
 };
@@ -808,7 +810,7 @@ function getEffectiveSpecPriceDiff(spec, opt) {
 }
 
 function renderConfiguratorFormInputs(template) {
-  const sections = ['material', 'chassis', 'hydraulic', 'painting', 'accessories', 'dimensions'];
+  const sections = ['material', 'chassis', 'hydraulic', 'painting', 'accessories', 'dimensions', 'subframe'];
   
   sections.forEach(secId => {
     const container = document.getElementById(`specs-${secId}-controls-inject`);
