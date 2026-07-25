@@ -236,6 +236,30 @@ function saveState() {
   localStorage.setItem('NEXFRA_ERP_STATE', JSON.stringify(STATE));
 }
 
+window.resetAllSystemData = function(silent = false) {
+  if (silent || confirm("Are you sure you want to clear all test quotations and reset the system pipeline? This will make the application completely fresh and production-ready.")) {
+    STATE.quotations = [];
+    STATE.productionItems = [];
+    STATE.workOrders = [];
+    STATE.sales = [];
+    STATE.payments = [];
+    STATE.logs = [
+      { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), message: 'System database cleared and reset to production baseline.' }
+    ];
+    if (STATE.customers) {
+      STATE.customers.forEach(c => {
+        c.outstanding = 0;
+        c.vehicles = [];
+      });
+    }
+    saveState();
+    if (!silent) {
+      alert("All test quotations and pipeline data have been completely cleared! The system is now fresh and production-ready.");
+      window.location.reload();
+    }
+  }
+};
+
 function logSystemActivity(message) {
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   STATE.logs.unshift({ time, message });
