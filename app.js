@@ -171,6 +171,19 @@ function loadState() {
   if (saved) {
     try {
       st = JSON.parse(saved);
+      if (st.workOrders && st.workOrders.some(w => w.id === 'WO-2026-001' || w.id === 'WO-2026-002')) {
+        st.quotations = [];
+        st.workOrders = [];
+        st.productionItems = [];
+        st.sales = [];
+        st.payments = [];
+        if (st.customers) {
+          st.customers.forEach(c => {
+            c.outstanding = 0;
+            c.vehicles = [];
+          });
+        }
+      }
     } catch(e) {
       console.error("Failed to parse state, using defaults.", e);
     }

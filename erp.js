@@ -220,6 +220,20 @@ function loadState() {
   if (saved) {
     try {
       STATE = JSON.parse(saved);
+      if (STATE.workOrders && STATE.workOrders.some(w => w.id === 'WO-2026-001' || w.id === 'WO-2026-002')) {
+        STATE.quotations = [];
+        STATE.workOrders = [];
+        STATE.productionItems = [];
+        STATE.sales = [];
+        STATE.payments = [];
+        if (STATE.customers) {
+          STATE.customers.forEach(c => {
+            c.outstanding = 0;
+            c.vehicles = [];
+          });
+        }
+        saveState();
+      }
       syncStateCalculations();
       if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
       return;
