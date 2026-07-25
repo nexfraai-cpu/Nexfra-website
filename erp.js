@@ -328,6 +328,7 @@ function switchModule(moduleName) {
     if (moduleName === 'customers') renderCustomersDirectory();
     if (moduleName === 'admin') renderAdminSettings();
     if (moduleName === 'quotations') startNewQuotationWizard();
+    if (moduleName === 'approvals') renderApprovalsList('pending');
   }
 }
 
@@ -2466,67 +2467,33 @@ window.saveWizardQuotation = function() {
       email: c.email || '',
       address: c.address || '',
       vehicles: [],
-      outstanding: wizardState.status === 'Approved' ? wizardState.total : 0
+      outstanding: 0
     };
     STATE.customers.push(client);
-  } else {
-    if (wizardState.status === 'Approved') {
-      client.outstanding += wizardState.total;
-    }
   }
 
-  // Add chassis model to client vehicles if approved
-  if (wizardState.status === 'Approved' && c.model && !client.vehicles.includes(c.model)) {
-    client.vehicles.push(c.model);
-  }
-
-  // 2. Save quote record
-  STATE.quotations.push({
+  // 2. Save quote record with status: 'Pending Approval'
+  const newQuote = {
     id: quoteId,
     customerId: client.id,
     customerName: client.company || client.name,
     productName: WIZARD_PRODUCT_TEMPLATES[wizardState.subtype] ? WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name : 'Custom Trailer',
     date: c.date || new Date().toISOString().split('T')[0],
     total: wizardState.total,
-    status: wizardState.status,
-    specs: wizardState.specs,
+    status: 'Pending Approval',
+    specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
     scopeOfWork: wizardState.scopeOfWork || DEFAULT_SCOPE_OF_WORK,
     termsAndConditions: wizardState.termsAndConditions || DEFAULT_TERMS_AND_CONDITIONS
-  });
+  };
+  
+  if (!STATE.quotations) STATE.quotations = [];
+  STATE.quotations.push(newQuote);
 
-  // 3. Automatically add to Production Board in "Not Started" column
-  if (!STATE.productionItems) STATE.productionItems = [];
-  STATE.productionItems.push({
-    id: quoteId,
-    quoteId: quoteId,
-    customerName: client.company || client.name || 'Valued Client',
-    product: WIZARD_PRODUCT_TEMPLATES[wizardState.subtype] ? WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name : 'Custom Trailer',
-    date: c.date || new Date().toISOString().split('T')[0],
-    columnStatus: 'Not Started',
-    progressPct: 0,
-    progression: getInitialProgressionState()
-  });
-
-  // 4. Save invoice if approved
-  if (wizardState.status === 'Approved') {
-    const invoiceId = `INV-2026-${Math.floor(883 + Math.random()*100)}`;
-    STATE.sales.push({
-      invoiceId,
-      customerName: c.company,
-      product: `${WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name} (${wizardState.capacity})`,
-      date: c.date,
-      amount: wizardState.total,
-      status: 'Unpaid'
-    });
-    logSystemActivity(`Quotation ${quoteId} approved & Invoice ${invoiceId} logged.`);
-  } else {
-    logSystemActivity(`Quotation ${quoteId} saved & added to Production Board (Not Started).`);
-  }
-
+  logSystemActivity(`Quotation ${quoteId} generated & sent to Approvals.`);
   saveState();
-  renderProductionBoard();
-  alert(`Quotation ${quoteId} successfully saved & sent to Production Board!`);
-  switchModule('status');
+  
+  alert(`Quotation ${quoteId} successfully saved! It has been sent to the Approvals tab for review.`);
+  switchModule('approvals');
 };
 
 window.convertWizardToWorkOrder = function() {
@@ -3057,10 +3024,181 @@ function getInitialProgressionState() {
   return {};
 }
 
+window.renderApprovalsList = function(filter = 'pending') {
+  loadState();
+
+  const container = document.getElementById('approvals-cards-container');
+  const badge = document.getElementById('approvals-pending-badge');
+  
+  const pendingCount = (STATE.quotations || []).filter(q => (q.status || 'Pending Approval') === 'Pending Approval').length;
+  if (badge) {
+    badge.innerText = `${pendingCount} Pending`;
+  }
+
+  if (!container) return;
+
+  let quotes = STATE.quotations || [];
+  if (filter === 'pending') {
+    quotes = quotes.filter(q => (q.status || 'Pending Approval') === 'Pending Approval');
+  }
+
+  if (quotes.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 48px; text-align: center; background: white; border-radius: 12px; border: 1px dashed #CBD5E1; color: #64748B;">
+        <svg style="width: 48px; height: 48px; margin-bottom: 12px; opacity: 0.5;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        <h3 style="margin: 0 0 6px 0; color: #1E293B;">No Quotations ${filter === 'pending' ? 'Pending Approval' : 'Found'}</h3>
+        <p style="margin: 0; font-size: 0.85rem;">Generated quotations waiting for review will appear here.</p>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = quotes.map(q => {
+    const isPending = (q.status || 'Pending Approval') === 'Pending Approval';
+    const isApproved = q.status === 'Approved';
+    const isDenied = q.status === 'Denied';
+
+    let statusBadgeClass = 'background:#FEF3C7; color:#D97706;';
+    let statusText = 'Pending Approval';
+    if (isApproved) {
+      statusBadgeClass = 'background:#D1FAE5; color:#059669;';
+      statusText = 'Approved';
+    } else if (isDenied) {
+      statusBadgeClass = 'background:#FEE2E2; color:#DC2626;';
+      statusText = 'Denied';
+    }
+
+    const formattedPrice = `₹${(q.total || 0).toLocaleString('en-IN')}`;
+
+    return `
+      <div class="card" style="border: 1px solid #E2E8F0; border-radius: 12px; background: white; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <span style="font-size:0.7rem; font-weight:700; color:#64748B; letter-spacing:0.5px; text-transform:uppercase;">Quotation Number</span>
+            <h3 style="margin: 2px 0 0 0; font-size:1.15rem; color:#0F172A; font-weight:800;">${q.id}</h3>
+          </div>
+          <span style="font-size:0.7rem; font-weight:700; padding:4px 10px; border-radius:12px; ${statusBadgeClass}">
+            ${statusText}
+          </span>
+        </div>
+
+        <div style="padding: 12px; background: #F8FAFC; border-radius: 8px; font-size: 0.85rem; display: flex; flex-direction: column; gap: 6px; border: 1px solid #F1F5F9;">
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:#64748B;">Client Name:</span>
+            <strong style="color:#1E293B;">${q.customerName || 'Valued Client'}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:#64748B;">Product:</span>
+            <strong style="color:#1E293B;">${q.productName || 'Commercial Body'}</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between;">
+            <span style="color:#64748B;">Date:</span>
+            <span style="color:#334155;">${q.date || ''}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:4px; padding-top:6px; border-top:1px dashed #CBD5E1;">
+            <span style="color:#64748B; font-weight:600;">Total Amount:</span>
+            <strong style="color:#059669; font-size:1rem;">${formattedPrice}</strong>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; margin-top:auto; padding-top:4px;">
+          ${isPending ? `
+            <button onclick="approveQuotation('${q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.8rem;">
+              ✓ Approved
+            </button>
+            <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.8rem;">
+              ✕ Deny
+            </button>
+          ` : ''}
+          <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:8px 12px; font-size:0.8rem; font-weight:600;" title="View Full Quotation PDF">
+            📄 Show
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
+window.approveQuotation = function(quoteId) {
+  loadState();
+  const q = STATE.quotations.find(x => x.id === quoteId);
+  if (!q) return;
+
+  q.status = 'Approved';
+
+  // 1. Move to Production Board under "Not Started"
+  if (!STATE.productionItems) STATE.productionItems = [];
+  let prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) {
+    prodItem = {
+      id: quoteId,
+      quoteId: quoteId,
+      customerName: q.customerName || 'Valued Client',
+      product: q.productName || 'Commercial Body',
+      date: q.date || new Date().toISOString().split('T')[0],
+      columnStatus: 'Not Started',
+      progressPct: 0,
+      progressionMap: {}
+    };
+    STATE.productionItems.push(prodItem);
+  }
+
+  // 2. Move to Work Orders List
+  if (!STATE.workOrders) STATE.workOrders = [];
+  let wo = STATE.workOrders.find(w => w.quoteId === quoteId);
+  if (!wo) {
+    const woId = `WO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    STATE.workOrders.push({
+      id: woId,
+      quoteId: quoteId,
+      customerName: q.customerName || 'Valued Client',
+      product: q.productName || 'Commercial Body',
+      date: q.date || new Date().toISOString().split('T')[0],
+      stage: 'Pending',
+      progress: 0,
+      specs: q.specs || {},
+      notes: `Approved quotation ${quoteId} dispatched to production shop floor.`
+    });
+  }
+
+  // 3. Update Client Outstanding & Vehicle history
+  if (STATE.customers) {
+    let client = STATE.customers.find(x => x.id === q.customerId || (x.company && x.company.toLowerCase() === (q.customerName || '').toLowerCase()));
+    if (client) {
+      client.outstanding = (client.outstanding || 0) + (q.total || 0);
+    }
+  }
+
+  logSystemActivity(`Quotation ${quoteId} approved and dispatched to Work Orders & Production Board.`);
+  saveState();
+
+  alert(`Quotation ${quoteId} Approved! Dispatched to Production Board and Work Orders List.`);
+  renderApprovalsList('pending');
+};
+
+window.denyQuotation = function(quoteId) {
+  loadState();
+  const q = STATE.quotations.find(x => x.id === quoteId);
+  if (!q) return;
+
+  q.status = 'Denied';
+
+  // Ensure it is removed from production board if present
+  if (STATE.productionItems) {
+    STATE.productionItems = STATE.productionItems.filter(p => p.quoteId !== quoteId && p.id !== quoteId);
+  }
+
+  logSystemActivity(`Quotation ${quoteId} was Denied.`);
+  saveState();
+
+  alert(`Quotation ${quoteId} Denied.`);
+  renderApprovalsList('pending');
+};
+
 function syncProductionItemsWithQuotations() {
   if (!STATE.productionItems) STATE.productionItems = [];
   if (STATE.quotations && STATE.quotations.length > 0) {
-    STATE.quotations.forEach(q => {
+    STATE.quotations.filter(q => q.status === 'Approved').forEach(q => {
       let existing = STATE.productionItems.find(p => p.quoteId === q.id || p.id === q.id);
       if (!existing) {
         const client = STATE.customers ? STATE.customers.find(c => c.id === q.customerId) : null;
