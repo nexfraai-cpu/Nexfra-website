@@ -880,11 +880,14 @@
 
       <!-- MODULE: PRODUCTION STATUS -->
       <div class="module-view" id="view-status">
-        <div class="module-header">
+        <div class="module-header" style="display:flex; justify-content:space-between; align-items:center;">
           <div>
             <h1>Shop Floor Production Board</h1>
             <p>Advance work orders visually along progressive phases from steel framing, sandblasting, and painting to QC.</p>
           </div>
+          <button type="button" class="btn btn-outline btn-sm" onclick="openProgressionSettingsModal()" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; background:#ffffff; border-color:#CBD5E1; color:#0F172A; padding:8px 16px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+            ⚙️ Pipeline Settings
+          </button>
         </div>
         
         <div class="board-container" id="production-board-container">
@@ -1447,6 +1450,44 @@
       <div style="padding:14px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
         <span style="font-size:0.75rem; color:#64748B;">Sub-section checkboxes automatically update the Production Board stage status.</span>
         <button type="button" class="btn btn-primary btn-sm" onclick="closeOrderProgressionModal()" style="background:#0F172A; border:none; font-weight:700; color:#ffffff; padding:6px 16px; border-radius:6px;">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- PROGRESSION PIPELINE SETTINGS MODAL -->
+  <!-- ========================================== -->
+  <div class="pdf-modal" id="progression-pipeline-settings-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:950px; width:95%; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:92vh; display:flex; flex-direction:column;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div>
+          <h3 style="margin:0; font-size:1.1rem; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:8px;">
+            ⚙️ Customise Progression Pipeline & Sub-sections
+          </h3>
+          <p style="margin:4px 0 0 0; font-size:0.75rem; color:#94A3B8;">Add, rename, reorder or delete sections, sub-sections, and checkboxes in the progression tracker.</p>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="resetDefaultProgressionSchema()" style="color:#FCA5A5; border-color:rgba(252,165,165,0.4); padding:4px 10px; font-weight:700;">
+            ↺ Reset Defaults
+          </button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="closeProgressionSettingsModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+        </div>
+      </div>
+
+      <div style="padding:20px 24px; overflow-y:auto; flex:1; background:#F8FAFC;" id="pipeline-settings-editor-body">
+        <!-- Sections editor injected by JS -->
+      </div>
+
+      <div style="padding:14px 24px; background:#ffffff; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="addNewPipelineSection()" style="font-weight:700; border-color:#0F172A; color:#0F172A;">
+          + Add New Section
+        </button>
+        <div style="display:flex; gap:12px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeProgressionSettingsModal()">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveProgressionSchemaSettings()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 18px; border-radius:6px;">
+            💾 Save Pipeline Settings
+          </button>
+        </div>
       </div>
     </div>
   </div>

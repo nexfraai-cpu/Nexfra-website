@@ -2694,24 +2694,355 @@ function renderWorkOrders() {
 // 6. REDESIGNED PRODUCTION BOARD & ORDER PROGRESSION
 // ------------------------------------------
 
-function getInitialProgressionState() {
-  return {
-    design: { scopeClear: false, assemblyDesign: false, custom: false },
-    procurement: {
-      steelPlates: { ordered: false, received: false },
-      aClassBop: { ordered: false, received: false },
-      bClassBop: { ordered: false, received: false },
-      cClassBop: { ordered: false, received: false }
+function getDefaultProgressionSchema() {
+  return [
+    {
+      id: "sec_design",
+      name: "1. Design",
+      subsections: [
+        {
+          id: "sub_design_items",
+          name: "General Design Tasks",
+          items: [
+            { id: "scopeClear", name: "Scope Clear" },
+            { id: "assemblyDesign", name: "Assembly Design" },
+            { id: "custom", name: "Custom Requirements" }
+          ]
+        }
+      ]
     },
-    cuttingBending: { floor: false, sb: false, hb: false, tp: false },
-    fabricationSKD: { floor: false, sideboard: false, headboard: false, taildoor: false, subframe: false, accessories: false },
-    welding: false,
-    grinding: false,
-    biwPainting: { biw: false, painting: false },
-    trimming: { wiring: false, lightFitting: false },
-    hydraulics: false,
-    qualityDispatch: { qualityCheck: false, dispatched: false }
-  };
+    {
+      id: "sec_procurement",
+      name: "2. Procurement",
+      subsections: [
+        {
+          id: "sub_steel_plates",
+          name: "Steel Plates",
+          items: [
+            { id: "steelPlates_ordered", name: "Ordered" },
+            { id: "steelPlates_received", name: "Received" }
+          ]
+        },
+        {
+          id: "sub_aclass_bop",
+          name: "A Class BOP",
+          items: [
+            { id: "aClassBop_ordered", name: "Ordered" },
+            { id: "aClassBop_received", name: "Received" }
+          ]
+        },
+        {
+          id: "sub_bclass_bop",
+          name: "B Class BOP",
+          items: [
+            { id: "bClassBop_ordered", name: "Ordered" },
+            { id: "bClassBop_received", name: "Received" }
+          ]
+        },
+        {
+          id: "sub_cclass_bop",
+          name: "C Class BOP",
+          items: [
+            { id: "cClassBop_ordered", name: "Ordered" },
+            { id: "cClassBop_received", name: "Received" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_cutting_bending",
+      name: "3. Cutting & Bending",
+      subsections: [
+        {
+          id: "sub_cb_parts",
+          name: "Parts Cutting & Bending",
+          items: [
+            { id: "floor_cb", name: "Floor" },
+            { id: "sb_cb", name: "Side Board (S/B)" },
+            { id: "hb_cb", name: "Head Board (H/B)" },
+            { id: "tp_cb", name: "Tail Plate / Tail Door (T/P)" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_fabrication",
+      name: "4. Fabrication (SKD Level)",
+      subsections: [
+        {
+          id: "sub_skd_assemblies",
+          name: "SKD Level Assemblies",
+          items: [
+            { id: "floor_fab", name: "Floor Fabrication" },
+            { id: "sideboard_fab", name: "Sideboard" },
+            { id: "headboard_fab", name: "Headboard" },
+            { id: "taildoor_fab", name: "Taildoor" },
+            { id: "subframe_fab", name: "Subframe / Main Beam" },
+            { id: "accessories_fab", name: "Accessories Fitment" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_welding",
+      name: "5. Welding",
+      subsections: [
+        {
+          id: "sub_welding_status",
+          name: "Welding Process",
+          items: [
+            { id: "welding_done", name: "Welding Done" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_grinding",
+      name: "6. Grinding",
+      subsections: [
+        {
+          id: "sub_grinding_status",
+          name: "Grinding & Finishing",
+          items: [
+            { id: "grinding_done", name: "Grinding Done" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_biw_painting",
+      name: "7. BIW & Painting",
+      subsections: [
+        {
+          id: "sub_biw_paint_stages",
+          name: "Body & Surface Coating",
+          items: [
+            { id: "biw_inspection", name: "Body in White (BIW) Inspection" },
+            { id: "pu_painting", name: "Epoxy Primer & PU Painting" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_trimming",
+      name: "8. Trimming",
+      subsections: [
+        {
+          id: "sub_trimming_fitment",
+          name: "Electrical & Fittings",
+          items: [
+            { id: "wiring_harness", name: "Electrical Wiring Harness" },
+            { id: "light_fitting", name: "Light Fitting & Marker Lamps" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_hydraulics",
+      name: "9. Hydraulics",
+      subsections: [
+        {
+          id: "sub_hydraulics_testing",
+          name: "Hydraulic System",
+          items: [
+            { id: "hydraulics_done", name: "Hydraulics Fitment & Cylinder Testing Done" }
+          ]
+        }
+      ]
+    },
+    {
+      id: "sec_qc_dispatch",
+      name: "10. Quality Check & Dispatch",
+      subsections: [
+        {
+          id: "sub_final_dispatch",
+          name: "Final Delivery Stages",
+          items: [
+            { id: "qc_approved", name: "Quality Check Approved" },
+            { id: "dispatched", name: "Dispatched" }
+          ]
+        }
+      ]
+    }
+  ];
+}
+
+function getProgressionSchema() {
+  if (!STATE.progressionSchema || STATE.progressionSchema.length === 0) {
+    STATE.progressionSchema = getDefaultProgressionSchema();
+    saveState();
+  }
+  return STATE.progressionSchema;
+}
+
+let tempProgressionSchema = null;
+
+window.openProgressionSettingsModal = function() {
+  loadState();
+  tempProgressionSchema = JSON.parse(JSON.stringify(getProgressionSchema()));
+  renderPipelineSettingsEditor();
+  document.getElementById('progression-pipeline-settings-modal').classList.add('active');
+};
+
+window.closeProgressionSettingsModal = function() {
+  const modal = document.getElementById('progression-pipeline-settings-modal');
+  if (modal) modal.classList.remove('active');
+};
+
+window.resetDefaultProgressionSchema = function() {
+  if (confirm("Reset progression pipeline to default 10 manufacturing sections? Custom edits will be restored.")) {
+    tempProgressionSchema = getDefaultProgressionSchema();
+    renderPipelineSettingsEditor();
+  }
+};
+
+function escapeHtml(str) {
+  return String(str || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function renderPipelineSettingsEditor() {
+  const body = document.getElementById('pipeline-settings-editor-body');
+  if (!body || !tempProgressionSchema) return;
+
+  if (tempProgressionSchema.length === 0) {
+    body.innerHTML = `
+      <div style="text-align:center; padding:40px; color:#64748B;">
+        <p>No sections defined in the progression pipeline.</p>
+        <button type="button" class="btn btn-primary btn-sm" onclick="addNewPipelineSection()">+ Add First Section</button>
+      </div>
+    `;
+    return;
+  }
+
+  body.innerHTML = tempProgressionSchema.map((sec, secIdx) => `
+    <div class="card" style="margin-bottom:16px; padding:16px; background:#ffffff; border:1.5px solid #CBD5E1; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+      
+      <!-- Section Header -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex:1; margin-right:12px;">
+          <span style="font-weight:800; font-size:0.85rem; color:#64748B;">#${secIdx + 1}</span>
+          <input type="text" value="${escapeHtml(sec.name)}" class="form-control" style="font-weight:800; font-size:0.9rem; color:#0F172A;" onchange="tempProgressionSchema[${secIdx}].name = this.value">
+        </div>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="movePipelineSection(${secIdx}, -1)" ${secIdx === 0 ? 'disabled' : ''} style="padding:2px 8px;">▲ Up</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="movePipelineSection(${secIdx}, 1)" ${secIdx === tempProgressionSchema.length - 1 ? 'disabled' : ''} style="padding:2px 8px;">▼ Down</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="addNewPipelineSubsection(${secIdx})" style="background:#EFF6FF; border-color:#93C5FD; color:#1D4ED8; font-weight:700; padding:2px 10px;">+ Add Sub-section</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="deletePipelineSection(${secIdx})" style="background:#FEF2F2; border-color:#FCA5A5; color:#DC2626; padding:2px 8px;">🗑️ Delete</button>
+        </div>
+      </div>
+
+      <!-- Sub-sections List -->
+      <div style="display:flex; flex-direction:column; gap:12px;">
+        ${sec.subsections.map((sub, subIdx) => `
+          <div style="background:#F8FAFC; padding:12px; border-radius:6px; border:1px solid #E2E8F0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div style="display:flex; align-items:center; gap:6px; flex:1; margin-right:8px;">
+                <span style="font-size:0.75rem; font-weight:700; color:#64748B;">Sub-section:</span>
+                <input type="text" value="${escapeHtml(sub.name)}" class="form-control form-control-sm" style="font-weight:700; font-size:0.8rem; height:32px;" onchange="tempProgressionSchema[${secIdx}].subsections[${subIdx}].name = this.value">
+              </div>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="btn btn-outline btn-xs" onclick="addNewPipelineItem(${secIdx}, ${subIdx})" style="font-size:0.7rem; font-weight:700; padding:2px 8px;">+ Add Checkbox Item</button>
+                <button type="button" class="btn btn-outline btn-xs" onclick="deletePipelineSubsection(${secIdx}, ${subIdx})" style="color:#DC2626; border-color:#FCA5A5; padding:2px 6px;">✕ Delete</button>
+              </div>
+            </div>
+
+            <!-- Items List -->
+            <div style="display:flex; flex-wrap:wrap; gap:8px; padding-top:4px;">
+              ${sub.items.map((item, itemIdx) => `
+                <div style="display:flex; align-items:center; gap:4px; background:#ffffff; border:1px solid #CBD5E1; padding:4px 8px; border-radius:4px;">
+                  <span style="font-size:0.7rem; color:#94A3B8;">☑</span>
+                  <input type="text" value="${escapeHtml(item.name)}" class="form-control form-control-sm" style="width:140px; height:26px; font-size:0.75rem; font-weight:600; padding:2px 6px;" onchange="tempProgressionSchema[${secIdx}].subsections[${subIdx}].items[${itemIdx}].name = this.value">
+                  <button type="button" onclick="deletePipelineItem(${secIdx}, ${subIdx}, ${itemIdx})" style="background:none; border:none; color:#EF4444; font-weight:700; cursor:pointer; font-size:0.75rem; padding:0 4px;">✕</button>
+                </div>
+              `).join('')}
+              ${sub.items.length === 0 ? '<span style="font-size:0.7rem; color:#94A3B8; font-style:italic;">No items yet. Click "+ Add Checkbox Item"</span>' : ''}
+            </div>
+          </div>
+        `).join('')}
+        ${sec.subsections.length === 0 ? '<div style="font-size:0.75rem; color:#94A3B8; text-align:center; padding:8px;">No sub-sections in this section. Click "+ Add Sub-section"</div>' : ''}
+      </div>
+
+    </div>
+  `).join('');
+}
+
+window.addNewPipelineSection = function() {
+  if (!tempProgressionSchema) return;
+  const newSecNum = tempProgressionSchema.length + 1;
+  tempProgressionSchema.push({
+    id: `sec_custom_${Date.now()}`,
+    name: `${newSecNum}. Custom Section`,
+    subsections: [
+      {
+        id: `sub_custom_${Date.now()}`,
+        name: "General Sub-section",
+        items: [
+          { id: `item_${Date.now()}_1`, name: "Task 1 Done" },
+          { id: `item_${Date.now()}_2`, name: "Task 2 Done" }
+        ]
+      }
+    ]
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deletePipelineSection = function(secIdx) {
+  if (confirm(`Delete section "${tempProgressionSchema[secIdx].name}"?`)) {
+    tempProgressionSchema.splice(secIdx, 1);
+    renderPipelineSettingsEditor();
+  }
+};
+
+window.movePipelineSection = function(secIdx, dir) {
+  const targetIdx = secIdx + dir;
+  if (targetIdx < 0 || targetIdx >= tempProgressionSchema.length) return;
+  const temp = tempProgressionSchema[secIdx];
+  tempProgressionSchema[secIdx] = tempProgressionSchema[targetIdx];
+  tempProgressionSchema[targetIdx] = temp;
+  renderPipelineSettingsEditor();
+};
+
+window.addNewPipelineSubsection = function(secIdx) {
+  tempProgressionSchema[secIdx].subsections.push({
+    id: `sub_custom_${Date.now()}`,
+    name: "New Sub-section",
+    items: [
+      { id: `item_${Date.now()}_1`, name: "Ordered" },
+      { id: `item_${Date.now()}_2`, name: "Received" }
+    ]
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deletePipelineSubsection = function(secIdx, subIdx) {
+  tempProgressionSchema[secIdx].subsections.splice(subIdx, 1);
+  renderPipelineSettingsEditor();
+};
+
+window.addNewPipelineItem = function(secIdx, subIdx) {
+  tempProgressionSchema[secIdx].subsections[subIdx].items.push({
+    id: `item_${Date.now()}`,
+    name: "New Checkbox Item"
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deletePipelineItem = function(secIdx, subIdx, itemIdx) {
+  tempProgressionSchema[secIdx].subsections[subIdx].items.splice(itemIdx, 1);
+  renderPipelineSettingsEditor();
+};
+
+window.saveProgressionSchemaSettings = function() {
+  if (!tempProgressionSchema) return;
+  STATE.progressionSchema = JSON.parse(JSON.stringify(tempProgressionSchema));
+  saveState();
+  closeProgressionSettingsModal();
+  renderProductionBoard();
+  alert("Progression Pipeline structure updated successfully!");
+};
+
+function getInitialProgressionState() {
+  return {};
 }
 
 function syncProductionItemsWithQuotations() {
@@ -2729,7 +3060,7 @@ function syncProductionItemsWithQuotations() {
           date: q.date || new Date().toISOString().split('T')[0],
           columnStatus: 'Not Started',
           progressPct: 0,
-          progression: getInitialProgressionState()
+          progressionMap: {}
         });
       }
     });
@@ -2830,74 +3161,38 @@ window.closeOrderProgressionModal = function() {
 };
 
 function renderOrderProgressionBody(prodItem) {
-  if (!prodItem.progression) prodItem.progression = getInitialProgressionState();
-  const prog = prodItem.progression;
+  const schema = getProgressionSchema();
+  if (!prodItem.progressionMap) prodItem.progressionMap = {};
+  const map = prodItem.progressionMap;
 
-  // Calculate checked items count across 30 total sub-sections
-  const countChecked = () => {
-    let count = 0;
-    // 1. Design (3)
-    if (prog.design?.scopeClear) count++;
-    if (prog.design?.assemblyDesign) count++;
-    if (prog.design?.custom) count++;
+  // Collect all schema checkbox keys
+  let allSchemaItems = [];
+  schema.forEach(sec => {
+    sec.subsections.forEach(sub => {
+      sub.items.forEach(item => {
+        allSchemaItems.push({
+          secId: sec.id,
+          subId: sub.id,
+          itemId: item.id,
+          key: `${sec.id}_${sub.id}_${item.id}`
+        });
+      });
+    });
+  });
 
-    // 2. Procurement (8)
-    if (prog.procurement?.steelPlates?.ordered) count++;
-    if (prog.procurement?.steelPlates?.received) count++;
-    if (prog.procurement?.aClassBop?.ordered) count++;
-    if (prog.procurement?.aClassBop?.received) count++;
-    if (prog.procurement?.bClassBop?.ordered) count++;
-    if (prog.procurement?.bClassBop?.received) count++;
-    if (prog.procurement?.cClassBop?.ordered) count++;
-    if (prog.procurement?.cClassBop?.received) count++;
+  const totalCount = allSchemaItems.length;
+  let checked = 0;
+  allSchemaItems.forEach(i => {
+    if (map[i.key]) checked++;
+  });
 
-    // 3. Cutting & Bending (4)
-    if (prog.cuttingBending?.floor) count++;
-    if (prog.cuttingBending?.sb) count++;
-    if (prog.cuttingBending?.hb) count++;
-    if (prog.cuttingBending?.tp) count++;
+  const pct = totalCount > 0 ? Math.round((checked / totalCount) * 100) : 0;
 
-    // 4. Fabrication SKD (6)
-    if (prog.fabricationSKD?.floor) count++;
-    if (prog.fabricationSKD?.sideboard) count++;
-    if (prog.fabricationSKD?.headboard) count++;
-    if (prog.fabricationSKD?.taildoor) count++;
-    if (prog.fabricationSKD?.subframe) count++;
-    if (prog.fabricationSKD?.accessories) count++;
-
-    // 5. Welding (1)
-    if (prog.welding) count++;
-
-    // 6. Grinding (1)
-    if (prog.grinding) count++;
-
-    // 7. BIW & Painting (2)
-    if (prog.biwPainting?.biw) count++;
-    if (prog.biwPainting?.painting) count++;
-
-    // 8. Trimming (2)
-    if (prog.trimming?.wiring) count++;
-    if (prog.trimming?.lightFitting) count++;
-
-    // 9. Hydraulics (1)
-    if (prog.hydraulics) count++;
-
-    // 10. Quality & Dispatch (2)
-    if (prog.qualityDispatch?.qualityCheck) count++;
-    if (prog.qualityDispatch?.dispatched) count++;
-
-    return count;
-  };
-
-  const totalCount = 30;
-  const checked = countChecked();
-  const pct = Math.round((checked / totalCount) * 100);
-
-  // Automatic Column Movement
+  // Dynamic Column Status Movement
   let status = 'Not Started';
-  if (checked > 0 && checked < totalCount && !prog.qualityDispatch?.dispatched) {
+  if (checked > 0 && checked < totalCount) {
     status = 'Work in Progress';
-  } else if (checked === totalCount || prog.qualityDispatch?.dispatched) {
+  } else if (totalCount > 0 && checked === totalCount) {
     status = 'Finished';
   }
 
@@ -2917,201 +3212,49 @@ function renderOrderProgressionBody(prodItem) {
   if (pctTextEl) pctTextEl.innerText = `${pct}%`;
   if (progressBarEl) progressBarEl.style.width = `${pct}%`;
 
-  // Render 10 Detailed Progression Sections with Sub-section Checkboxes
+  // Render Sections dynamically from schema
   const bodyEl = document.getElementById('opm-sections-body');
   if (!bodyEl) return;
 
   bodyEl.innerHTML = `
     <div style="display:flex; flex-direction:column; gap:16px;">
-
-      <!-- 1. DESIGN -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
-        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">1. Design</h4>
-        <div style="display:flex; gap:16px; flex-wrap:wrap;">
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.design?.scopeClear ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'design.scopeClear', this.checked)">
-            Scope Clear
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.design?.assemblyDesign ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'design.assemblyDesign', this.checked)">
-            Assembly Design
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.design?.custom ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'design.custom', this.checked)">
-            Custom Requirements
-          </label>
-        </div>
-      </div>
-
-      <!-- 2. PROCUREMENT -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
-        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">2. Procurement</h4>
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+      ${schema.map(sec => `
+        <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
+          <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">${sec.name}</h4>
           
-          <!-- Steel Plates -->
-          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
-            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">Steel Plates:</strong>
-            <div style="display:flex; gap:14px;">
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.steelPlates?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.steelPlates.ordered', this.checked)"> Ordered</label>
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.steelPlates?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.steelPlates.received', this.checked)"> Received</label>
-            </div>
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            ${sec.subsections.map(sub => `
+              <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+                ${sub.name && sub.name !== 'General Sub-section' ? `<strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">${sub.name}:</strong>` : ''}
+                <div style="display:flex; flex-wrap:wrap; gap:14px;">
+                  ${sub.items.map(item => {
+                    const key = `${sec.id}_${sub.id}_${item.id}`;
+                    const isChecked = !!map[key];
+                    return `
+                      <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; color:#334155; cursor:pointer;">
+                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProgressionMapKey('${prodItem.quoteId}', '${key}', this.checked)">
+                        ${item.name}
+                      </label>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `).join('')}
           </div>
 
-          <!-- A Class BOP -->
-          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
-            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">A Class BOP:</strong>
-            <div style="display:flex; gap:14px;">
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.aClassBop?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.aClassBop.ordered', this.checked)"> Ordered</label>
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.aClassBop?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.aClassBop.received', this.checked)"> Received</label>
-            </div>
-          </div>
-
-          <!-- B Class BOP -->
-          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
-            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">B Class BOP:</strong>
-            <div style="display:flex; gap:14px;">
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.bClassBop?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.bClassBop.ordered', this.checked)"> Ordered</label>
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.bClassBop?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.bClassBop.received', this.checked)"> Received</label>
-            </div>
-          </div>
-
-          <!-- C Class BOP -->
-          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
-            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">C Class BOP:</strong>
-            <div style="display:flex; gap:14px;">
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.cClassBop?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.cClassBop.ordered', this.checked)"> Ordered</label>
-              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.cClassBop?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.cClassBop.received', this.checked)"> Received</label>
-            </div>
-          </div>
         </div>
-      </div>
-
-      <!-- 3. CUTTING AND BENDING -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
-        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">3. Cutting & Bending</h4>
-        <div style="display:flex; gap:16px; flex-wrap:wrap;">
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.cuttingBending?.floor ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.floor', this.checked)">
-            Floor
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.cuttingBending?.sb ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.sb', this.checked)">
-            Side Board (S/B)
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.cuttingBending?.hb ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.hb', this.checked)">
-            Head Board (H/B)
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.cuttingBending?.tp ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.tp', this.checked)">
-            Tail Plate / Tail Door (T/P)
-          </label>
-        </div>
-      </div>
-
-      <!-- 4. FABRICATION (SKD LEVEL) -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
-        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">4. Fabrication (SKD Level)</h4>
-        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
-          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.floor ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.floor', this.checked)"> Floor Fabrication</label>
-          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.sideboard ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.sideboard', this.checked)"> Sideboard</label>
-          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.headboard ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.headboard', this.checked)"> Headboard</label>
-          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.taildoor ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.taildoor', this.checked)"> Taildoor</label>
-          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.subframe ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.subframe', this.checked)"> Subframe / Beam</label>
-          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.accessories ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.accessories', this.checked)"> Accessories</label>
-        </div>
-      </div>
-
-      <!-- 5. WELDING -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1; display:flex; justify-content:space-between; align-items:center;">
-        <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">5. Welding</h4>
-        <label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; cursor:pointer;">
-          <input type="checkbox" ${prog.welding ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'welding', this.checked)">
-          ${prog.welding ? 'Done (Completed)' : 'Not Done'}
-        </label>
-      </div>
-
-      <!-- 6. GRINDING -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1; display:flex; justify-content:space-between; align-items:center;">
-        <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">6. Grinding</h4>
-        <label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; cursor:pointer;">
-          <input type="checkbox" ${prog.grinding ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'grinding', this.checked)">
-          ${prog.grinding ? 'Done (Completed)' : 'Not Done'}
-        </label>
-      </div>
-
-      <!-- 7. BIW AND PAINTING -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
-        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">7. BIW & Painting</h4>
-        <div style="display:flex; gap:20px;">
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.biwPainting?.biw ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'biwPainting.biw', this.checked)">
-            Body in White (BIW)
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.biwPainting?.painting ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'biwPainting.painting', this.checked)">
-            Epoxy Primer & PU Painting
-          </label>
-        </div>
-      </div>
-
-      <!-- 8. TRIMMING -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
-        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">8. Trimming</h4>
-        <div style="display:flex; gap:20px;">
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.trimming?.wiring ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'trimming.wiring', this.checked)">
-            Electrical Wiring Harness
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
-            <input type="checkbox" ${prog.trimming?.lightFitting ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'trimming.lightFitting', this.checked)">
-            Light Fitting & Marker Lamps
-          </label>
-        </div>
-      </div>
-
-      <!-- 9. HYDRAULICS -->
-      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1; display:flex; justify-content:space-between; align-items:center;">
-        <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">9. Hydraulics</h4>
-        <label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; cursor:pointer;">
-          <input type="checkbox" ${prog.hydraulics ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'hydraulics', this.checked)">
-          ${prog.hydraulics ? 'Done (Tipping Cylinder Tested)' : 'Not Done'}
-        </label>
-      </div>
-
-      <!-- 10. QUALITY CHECK & DISPATCH -->
-      <div class="card" style="padding:14px; background:#F0FDF4; border:1.5px solid #86EFAC;">
-        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#166534; text-transform:uppercase;">10. Quality Check & Dispatch</h4>
-        <div style="display:flex; gap:24px;">
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:700; color:#166534; cursor:pointer;">
-            <input type="checkbox" ${prog.qualityDispatch?.qualityCheck ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'qualityDispatch.qualityCheck', this.checked)">
-            Quality Check Approved
-          </label>
-          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:700; color:#15803D; cursor:pointer;">
-            <input type="checkbox" ${prog.qualityDispatch?.dispatched ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'qualityDispatch.dispatched', this.checked)">
-            🚀 Dispatched
-          </label>
-        </div>
-      </div>
-
+      `).join('')}
     </div>
   `;
 }
 
-window.toggleProgKey = function(quoteId, keyPath, val) {
+window.toggleProgressionMapKey = function(quoteId, key, isChecked) {
   loadState();
   const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
   if (!prodItem) return;
 
-  if (!prodItem.progression) prodItem.progression = getInitialProgressionState();
-
-  const parts = keyPath.split('.');
-  let curr = prodItem.progression;
-  for (let i = 0; i < parts.length - 1; i++) {
-    if (!curr[parts[i]]) curr[parts[i]] = {};
-    curr = curr[parts[i]];
-  }
-  curr[parts[parts.length - 1]] = val;
+  if (!prodItem.progressionMap) prodItem.progressionMap = {};
+  prodItem.progressionMap[key] = isChecked;
 
   saveState();
   renderOrderProgressionBody(prodItem);
