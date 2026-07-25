@@ -2446,19 +2446,22 @@ window.updateQuotationStatusState = function() {
 window.saveWizardQuotation = function() {
   loadState();
   const c = wizardState.customer;
-  const quoteId = `QT-2026-00${STATE.quotations.length + 1}`;
+  
+  // Guaranteed unique quotation number
+  const uniqueNum = Math.floor(10000 + Math.random() * 90000);
+  const quoteId = `QTN-2026-${uniqueNum}`;
 
   // 1. Create/Update Client Profile
-  let client = STATE.customers.find(x => x.company.toLowerCase() === c.company.toLowerCase());
+  let client = STATE.customers.find(x => x.company && x.company.toLowerCase() === (c.company || '').toLowerCase());
   if (!client) {
     client = {
       id: `CUST-00${STATE.customers.length + 1}`,
-      name: c.name,
-      company: c.company,
-      gst: c.gst,
-      phone: c.phone,
-      email: c.email,
-      address: c.address,
+      name: c.name || 'Client Contact',
+      company: c.company || 'Client Company',
+      gst: c.gst || 'Pending',
+      phone: c.phone || '',
+      email: c.email || '',
+      address: c.address || '',
       vehicles: [],
       outstanding: wizardState.status === 'Approved' ? wizardState.total : 0
     };
@@ -2470,7 +2473,7 @@ window.saveWizardQuotation = function() {
   }
 
   // Add chassis model to client vehicles if approved
-  if (wizardState.status === 'Approved' && !client.vehicles.includes(c.model)) {
+  if (wizardState.status === 'Approved' && c.model && !client.vehicles.includes(c.model)) {
     client.vehicles.push(c.model);
   }
 
@@ -2478,16 +2481,30 @@ window.saveWizardQuotation = function() {
   STATE.quotations.push({
     id: quoteId,
     customerId: client.id,
-    productName: WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name,
-    date: c.date,
+    customerName: client.company || client.name,
+    productName: WIZARD_PRODUCT_TEMPLATES[wizardState.subtype] ? WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name : 'Custom Trailer',
+    date: c.date || new Date().toISOString().split('T')[0],
     total: wizardState.total,
     status: wizardState.status,
     specs: wizardState.specs,
-    terms: wizardState.terms,
-    scopeOfWork: wizardState.scopeOfWork
+    scopeOfWork: wizardState.scopeOfWork || DEFAULT_SCOPE_OF_WORK,
+    termsAndConditions: wizardState.termsAndConditions || DEFAULT_TERMS_AND_CONDITIONS
   });
 
-  // 3. Save invoice if approved
+  // 3. Automatically add to Production Board in "Not Started" column
+  if (!STATE.productionItems) STATE.productionItems = [];
+  STATE.productionItems.push({
+    id: quoteId,
+    quoteId: quoteId,
+    customerName: client.company || client.name || 'Valued Client',
+    product: WIZARD_PRODUCT_TEMPLATES[wizardState.subtype] ? WIZARD_PRODUCT_TEMPLATES[wizardState.subtype].name : 'Custom Trailer',
+    date: c.date || new Date().toISOString().split('T')[0],
+    columnStatus: 'Not Started',
+    progressPct: 0,
+    progression: getInitialProgressionState()
+  });
+
+  // 4. Save invoice if approved
   if (wizardState.status === 'Approved') {
     const invoiceId = `INV-2026-${Math.floor(883 + Math.random()*100)}`;
     STATE.sales.push({
@@ -2500,12 +2517,13 @@ window.saveWizardQuotation = function() {
     });
     logSystemActivity(`Quotation ${quoteId} approved & Invoice ${invoiceId} logged.`);
   } else {
-    logSystemActivity(`Quotation registry ${quoteId} saved as: ${wizardState.status}.`);
+    logSystemActivity(`Quotation ${quoteId} saved & added to Production Board (Not Started).`);
   }
 
   saveState();
-  alert(`Quotation ${quoteId} successfully saved to Nexfra Database with status: ${wizardState.status}.`);
-  switchModule('dashboard');
+  renderProductionBoard();
+  alert(`Quotation ${quoteId} successfully saved & sent to Production Board!`);
+  switchModule('status');
 };
 
 window.convertWizardToWorkOrder = function() {
@@ -2673,40 +2691,107 @@ function renderWorkOrders() {
 }
 
 // ------------------------------------------
-// 6. PRODUCTION BOARD (KANBAN BOARD)
+// 6. REDESIGNED PRODUCTION BOARD & ORDER PROGRESSION
 // ------------------------------------------
+
+function getInitialProgressionState() {
+  return {
+    design: { scopeClear: false, assemblyDesign: false, custom: false },
+    procurement: {
+      steelPlates: { ordered: false, received: false },
+      aClassBop: { ordered: false, received: false },
+      bClassBop: { ordered: false, received: false },
+      cClassBop: { ordered: false, received: false }
+    },
+    cuttingBending: { floor: false, sb: false, hb: false, tp: false },
+    fabricationSKD: { floor: false, sideboard: false, headboard: false, taildoor: false, subframe: false, accessories: false },
+    welding: false,
+    grinding: false,
+    biwPainting: { biw: false, painting: false },
+    trimming: { wiring: false, lightFitting: false },
+    hydraulics: false,
+    qualityDispatch: { qualityCheck: false, dispatched: false }
+  };
+}
+
+function syncProductionItemsWithQuotations() {
+  if (!STATE.productionItems) STATE.productionItems = [];
+  if (STATE.quotations && STATE.quotations.length > 0) {
+    STATE.quotations.forEach(q => {
+      let existing = STATE.productionItems.find(p => p.quoteId === q.id || p.id === q.id);
+      if (!existing) {
+        const client = STATE.customers ? STATE.customers.find(c => c.id === q.customerId) : null;
+        STATE.productionItems.push({
+          id: q.id,
+          quoteId: q.id,
+          customerName: client ? client.company : (q.customerName || 'Client'),
+          product: q.productName || 'Custom Vehicle Body',
+          date: q.date || new Date().toISOString().split('T')[0],
+          columnStatus: 'Not Started',
+          progressPct: 0,
+          progression: getInitialProgressionState()
+        });
+      }
+    });
+  }
+}
 
 function renderProductionBoard() {
   loadState();
+  syncProductionItemsWithQuotations();
+
   const container = document.getElementById('production-board-container');
   if (!container) return;
 
-  const boardStages = STAGES.filter(s => s !== 'Delivered');
+  const columns = [
+    { title: 'Not Started', status: 'Not Started', headerBg: '#F1F5F9', border: '#CBD5E1', countBg: '#64748B' },
+    { title: 'Work in Progress', status: 'Work in Progress', headerBg: '#DBEAFE', border: '#93C5FD', countBg: '#2563EB' },
+    { title: 'Finished', status: 'Finished', headerBg: '#D1FAE5', border: '#6EE7B7', countBg: '#059669' }
+  ];
+
   let boardHtml = '';
 
-  boardStages.forEach(stage => {
-    const stageWOs = STATE.workOrders.filter(wo => wo.stage === stage);
-    const cardsHtml = stageWOs.map(wo => `
-      <div class="board-card" id="board-card-${wo.id}">
-        <div class="board-card-id">${wo.id}</div>
-        <div class="board-card-cust">${wo.customerName}</div>
-        <div class="board-card-product">${wo.product}</div>
-        <div class="board-card-action">
-          <button class="btn btn-primary btn-xs" onclick="advanceWorkOrderStage('${wo.id}')">
-            Advance &rarr;
-          </button>
+  columns.forEach(col => {
+    const items = STATE.productionItems.filter(p => (p.columnStatus || 'Not Started') === col.status);
+
+    const cardsHtml = items.map(item => {
+      const pct = item.progressPct || 0;
+      return `
+        <div class="board-card" onclick="openOrderProgressionModal('${item.quoteId}')" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; padding:14px; margin-bottom:12px; cursor:pointer; transition:all 0.2s ease; position:relative; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; font-family:'Outfit',sans-serif;">${item.quoteId}</span>
+            <span style="font-size:0.7rem; font-weight:800; color:${col.status === 'Finished' ? '#059669' : (col.status === 'Work in Progress' ? '#2563EB' : '#64748B')};">${pct}% Complete</span>
+          </div>
+
+          <div style="font-weight:700; font-size:0.875rem; color:#1E293B; margin-bottom:2px;">${item.customerName}</div>
+          <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
+
+          <!-- Mini Progress Bar -->
+          <div style="width:100%; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; margin-bottom:12px;">
+            <div style="width:${pct}%; height:100%; background:${col.status === 'Finished' ? '#10B981' : '#3B82F6'}; transition:width 0.3s ease;"></div>
+          </div>
+
+          <!-- Card Actions -->
+          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #F1F5F9; padding-top:10px;" onclick="event.stopPropagation()">
+            <button type="button" class="btn btn-outline btn-xs" onclick="openPdfPreview('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 8px;">
+              📄 Show Quotation
+            </button>
+            <button type="button" class="btn btn-primary btn-xs" onclick="openOrderProgressionModal('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 10px; background:#0F172A; border:none; color:white;">
+              Track Order &rarr;
+            </button>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     boardHtml += `
-      <div class="board-col">
-        <div class="board-col-header">
-          <h3>${stage}</h3>
-          <span class="board-col-count">${stageWOs.length}</span>
+      <div class="board-col" style="background:#F8FAFC; border:1.5px solid ${col.border}; border-radius:10px; overflow:hidden;">
+        <div class="board-col-header" style="background:${col.headerBg}; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid ${col.border};">
+          <h3 style="margin:0; font-size:0.85rem; font-weight:800; color:#0F172A; text-transform:uppercase; letter-spacing:0.5px;">${col.title}</h3>
+          <span style="background:${col.countBg}; color:#ffffff; font-size:0.75rem; font-weight:800; padding:2px 8px; border-radius:10px;">${items.length}</span>
         </div>
-        <div class="board-col-cards">
-          ${cardsHtml || '<div class="section-hint text-center py-sm" style="font-size:0.75rem">No vehicles</div>'}
+        <div class="board-col-cards" style="padding:14px; min-height:320px;">
+          ${cardsHtml || `<div style="text-align:center; padding:40px 10px; color:#94A3B8; font-size:0.8rem; font-weight:600;">No vehicle orders in ${col.title}</div>`}
         </div>
       </div>
     `;
@@ -2715,29 +2800,322 @@ function renderProductionBoard() {
   container.innerHTML = boardHtml;
 }
 
-window.advanceWorkOrderStage = function(woId) {
-  const wo = STATE.workOrders.find(w => w.id === woId);
-  if (!wo) return;
+window.openOrderProgressionModal = function(quoteId) {
+  loadState();
+  syncProductionItemsWithQuotations();
 
-  const currentIdx = STAGES.indexOf(wo.stage);
-  if (currentIdx < STAGES.length - 1) {
-    const nextStage = STAGES[currentIdx + 1];
-    wo.stage = nextStage;
-    wo.progress = Math.round(((currentIdx + 1) / (STAGES.length - 1)) * 100);
-    
-    logSystemActivity(`Work Order ${woId} advanced to phase: ${nextStage} (${wo.progress}%).`);
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
 
-    const card = document.getElementById(`board-card-${woId}`);
-    if (card && typeof gsap !== 'undefined') {
-      gsap.to(card, { scale: 0.8, opacity: 0, duration: 0.25, onComplete: () => {
-        renderProductionBoard();
-      }});
-    } else {
-      renderProductionBoard();
-    }
-  } else {
-    alert(`Work Order ${woId} has already completed delivery workflows.`);
+  const quote = STATE.quotations.find(q => q.id === quoteId);
+  const subtitleText = `${quote ? quote.customerName || 'Client' : prodItem.customerName} • ${prodItem.product} • Order Date: ${new Date(prodItem.date).toLocaleDateString('en-GB')}`;
+
+  document.getElementById('opm-title').innerHTML = `
+    <span style="background:#3B82F6; color:white; padding:2px 10px; border-radius:6px; font-size:0.85rem; font-weight:800;">${prodItem.quoteId}</span>
+    Order Progression Tracker
+  `;
+  document.getElementById('opm-subtitle').innerText = subtitleText;
+
+  document.getElementById('opm-view-quote-btn').onclick = function() {
+    openPdfPreview(quoteId);
+  };
+
+  renderOrderProgressionBody(prodItem);
+  document.getElementById('order-progression-modal').classList.add('active');
+};
+
+window.closeOrderProgressionModal = function() {
+  const modal = document.getElementById('order-progression-modal');
+  if (modal) modal.classList.remove('active');
+};
+
+function renderOrderProgressionBody(prodItem) {
+  if (!prodItem.progression) prodItem.progression = getInitialProgressionState();
+  const prog = prodItem.progression;
+
+  // Calculate checked items count across 30 total sub-sections
+  const countChecked = () => {
+    let count = 0;
+    // 1. Design (3)
+    if (prog.design?.scopeClear) count++;
+    if (prog.design?.assemblyDesign) count++;
+    if (prog.design?.custom) count++;
+
+    // 2. Procurement (8)
+    if (prog.procurement?.steelPlates?.ordered) count++;
+    if (prog.procurement?.steelPlates?.received) count++;
+    if (prog.procurement?.aClassBop?.ordered) count++;
+    if (prog.procurement?.aClassBop?.received) count++;
+    if (prog.procurement?.bClassBop?.ordered) count++;
+    if (prog.procurement?.bClassBop?.received) count++;
+    if (prog.procurement?.cClassBop?.ordered) count++;
+    if (prog.procurement?.cClassBop?.received) count++;
+
+    // 3. Cutting & Bending (4)
+    if (prog.cuttingBending?.floor) count++;
+    if (prog.cuttingBending?.sb) count++;
+    if (prog.cuttingBending?.hb) count++;
+    if (prog.cuttingBending?.tp) count++;
+
+    // 4. Fabrication SKD (6)
+    if (prog.fabricationSKD?.floor) count++;
+    if (prog.fabricationSKD?.sideboard) count++;
+    if (prog.fabricationSKD?.headboard) count++;
+    if (prog.fabricationSKD?.taildoor) count++;
+    if (prog.fabricationSKD?.subframe) count++;
+    if (prog.fabricationSKD?.accessories) count++;
+
+    // 5. Welding (1)
+    if (prog.welding) count++;
+
+    // 6. Grinding (1)
+    if (prog.grinding) count++;
+
+    // 7. BIW & Painting (2)
+    if (prog.biwPainting?.biw) count++;
+    if (prog.biwPainting?.painting) count++;
+
+    // 8. Trimming (2)
+    if (prog.trimming?.wiring) count++;
+    if (prog.trimming?.lightFitting) count++;
+
+    // 9. Hydraulics (1)
+    if (prog.hydraulics) count++;
+
+    // 10. Quality & Dispatch (2)
+    if (prog.qualityDispatch?.qualityCheck) count++;
+    if (prog.qualityDispatch?.dispatched) count++;
+
+    return count;
+  };
+
+  const totalCount = 30;
+  const checked = countChecked();
+  const pct = Math.round((checked / totalCount) * 100);
+
+  // Automatic Column Movement
+  let status = 'Not Started';
+  if (checked > 0 && checked < totalCount && !prog.qualityDispatch?.dispatched) {
+    status = 'Work in Progress';
+  } else if (checked === totalCount || prog.qualityDispatch?.dispatched) {
+    status = 'Finished';
   }
+
+  prodItem.columnStatus = status;
+  prodItem.progressPct = pct;
+  saveState();
+
+  // Update Header UI
+  const badgeEl = document.getElementById('opm-status-badge');
+  const pctTextEl = document.getElementById('opm-pct-text');
+  const progressBarEl = document.getElementById('opm-progress-bar');
+
+  if (badgeEl) {
+    badgeEl.innerText = status;
+    badgeEl.style.background = status === 'Finished' ? '#10B981' : (status === 'Work in Progress' ? '#3B82F6' : '#64748B');
+  }
+  if (pctTextEl) pctTextEl.innerText = `${pct}%`;
+  if (progressBarEl) progressBarEl.style.width = `${pct}%`;
+
+  // Render 10 Detailed Progression Sections with Sub-section Checkboxes
+  const bodyEl = document.getElementById('opm-sections-body');
+  if (!bodyEl) return;
+
+  bodyEl.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:16px;">
+
+      <!-- 1. DESIGN -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">1. Design</h4>
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.design?.scopeClear ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'design.scopeClear', this.checked)">
+            Scope Clear
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.design?.assemblyDesign ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'design.assemblyDesign', this.checked)">
+            Assembly Design
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.design?.custom ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'design.custom', this.checked)">
+            Custom Requirements
+          </label>
+        </div>
+      </div>
+
+      <!-- 2. PROCUREMENT -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">2. Procurement</h4>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          
+          <!-- Steel Plates -->
+          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">Steel Plates:</strong>
+            <div style="display:flex; gap:14px;">
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.steelPlates?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.steelPlates.ordered', this.checked)"> Ordered</label>
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.steelPlates?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.steelPlates.received', this.checked)"> Received</label>
+            </div>
+          </div>
+
+          <!-- A Class BOP -->
+          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">A Class BOP:</strong>
+            <div style="display:flex; gap:14px;">
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.aClassBop?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.aClassBop.ordered', this.checked)"> Ordered</label>
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.aClassBop?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.aClassBop.received', this.checked)"> Received</label>
+            </div>
+          </div>
+
+          <!-- B Class BOP -->
+          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">B Class BOP:</strong>
+            <div style="display:flex; gap:14px;">
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.bClassBop?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.bClassBop.ordered', this.checked)"> Ordered</label>
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.bClassBop?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.bClassBop.received', this.checked)"> Received</label>
+            </div>
+          </div>
+
+          <!-- C Class BOP -->
+          <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+            <strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">C Class BOP:</strong>
+            <div style="display:flex; gap:14px;">
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.cClassBop?.ordered ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.cClassBop.ordered', this.checked)"> Ordered</label>
+              <label style="font-size:0.775rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.procurement?.cClassBop?.received ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'procurement.cClassBop.received', this.checked)"> Received</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. CUTTING AND BENDING -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">3. Cutting & Bending</h4>
+        <div style="display:flex; gap:16px; flex-wrap:wrap;">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.cuttingBending?.floor ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.floor', this.checked)">
+            Floor
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.cuttingBending?.sb ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.sb', this.checked)">
+            Side Board (S/B)
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.cuttingBending?.hb ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.hb', this.checked)">
+            Head Board (H/B)
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.cuttingBending?.tp ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'cuttingBending.tp', this.checked)">
+            Tail Plate / Tail Door (T/P)
+          </label>
+        </div>
+      </div>
+
+      <!-- 4. FABRICATION (SKD LEVEL) -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">4. Fabrication (SKD Level)</h4>
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;">
+          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.floor ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.floor', this.checked)"> Floor Fabrication</label>
+          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.sideboard ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.sideboard', this.checked)"> Sideboard</label>
+          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.headboard ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.headboard', this.checked)"> Headboard</label>
+          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.taildoor ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.taildoor', this.checked)"> Taildoor</label>
+          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.subframe ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.subframe', this.checked)"> Subframe / Beam</label>
+          <label style="font-size:0.8rem; font-weight:600; cursor:pointer;"><input type="checkbox" ${prog.fabricationSKD?.accessories ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'fabricationSKD.accessories', this.checked)"> Accessories</label>
+        </div>
+      </div>
+
+      <!-- 5. WELDING -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1; display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">5. Welding</h4>
+        <label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; cursor:pointer;">
+          <input type="checkbox" ${prog.welding ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'welding', this.checked)">
+          ${prog.welding ? 'Done (Completed)' : 'Not Done'}
+        </label>
+      </div>
+
+      <!-- 6. GRINDING -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1; display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">6. Grinding</h4>
+        <label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; cursor:pointer;">
+          <input type="checkbox" ${prog.grinding ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'grinding', this.checked)">
+          ${prog.grinding ? 'Done (Completed)' : 'Not Done'}
+        </label>
+      </div>
+
+      <!-- 7. BIW AND PAINTING -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">7. BIW & Painting</h4>
+        <div style="display:flex; gap:20px;">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.biwPainting?.biw ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'biwPainting.biw', this.checked)">
+            Body in White (BIW)
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.biwPainting?.painting ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'biwPainting.painting', this.checked)">
+            Epoxy Primer & PU Painting
+          </label>
+        </div>
+      </div>
+
+      <!-- 8. TRIMMING -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">8. Trimming</h4>
+        <div style="display:flex; gap:20px;">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.trimming?.wiring ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'trimming.wiring', this.checked)">
+            Electrical Wiring Harness
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.825rem; font-weight:600; cursor:pointer;">
+            <input type="checkbox" ${prog.trimming?.lightFitting ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'trimming.lightFitting', this.checked)">
+            Light Fitting & Marker Lamps
+          </label>
+        </div>
+      </div>
+
+      <!-- 9. HYDRAULICS -->
+      <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1; display:flex; justify-content:space-between; align-items:center;">
+        <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">9. Hydraulics</h4>
+        <label style="display:inline-flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:700; cursor:pointer;">
+          <input type="checkbox" ${prog.hydraulics ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'hydraulics', this.checked)">
+          ${prog.hydraulics ? 'Done (Tipping Cylinder Tested)' : 'Not Done'}
+        </label>
+      </div>
+
+      <!-- 10. QUALITY CHECK & DISPATCH -->
+      <div class="card" style="padding:14px; background:#F0FDF4; border:1.5px solid #86EFAC;">
+        <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#166534; text-transform:uppercase;">10. Quality Check & Dispatch</h4>
+        <div style="display:flex; gap:24px;">
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:700; color:#166534; cursor:pointer;">
+            <input type="checkbox" ${prog.qualityDispatch?.qualityCheck ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'qualityDispatch.qualityCheck', this.checked)">
+            Quality Check Approved
+          </label>
+          <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.85rem; font-weight:700; color:#15803D; cursor:pointer;">
+            <input type="checkbox" ${prog.qualityDispatch?.dispatched ? 'checked' : ''} onchange="toggleProgKey('${prodItem.quoteId}', 'qualityDispatch.dispatched', this.checked)">
+            🚀 Dispatched
+          </label>
+        </div>
+      </div>
+
+    </div>
+  `;
+}
+
+window.toggleProgKey = function(quoteId, keyPath, val) {
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
+
+  if (!prodItem.progression) prodItem.progression = getInitialProgressionState();
+
+  const parts = keyPath.split('.');
+  let curr = prodItem.progression;
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (!curr[parts[i]]) curr[parts[i]] = {};
+    curr = curr[parts[i]];
+  }
+  curr[parts[parts.length - 1]] = val;
+
+  saveState();
+  renderOrderProgressionBody(prodItem);
+  renderProductionBoard();
 };
 
 // ------------------------------------------

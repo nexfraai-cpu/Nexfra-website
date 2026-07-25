@@ -1405,6 +1405,52 @@
     </div>
   </div>
 
+  <!-- ========================================== -->
+  <!-- ORDER PROGRESSION MODAL -->
+  <!-- ========================================== -->
+  <div class="pdf-modal" id="order-progression-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:900px; width:95%; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:92vh; display:flex; flex-direction:column;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div>
+          <h3 id="opm-title" style="margin:0; font-size:1.05rem; font-weight:700; color:#ffffff; display:flex; align-items:center; gap:10px;">
+            Order Progression Tracker
+          </h3>
+          <p id="opm-subtitle" style="margin:4px 0 0 0; font-size:0.75rem; color:#94A3B8;"></p>
+        </div>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button type="button" class="btn btn-outline btn-xs" id="opm-view-quote-btn" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 12px; font-weight:700;">
+            📄 Show Quotation
+          </button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="closeOrderProgressionModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+        </div>
+      </div>
+
+      <!-- Overall Progress Bar Header -->
+      <div style="padding:16px 24px; background:#F8FAFC; border-bottom:1px solid #E2E8F0; flex-shrink:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Manufacturing Order Stage Progress</span>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span id="opm-status-badge" style="padding:4px 10px; border-radius:12px; font-size:0.75rem; font-weight:800; text-transform:uppercase; background:#64748B; color:#ffffff;">Not Started</span>
+            <span id="opm-pct-text" style="font-weight:800; font-size:0.9rem; color:#0F172A;">0%</span>
+          </div>
+        </div>
+        <div style="width:100%; height:10px; background:#E2E8F0; border-radius:5px; overflow:hidden;">
+          <div id="opm-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #3B82F6 0%, #10B981 100%); transition:width 0.3s ease;"></div>
+        </div>
+      </div>
+
+      <!-- 10 Progression Sections Body -->
+      <div style="padding:20px 24px; overflow-y:auto; flex:1;" id="opm-sections-body">
+        <!-- 10 progression sections injected by JS -->
+      </div>
+
+      <div style="padding:14px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <span style="font-size:0.75rem; color:#64748B;">Sub-section checkboxes automatically update the Production Board stage status.</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="closeOrderProgressionModal()" style="background:#0F172A; border:none; font-weight:700; color:#ffffff; padding:6px 16px; border-radius:6px;">Done</button>
+      </div>
+    </div>
+  </div>
+
   <script src="erp.js"></script>
 </body>
 </html>
