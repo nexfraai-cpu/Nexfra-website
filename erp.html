@@ -1280,7 +1280,10 @@
         <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
           🛠 Edit Components
         </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closeEditComponentsModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="resetEditComponentsModal()" style="color:#F97316; border-color:#F97316; padding:4px 10px;">↺ Reset to Default</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="closeEditComponentsModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+        </div>
       </div>
       
       <div style="padding:20px 24px; overflow-y:auto; flex:1;" id="edit-components-modal-body">

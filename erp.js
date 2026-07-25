@@ -182,6 +182,9 @@ const WIZARD_PRODUCT_TEMPLATES = {
   }
 };
 
+// Pristine backup of original templates for reset functionality
+const ORIGINAL_PRODUCT_TEMPLATES = JSON.parse(JSON.stringify(WIZARD_PRODUCT_TEMPLATES));
+
 // Subtype groups for propagating spec changes across related subtypes
 const SUBTYPE_GROUPS = {
   rigid28: 'rigid_load_body',
@@ -1790,6 +1793,25 @@ window.saveEditComponentsModal = function() {
 window.closeEditComponentsModal = function() {
   document.getElementById('edit-components-modal').classList.remove('active');
   document.getElementById('edit-components-modal').style.display = '';
+};
+
+window.resetEditComponentsModal = function() {
+  if (!confirm('Reset all sections, specs, and pricing to the original defaults for this product category? This cannot be undone.')) return;
+
+  const groupKey = getSubtypeGroup(wizardState.subtype);
+
+  loadState();
+  if (STATE.productSpecOverrides) {
+    delete STATE.productSpecOverrides[groupKey];
+  }
+  STATE.customItemDefinitions = [];
+  saveState();
+
+  // Restore original templates in memory
+  Object.keys(ORIGINAL_PRODUCT_TEMPLATES).forEach(key => {
+    WIZARD_PRODUCT_TEMPLATES[key] = JSON.parse(JSON.stringify(ORIGINAL_PRODUCT_TEMPLATES[key]));
+  });
+  openEditComponentsModal();
 };
 
 window.updateManualBasePrice = function(val) {
