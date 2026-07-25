@@ -3218,35 +3218,79 @@ function renderOrderProgressionBody(prodItem) {
 
   bodyEl.innerHTML = `
     <div style="display:flex; flex-direction:column; gap:16px;">
-      ${schema.map(sec => `
-        <div class="card" style="padding:14px; background:#F8FAFC; border:1px solid #CBD5E1;">
-          <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase;">${sec.name}</h4>
-          
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            ${sec.subsections.map(sub => `
-              <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
-                ${sub.name && sub.name !== 'General Sub-section' ? `<strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">${sub.name}:</strong>` : ''}
-                <div style="display:flex; flex-wrap:wrap; gap:14px;">
-                  ${sub.items.map(item => {
-                    const key = `${sec.id}_${sub.id}_${item.id}`;
-                    const isChecked = !!map[key];
-                    return `
-                      <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; color:#334155; cursor:pointer;">
-                        <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProgressionMapKey('${prodItem.quoteId}', '${key}', this.checked)">
-                        ${item.name}
-                      </label>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-            `).join('')}
-          </div>
+      ${schema.map(sec => {
+        // Collect all items for this section to determine if section is completed
+        let secItemKeys = [];
+        sec.subsections.forEach(sub => {
+          sub.items.forEach(item => {
+            secItemKeys.push(`${sec.id}_${sub.id}_${item.id}`);
+          });
+        });
 
-        </div>
-      `).join('')}
+        const isSecDone = secItemKeys.length > 0 && secItemKeys.every(k => !!map[k]);
+
+        return `
+          <div class="card" style="padding:14px; background:${isSecDone ? '#F0FDF4' : '#F8FAFC'}; border:1.5px solid ${isSecDone ? '#86EFAC' : '#CBD5E1'}; transition:all 0.2s ease;">
+            
+            <!-- Section Header with Section Completed Checkbox -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid ${isSecDone ? '#DCFCE7' : '#E2E8F0'}; padding-bottom:8px;">
+              <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:${isSecDone ? '#166534' : '#1E293B'}; text-transform:uppercase;">${sec.name}</h4>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.775rem; font-weight:800; padding:4px 10px; border-radius:14px; background:${isSecDone ? '#10B981' : '#E2E8F0'}; color:${isSecDone ? '#ffffff' : '#475569'}; cursor:pointer; transition:all 0.2s ease;">
+                <input type="checkbox" ${isSecDone ? 'checked' : ''} onchange="toggleEntireSectionDone('${prodItem.quoteId}', '${sec.id}', this.checked)">
+                ${isSecDone ? '✓ Section Completed' : 'Section Status: Pending'}
+              </label>
+            </div>
+            
+            <!-- Sub-sections & Checkbox Items -->
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              ${sec.subsections.map(sub => `
+                <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+                  ${sub.name && sub.name !== 'General Sub-section' ? `<strong style="font-size:0.8rem; display:block; margin-bottom:6px; color:#334155;">${sub.name}:</strong>` : ''}
+                  <div style="display:flex; flex-wrap:wrap; gap:14px;">
+                    ${sub.items.map(item => {
+                      const key = `${sec.id}_${sub.id}_${item.id}`;
+                      const isChecked = !!map[key];
+                      return `
+                        <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; color:#334155; cursor:pointer;">
+                          <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleProgressionMapKey('${prodItem.quoteId}', '${key}', this.checked)">
+                          ${item.name}
+                        </label>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+
+          </div>
+        `;
+      }).join('')}
     </div>
   `;
 }
+
+window.toggleEntireSectionDone = function(quoteId, secId, markDone) {
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
+
+  if (!prodItem.progressionMap) prodItem.progressionMap = {};
+  
+  const schema = getProgressionSchema();
+  const sec = schema.find(s => s.id === secId);
+  if (sec) {
+    sec.subsections.forEach(sub => {
+      sub.items.forEach(item => {
+        const key = `${sec.id}_${sub.id}_${item.id}`;
+        prodItem.progressionMap[key] = markDone;
+      });
+    });
+  }
+
+  saveState();
+  renderOrderProgressionBody(prodItem);
+  renderProductionBoard();
+};
 
 window.toggleProgressionMapKey = function(quoteId, key, isChecked) {
   loadState();
