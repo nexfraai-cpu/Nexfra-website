@@ -500,16 +500,10 @@
             <div class="configurator-forms-box">
               <div style="display:flex; justify-content:space-between; align-items:center;" class="mb-md">
                 <h2 class="text-uppercase" style="font-size: 0.95rem; color: var(--color-primary); font-weight:700; margin:0;">Customize Vehicle Specs</h2>
-                <div style="display:flex; align-items:center; gap:8px;">
-                <button type="button" class="btn btn-outline btn-sm" onclick="openCustomItemsManagerModal()" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;border-color:#059669;color:#059669;background:#ECFDF5;padding:5px 10px;border-radius:6px;">
-                  <svg style="width:15px;height:15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                  ✏️ Edit Custom Items
+                <button type="button" class="btn btn-outline btn-sm" onclick="openEditComponentsModal()" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;border-color:var(--color-primary);color:var(--color-primary);background:#F0FDF4;padding:5px 10px;border-radius:6px;">
+                  <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                  🛠 Edit Components
                 </button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="openPartPricingMatrixModal()" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;border-color:var(--color-primary);color:var(--color-primary);background:#F0FDF4;padding:5px 10px;border-radius:6px;">
-                  <svg style="width:15px;height:15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  ⚙️ Edit Component Part Prices
-                </button>
-                </div>
               </div>
               
               <!-- SECTION A: STEEL & MATERIAL PANELS -->
@@ -624,20 +618,6 @@
                 </div>
               </div>
 
-              <!-- SECTION H: CUSTOM ITEMS (User-Defined Sections) -->
-              <div class="card mt-md" style="padding: 24px;">
-                <h3 class="mb-sm text-uppercase" style="font-size:0.8rem;letter-spacing:0.5px;color:var(--color-primary)">8. Custom Spec Sections</h3>
-                <p class="section-hint mb-md">Add reusable custom spec sections (e.g. electrical system, additional body options). These persist and are available for all products.</p>
-                
-                <div id="w-custom-items-sections-list">
-                  <!-- Custom sections rendered here -->
-                </div>
-
-                <button type="button" class="btn btn-outline btn-sm mt-sm" onclick="openAddCustomItemSectionModal()">
-                  <svg class="icon-sm" viewBox="0 0 24 24" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  + Add Custom Spec Section
-                </button>
-              </div>
             </div>
 
             <!-- Right Sticky Price Preview Panel -->
@@ -1292,114 +1272,27 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- COMPONENT PART PRICING MATRIX MODAL -->
+  <!-- EDIT COMPONENTS MODAL -->
   <!-- ========================================== -->
-  <div class="pdf-modal" id="part-pricing-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:720px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:90vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
+  <div class="pdf-modal" id="edit-components-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:860px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:95vh;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
         <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          ⚙️ Edit Component Part Pricing Matrix
+          🛠 Edit Components
         </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closePartPricingMatrixModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+        <button type="button" class="btn btn-outline btn-xs" onclick="closeEditComponentsModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
       </div>
       
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="part-pricing-modal-body">
-        <!-- Injected dynamically by JS per active product model -->
-      </div>
-      
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
-        <span class="section-hint" style="font-size:0.75rem;">Prices saved here update defaults for future quotations.</span>
-        <div style="display:flex; gap:12px;">
-          <button type="button" class="btn btn-outline btn-sm" onclick="closePartPricingMatrixModal()">Cancel</button>
-          <button type="button" class="btn btn-primary btn-sm" onclick="saveComponentPartPricingFromModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Component Prices as Market Defaults</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- CUSTOM ITEMS MANAGER MODAL -->
-  <!-- ========================================== -->
-  <div class="pdf-modal" id="custom-items-manager-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:600px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:90vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          ✏️ Custom Items Manager
-        </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closeCustomItemsManagerModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
-      </div>
-      
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="custom-items-manager-body">
+      <div style="padding:20px 24px; overflow-y:auto; flex:1;" id="edit-components-modal-body">
         <!-- Injected dynamically by JS -->
       </div>
       
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeCustomItemsManagerModal()">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- ADD CUSTOM ITEM SECTION MODAL -->
-  <!-- ========================================== -->
-  <div class="pdf-modal" id="add-custom-item-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:800px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:95vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          + Add Custom Spec Section
-        </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closeAddCustomItemSectionModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
-      </div>
-      
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="add-custom-item-modal-body">
-        <div style="margin-bottom:20px;">
-          <label style="font-weight:700; font-size:0.85rem; display:block; margin-bottom:6px;">Section Name</label>
-          <input type="text" id="aci-section-name" class="form-control" placeholder="e.g. Electrical System, Additional Body Options" style="font-weight:600;">
+      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <span class="section-hint" style="font-size:0.75rem;">Edit sections, specs, options, and prices. Changes persist for future quotations.</span>
+        <div style="display:flex; gap:12px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeEditComponentsModal()">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveEditComponentsModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Changes</button>
         </div>
-
-        <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
-          <label style="font-weight:700; font-size:0.85rem;">Fields / Specs</label>
-          <button type="button" class="btn btn-outline btn-xs" onclick="addFieldRowToModal()" style="display:inline-flex;align-items:center;gap:4px;">
-            <svg style="width:12px;height:12px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Field
-          </button>
-        </div>
-
-        <div id="aci-fields-container">
-          <!-- Field rows injected here -->
-        </div>
-
-        <div id="aci-no-fields-msg" style="padding:20px; background:#F8FAFC; border-radius:8px; text-align:center; color:#64748B; font-size:0.85rem;">
-          No fields yet. Click "Add Field" to add specs to this section.
-        </div>
-      </div>
-      
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeAddCustomItemSectionModal()">Cancel</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="saveCustomItemSection()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Section</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- EDIT CUSTOM ITEM SECTION MODAL -->
-  <!-- ========================================== -->
-  <div class="pdf-modal" id="edit-custom-item-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:800px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:95vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          ✏️ Edit Custom Spec Section
-        </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closeEditCustomItemSectionModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
-      </div>
-      
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="edit-custom-item-modal-body">
-        <!-- Injected -->
-      </div>
-      
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeEditCustomItemSectionModal()">Cancel</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="saveEditedCustomItemSection()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Changes</button>
       </div>
     </div>
   </div>

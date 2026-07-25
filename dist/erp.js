@@ -156,11 +156,10 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "runner", name: "Runner", section: "chassis", type: "dropdown", options: ["ISMC 200 SAIL make", "ISMC 175", "Custom"], defaultValue: "ISMC 200 SAIL make", priceDiffs: { "ISMC 200 SAIL make": 0, "ISMC 175": -10000, "Custom": 15000 } },
       { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
-      { id: "cross_members", name: "Side Board Cross members", section: "chassis", type: "text", defaultValue: "12 nos Formed Section Nexfra Standard with Horizontal Stiffener at Center" },
-      { id: "floor_cross", name: "Floor Cross member", section: "chassis", type: "text", defaultValue: "Nexfra Standard" },
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
       { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } },
+      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm formed section Nexfra standard", "8mm formed section Nexfra standard", "Custom"], defaultValue: "6mm formed section Nexfra standard", priceDiffs: { "6mm formed section Nexfra standard": 0, "8mm formed section Nexfra standard": 25000, "Custom": 30000 } }
     ]
   },
   rigid30: {
@@ -175,14 +174,38 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "cylinder", name: "Tipping Cylinder Model", section: "hydraulic", type: "dropdown", options: ["Hyva 175", "Hydromen 175", "Wipro 175", "Hyva 179-5stage", "Hyva 150-4stage", "Wipro Heavy Duty", "Custom"], defaultValue: "Hyva 175", priceDiffs: { "Hyva 175": 0, "Hydromen 175": 0, "Wipro 175": 0, "Hyva 179-5stage": 15000, "Hyva 150-4stage": -25000, "Wipro Heavy Duty": -10000, "Custom": 20000 } },
       { id: "runner", name: "Runner", section: "chassis", type: "dropdown", options: ["ISMC 200 SAIL make", "ISMC 175", "Custom"], defaultValue: "ISMC 200 SAIL make", priceDiffs: { "ISMC 200 SAIL make": 0, "ISMC 175": -10000, "Custom": 15000 } },
       { id: "landing_leg", name: "Landing Leg", section: "chassis", type: "dropdown", options: ["York", "Fuwa", "Custom"], defaultValue: "York", priceDiffs: { "York": 0, "Fuwa": -10000, "Custom": 15000 } },
-      { id: "cross_members", name: "Side Board Cross members", section: "chassis", type: "text", defaultValue: "12 nos Formed Section Nexfra Standard with Horizontal Stiffener at Center" },
-      { id: "floor_cross", name: "Floor Cross member", section: "chassis", type: "text", defaultValue: "Nexfra Standard" },
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
       { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
-      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } }
+      { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } },
+      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm formed section Nexfra standard", "8mm formed section Nexfra standard", "Custom"], defaultValue: "6mm formed section Nexfra standard", priceDiffs: { "6mm formed section Nexfra standard": 0, "8mm formed section Nexfra standard": 25000, "Custom": 30000 } }
     ]
   }
 };
+
+// Subtype groups for propagating spec changes across related subtypes
+const SUBTYPE_GROUPS = {
+  rigid28: 'rigid_load_body',
+  rigid30: 'rigid_load_body'
+};
+
+function getSubtypeGroup(subtypeKey) {
+  return SUBTYPE_GROUPS[subtypeKey] || subtypeKey;
+}
+
+function getGroupMembers(groupKey) {
+  if (groupKey === 'rigid_load_body') return ['rigid28', 'rigid30'];
+  return [groupKey];
+}
+
+// Apply persisted spec overrides to a template
+function applyProductTemplateOverrides(template, subtypeKey) {
+  if (!STATE.productSpecOverrides) STATE.productSpecOverrides = {};
+  const groupKey = getSubtypeGroup(subtypeKey);
+  const overrides = STATE.productSpecOverrides[groupKey];
+  if (overrides && overrides.specs && overrides.specs.length > 0) {
+    template.specs = overrides.specs;
+  }
+}
 
 function syncStateCalculations() {
   if (!STATE || !STATE.sales || !STATE.payments || !STATE.customers) return;
@@ -615,10 +638,8 @@ window.jumpToWizardStep = function(stepNum) {
 
   wizardState.currentStep = stepNum;
 
-  // Render custom section controls and list when entering configurator
+  // Render custom section controls when entering configurator
   if (stepNum === 4) {
-    renderCustomSectionsList();
-    // Ensure custom item controls are rendered in the configurator
     const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
     if (template) {
       renderCustomItemSpecControls();
@@ -764,6 +785,9 @@ function loadDefaultSpecsForSubtype(subtypeKey) {
   const template = WIZARD_PRODUCT_TEMPLATES[subtypeKey];
   if (!template) return;
 
+  // Apply persisted spec overrides for this subtype group
+  applyProductTemplateOverrides(template, subtypeKey);
+
   // Initialize specs with defaults (built-in)
   wizardState.specs = {};
   wizardState.notRequired = {};
@@ -783,7 +807,6 @@ function loadDefaultSpecsForSubtype(subtypeKey) {
 
   // Inject Form Controls into sections
   renderConfiguratorFormInputs(template);
-  renderCustomSectionsList();
   calculateWizardPricing();
 }
 
@@ -808,7 +831,7 @@ function getEffectiveSpecPriceDiff(spec, opt) {
 }
 
 function renderConfiguratorFormInputs(template) {
-  const sections = ['material', 'chassis', 'hydraulic', 'painting', 'accessories', 'dimensions'];
+  const sections = ['material', 'chassis', 'hydraulic', 'painting', 'accessories', 'dimensions', 'subframe'];
   
   sections.forEach(secId => {
     const container = document.getElementById(`specs-${secId}-controls-inject`);
@@ -834,25 +857,9 @@ function renderConfiguratorFormInputs(template) {
           : ['Standard', 'Custom'];
 
       const hasCustom = rawOpts.some(o => typeof o === 'string' && o.toLowerCase() === 'custom');
-      const customOpts = getCustomFieldOptions(spec.id);
-      const curCustomDesc = wizardState.specs[spec.id + '_custom_desc'] || '';
-      const curCustomPrice = wizardState.specs[spec.id + '_custom_price'] || '';
-      const customDetailsHtml = hasCustom ? `
-        <div id="custom-details-${spec.id}" class="custom-details-wrap" style="display:${wizardState.specs[spec.id] === 'Custom' ? 'flex' : 'none'}; gap:8px; margin-top:8px;">
-          <input type="text" id="w-spec-${spec.id}-custom-desc" class="form-control form-control-sm" placeholder="Describe the custom specification..." value="${curCustomDesc}" style="flex:1;" oninput="updateSpecCustomDesc('${spec.id}', this.value)">
-          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-            <span style="font-size:0.75rem;color:var(--color-text-muted);">₹</span>
-            <input type="number" id="w-spec-${spec.id}-custom-price" class="form-control form-control-sm" placeholder="Price" value="${curCustomPrice}" style="width:100px;text-align:right;font-weight:700;" oninput="updateSpecCustomPrice('${spec.id}', this.value)">
-          </div>
-          <button type="button" onclick="addCustomFieldOption('${spec.id}', '${spec.name}')" style="flex-shrink:0;padding:4px 14px;font-size:0.7rem;font-weight:700;border-radius:4px;border:none;background:#059669;color:white;cursor:pointer;">
-            + Add Option
-          </button>
-        </div>
-      ` : '';
 
       const allOpts = [
-        ...rawOpts.filter(o => typeof o === 'string' && o.toLowerCase() !== 'custom'),
-        ...customOpts.map(c => c.name)
+        ...rawOpts.filter(o => typeof o === 'string' && o.toLowerCase() !== 'custom')
       ];
       const selectedVal = wizardState.specs[spec.id] !== undefined ? wizardState.specs[spec.id] : spec.defaultValue;
       if (wizardState.specs[spec.id] === undefined) {
@@ -870,7 +877,6 @@ function renderConfiguratorFormInputs(template) {
             }).join('')}
             ${hasCustom ? `<option value="Custom" ${selectedVal === 'Custom' ? 'selected' : ''}>Custom</option>` : ''}
           </select>
-          ${customDetailsHtml}
         `;
       } else if (spec.type === 'radio') {
         controlHtml = `
@@ -891,7 +897,6 @@ function renderConfiguratorFormInputs(template) {
               </label>
             ` : ''}
           </div>
-          ${customDetailsHtml}
         `;
       } else if (spec.type === 'checkbox') {
         const checkboxOpts = (allOpts && allOpts.length > 0) ? allOpts : ["Yes", "No"];
@@ -1086,45 +1091,28 @@ function renderCustomItemSpecControls() {
       let controlHtml = '';
 
       const hasCustom = field.options && field.options.some(o => o.toLowerCase() === 'custom');
-      const customOpts = getCustomFieldOptions(field.id);
-      const curCustomDesc = wizardState.specs[field.id + '_custom_desc'] || '';
-      const curCustomPrice = wizardState.specs[field.id + '_custom_price'] || '';
-      const customDetailsHtml = hasCustom ? `
-        <div id="custom-details-${field.id}" class="custom-details-wrap" style="display:${wizardState.specs[field.id] === 'Custom' ? 'flex' : 'none'}; gap:8px; margin-top:8px;">
-          <input type="text" id="w-spec-${field.id}-custom-desc" class="form-control form-control-sm" placeholder="Describe the custom specification..." value="${curCustomDesc}" style="flex:1;" oninput="updateSpecCustomDesc('${field.id}', this.value)">
-          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;">
-            <span style="font-size:0.75rem;color:var(--color-text-muted);">₹</span>
-            <input type="number" id="w-spec-${field.id}-custom-price" class="form-control form-control-sm" placeholder="Price" value="${curCustomPrice}" style="width:100px;text-align:right;font-weight:700;" oninput="updateSpecCustomPrice('${field.id}', this.value)">
-          </div>
-          <button type="button" onclick="addCustomFieldOption('${field.id}', '${field.name}')" style="flex-shrink:0;padding:4px 14px;font-size:0.7rem;font-weight:700;border-radius:4px;border:none;background:#059669;color:white;cursor:pointer;">
-            + Add Option
-          </button>
-        </div>
-      ` : '';
 
       const allOpts = [
         ...(field.options || []).filter(o => o.toLowerCase() !== 'custom'),
-        ...customOpts.map(c => c.name)
       ];
 
       if (field.type === 'dropdown') {
         controlHtml = `
           <select id="w-spec-${field.id}" class="form-control" onchange="onSpecChange('${field.id}', this.value)" ${isNr ? 'disabled' : ''}>
             ${allOpts.map(opt => {
-              const diff = (field.priceDiffs && field.priceDiffs[opt] !== undefined) ? field.priceDiffs[opt] : (getCustomOptPriceDiff(field.id, opt) || 0);
+              const diff = (field.priceDiffs && field.priceDiffs[opt] !== undefined) ? field.priceDiffs[opt] : 0;
               return `<option value="${opt}" ${opt === selectedVal ? 'selected' : ''}>
                 ${opt} ${diff !== 0 ? `(${diff > 0 ? '+' : ''}₹${diff.toLocaleString('en-IN')})` : ''}
               </option>`;
             }).join('')}
             ${hasCustom ? `<option value="Custom" ${selectedVal === 'Custom' ? 'selected' : ''}>Custom</option>` : ''}
           </select>
-          ${customDetailsHtml}
         `;
       } else if (field.type === 'radio') {
         controlHtml = `
           <div class="radio-group">
             ${allOpts.map((opt, i) => {
-              const diff = (field.priceDiffs && field.priceDiffs[opt] !== undefined) ? field.priceDiffs[opt] : (getCustomOptPriceDiff(field.id, opt) || 0);
+              const diff = (field.priceDiffs && field.priceDiffs[opt] !== undefined) ? field.priceDiffs[opt] : 0;
               return `
                 <label class="radio-label">
                   <input type="radio" name="w-spec-radio-${field.id}" value="${opt}" ${opt === selectedVal ? 'checked' : ''} onchange="onSpecChange('${field.id}', this.value)" ${isNr ? 'disabled' : ''}>
@@ -1139,7 +1127,6 @@ function renderCustomItemSpecControls() {
               </label>
             ` : ''}
           </div>
-          ${customDetailsHtml}
         `;
       } else if (field.type === 'number') {
         controlHtml = `
@@ -1233,133 +1220,6 @@ function getCustomFieldOptions(specId) {
   return STATE.adminPricing?.customFieldOptions?.[getCustomFieldKey(specId)] || [];
 }
 
-window.addCustomFieldOption = function(specId, specName) {
-  loadState();
-  if (!STATE.adminPricing) STATE.adminPricing = {};
-  if (!STATE.adminPricing.customFieldOptions) STATE.adminPricing.customFieldOptions = {};
-  const key = getCustomFieldKey(specId);
-  if (!STATE.adminPricing.customFieldOptions[key]) STATE.adminPricing.customFieldOptions[key] = [];
-
-  const desc = document.getElementById(`w-spec-${specId}-custom-desc`)?.value?.trim();
-  const price = parseFloat(document.getElementById(`w-spec-${specId}-custom-price`)?.value) || 0;
-
-  if (!desc) { alert('Please enter a description for the custom option.'); return; }
-
-  const existing = STATE.adminPricing.customFieldOptions[key].find(c => c.name === desc);
-  if (existing) {
-    existing.priceDiff = price;
-  } else {
-    STATE.adminPricing.customFieldOptions[key].push({ name: desc, priceDiff: price });
-  }
-
-  document.getElementById(`w-spec-${specId}-custom-desc`).value = '';
-  document.getElementById(`w-spec-${specId}-custom-price`).value = '';
-  wizardState.specs[specId] = desc;
-  delete wizardState.specs[specId + '_custom_desc'];
-  delete wizardState.specs[specId + '_custom_price'];
-
-  saveState();
-  renderConfiguratorFormInputs(WIZARD_PRODUCT_TEMPLATES[wizardState.subtype]);
-  calculateWizardPricing();
-  simulateDraftAutoSave();
-};
-
-window.deleteCustomFieldOption = function(specId, optName) {
-  if (!confirm(`Delete custom option "${optName}"?`)) return;
-  loadState();
-  const key = getCustomFieldKey(specId);
-  const opts = STATE.adminPricing?.customFieldOptions?.[key];
-  if (!opts) return;
-  const idx = opts.findIndex(c => c.name === optName);
-  if (idx !== -1) {
-    opts.splice(idx, 1);
-    if (wizardState.specs[specId] === optName) {
-      wizardState.specs[specId] = '';
-    }
-    saveState();
-    renderConfiguratorFormInputs(WIZARD_PRODUCT_TEMPLATES[wizardState.subtype]);
-    calculateWizardPricing();
-    // Refresh whichever modal is open
-    if (document.getElementById('custom-items-manager-modal')?.classList.contains('active')) {
-      openCustomItemsManagerModal();
-    } else {
-      window.openPartPricingMatrixModal();
-    }
-  }
-};
-
-window.openCustomItemsManagerModal = function() {
-  loadState();
-  const allOpts = STATE.adminPricing?.customFieldOptions || {};
-  const prefix = getCustomFieldKey('');
-  // Only show items for current subtype
-  const opts = {};
-  Object.keys(allOpts).forEach(k => {
-    if (k.startsWith(prefix)) {
-      const specId = k.slice(prefix.length);
-      opts[specId] = allOpts[k];
-    }
-  });
-  const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
-  const container = document.getElementById('custom-items-manager-body');
-  if (!container) return;
-
-  const allSpecs = template ? template.specs : [];
-  const customSections = getCustomItemSpecs();
-
-  // Build specId → name lookup
-  const specNames = {};
-  allSpecs.forEach(s => { specNames[s.id] = s.name; });
-  customSections.forEach(sec => {
-    sec.fields.forEach(f => { specNames[f.id] = `[${sec.name}] ${f.name}`; });
-  });
-
-  const keys = Object.keys(opts);
-  let totalCount = 0;
-  keys.forEach(k => { totalCount += opts[k].length; });
-
-  if (totalCount === 0) {
-    container.innerHTML = `
-      <div style="padding:40px; text-align:center;">
-        <p style="font-size:0.9rem; color:#64748B; margin-bottom:8px;">No custom items have been added yet.</p>
-        <p style="font-size:0.75rem; color:#94A3B8;">Select "Custom" in any spec field, fill in a description and price, then click "+ Add Option".</p>
-      </div>
-    `;
-  } else {
-    let html = '<div style="display:flex; flex-direction:column; gap:12px;">';
-    keys.forEach(specId => {
-      const items = opts[specId];
-      if (!items || items.length === 0) return;
-      const label = specNames[specId] || specId;
-      html += `
-        <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:8px; overflow:hidden;">
-          <div style="background:#F1F5F9; padding:8px 14px; font-size:0.75rem; font-weight:700; color:#475569; text-transform:uppercase; border-bottom:1px solid #E2E8F0;">${label}</div>
-          <div style="padding:8px 14px;">
-      `;
-      items.forEach(item => {
-        html += `
-          <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid #F1F5F9;">
-            <div style="display:flex; align-items:center; gap:8px;">
-              <span style="font-weight:600; font-size:0.85rem; color:#334155;">${item.name}</span>
-              <span style="font-size:0.75rem; font-weight:700; color:#059669;">${item.priceDiff > 0 ? '+' : ''}₹${(item.priceDiff || 0).toLocaleString('en-IN')}</span>
-            </div>
-            <button type="button" onclick="deleteCustomFieldOption('${specId}', '${item.name}')" style="background:none;border:none;color:#DC2626;cursor:pointer;font-size:0.7rem;font-weight:700;padding:4px 10px;border-radius:4px;">✕ Delete</button>
-          </div>
-        `;
-      });
-      html += `</div></div>`;
-    });
-    html += '</div>';
-    container.innerHTML = html;
-  }
-
-  document.getElementById('custom-items-manager-modal').classList.add('active');
-};
-
-window.closeCustomItemsManagerModal = function() {
-  document.getElementById('custom-items-manager-modal').classList.remove('active');
-};
-
 window.toggleFieldRequired = function(specId) {
   const wasNotRequired = wizardState.notRequired[specId];
   if (wasNotRequired) {
@@ -1376,7 +1236,6 @@ window.toggleFieldRequired = function(specId) {
   if (control) {
     control.disabled = badge.classList.contains('active');
   }
-  // For radio groups, disable all inputs
   const radios = document.querySelectorAll(`input[name="w-spec-radio-${specId}"]`);
   radios.forEach(r => r.disabled = badge.classList.contains('active'));
   updateSectionNrBadgeFromFields(specId);
@@ -1391,7 +1250,6 @@ window.toggleSectionRequired = function(sectionId) {
   const secSpecs = template.specs.filter(s => s.section === secName);
   if (secSpecs.length === 0) return;
 
-  // Determine if all are already not required
   const allNr = secSpecs.every(s => wizardState.notRequired[s.id]);
   const newState = !allNr;
 
@@ -1414,14 +1272,12 @@ window.toggleSectionRequired = function(sectionId) {
     radios.forEach(r => r.disabled = newState);
   });
 
-  // Update the section-level NR badge
   const secBadge = document.getElementById(`nr-badge-sec-${secName}`);
   if (secBadge) {
     secBadge.classList.toggle('active', newState);
     secBadge.textContent = newState ? 'Section Not Required' : 'Section Required';
   }
 
-  // Also toggle custom fields in this section if it's a custom section
   const isCustom = sectionId.startsWith('spec-sec-custom-');
   if (isCustom) {
     const customSections = getCustomItemSpecs();
@@ -1470,27 +1326,11 @@ function updateSectionNrBadgeFromFields(specId) {
 }
 
 // -------------------------------------------------------
-// CUSTOM ITEM SECTION MANAGEMENT (Add Item Feature)
+// OPTION CHOICE ROW HELPERS (shared across modals)
 // -------------------------------------------------------
-
-// Ensure customItemDefinitions exists
 function ensureCustomItemDefinitions() {
   if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
 }
-
-window.openAddCustomItemSectionModal = function() {
-  loadState();
-  ensureCustomItemDefinitions();
-  document.getElementById('aci-section-name').value = '';
-  const container = document.getElementById('aci-fields-container');
-  container.innerHTML = '';
-  document.getElementById('aci-no-fields-msg').style.display = 'block';
-  document.getElementById('add-custom-item-modal').classList.add('active');
-};
-
-window.closeAddCustomItemSectionModal = function() {
-  document.getElementById('add-custom-item-modal').classList.remove('active');
-};
 
 window.addOptionChoiceRow = function(fieldRowId, defaultName = '', defaultPrice = 0, isDefault = false) {
   const table = document.getElementById(`aci-opt-table-${fieldRowId}`);
@@ -1553,80 +1393,6 @@ function extractFieldOptionsAndPrices(fieldRowEl, fieldRowId) {
   return { options, priceDiffs, defaultVal };
 }
 
-window.addFieldRowToModal = function() {
-  const container = document.getElementById('aci-fields-container');
-  const msg = document.getElementById('aci-no-fields-msg');
-  if (msg) msg.style.display = 'none';
-  const idx = container.children.length;
-  const rowId = `aci-field-${Date.now()}-${Math.floor(Math.random()*1000)}`;
-
-  const html = `
-    <div class="aci-field-row" id="${rowId}" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:16px; margin-bottom:16px;">
-      <div class="aci-field-row-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
-        <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Field #${idx + 1}</span>
-        <button type="button" onclick="removeFieldRowFromModal(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:600;">
-          ✕ Remove Field
-        </button>
-      </div>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Field / Parameter Name *</label>
-          <input type="text" class="form-control form-control-sm aci-field-name" placeholder="e.g. Suspension System, Axle Brand & Loading" style="font-weight:600;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Control Type (Display Format) *</label>
-          <select class="form-control form-control-sm aci-field-type" onchange="toggleFieldOptionsInput(this)">
-            <option value="dropdown">Dropdown Select Menu (e.g. Mechanical Leaf Spring, Air Suspension)</option>
-            <option value="radio">Selectable Radio Buttons (e.g. York 3x13T, Fuwa 3x13T)</option>
-            <option value="checkbox">Checkbox (Yes/No)</option>
-            <option value="text">Text Input Field</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="aci-default-text-group" style="display:none; margin-bottom:12px;">
-        <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Default Value</label>
-        <input type="text" class="form-control form-control-sm aci-field-default" placeholder="e.g. Standard Assembly">
-      </div>
-
-      <!-- VISUAL OPTIONS & PRICING TABLE BUILDER -->
-      <div class="aci-options-builder-container" style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <div>
-            <label style="font-size:0.775rem; font-weight:700; color:#1E293B;">Options & Price Differentials List</label>
-            <span class="section-hint" style="font-size:0.7rem; color:#64748B; display:block;">Enter choice names and their exact price addition (+) or discount (-).</span>
-          </div>
-          <button type="button" class="btn btn-outline btn-xs" onclick="addOptionChoiceRow('${rowId}')" style="background:#0284C7; color:#FFFFFF; border:none; font-weight:700; padding:4px 10px; border-radius:4px;">
-            + Add Option Row
-          </button>
-        </div>
-
-        <div class="aci-option-items-table" id="aci-opt-table-${rowId}">
-          <!-- Option Choice Rows Injected Here -->
-        </div>
-      </div>
-    </div>
-  `;
-  container.insertAdjacentHTML('beforeend', html);
-
-  // Add initial default option rows for quick entry
-  addOptionChoiceRow(rowId, 'Option 1 (Standard)', 0, true);
-  addOptionChoiceRow(rowId, 'Option 2 (Upgrade)', 15000, false);
-};
-
-window.removeFieldRowFromModal = function(btn) {
-  const row = btn.closest('.aci-field-row');
-  if (row) {
-    row.remove();
-    const container = document.getElementById('aci-fields-container');
-    if (container && container.children.length === 0) {
-      const msg = document.getElementById('aci-no-fields-msg');
-      if (msg) msg.style.display = 'block';
-    }
-  }
-};
-
 window.toggleFieldOptionsInput = function(select) {
   const row = select.closest('.aci-field-row');
   const optsContainer = row.querySelector('.aci-options-builder-container');
@@ -1641,379 +1407,390 @@ window.toggleFieldOptionsInput = function(select) {
   }
 };
 
-window.saveCustomItemSection = function() {
-  const sectionName = document.getElementById('aci-section-name').value.trim();
-  if (!sectionName) {
-    alert('Please enter a section name.');
-    return;
-  }
-
-  const fieldRows = document.querySelectorAll('#aci-fields-container .aci-field-row');
-  if (fieldRows.length === 0) {
-    alert('Please add at least one field.');
-    return;
-  }
-
-  loadState();
-  ensureCustomItemDefinitions();
-
-  const section = {
-    id: `custom-${Date.now()}`,
-    name: sectionName,
-    fields: []
-  };
-
-  fieldRows.forEach((row, idx) => {
-    const name = row.querySelector('.aci-field-name').value.trim();
-    if (!name) return;
-
-    const type = row.querySelector('.aci-field-type').value;
-    const rowId = row.id;
-    let options = [];
-    let priceDiffs = {};
-    let defaultVal = '';
-
-    if (type === 'dropdown' || type === 'radio') {
-      const extracted = extractFieldOptionsAndPrices(row, rowId);
-      options = extracted.options;
-      priceDiffs = extracted.priceDiffs;
-      defaultVal = extracted.defaultVal;
-
-      if (options.length === 0) {
-        options = ['Standard', 'Custom'];
-        priceDiffs = { 'Standard': 0, 'Custom': 15000 };
-        defaultVal = 'Standard';
-      }
-    } else if (type === 'checkbox') {
-      defaultVal = 'Yes';
-    } else {
-      defaultVal = row.querySelector('.aci-field-default')?.value.trim() || 'Standard';
-    }
-
-    section.fields.push({
-      id: `cf_${section.id}_${idx}`,
-      name,
-      type,
-      options: options.length > 0 ? options : [],
-      defaultValue: defaultVal,
-      priceDiffs: Object.keys(priceDiffs).length > 0 ? priceDiffs : undefined
-    });
-  });
-
-  if (section.fields.length === 0) {
-    alert('Please fill in at least one valid field.');
-    return;
-  }
-
-  STATE.customItemDefinitions.push(section);
-  saveState();
-  closeAddCustomItemSectionModal();
-  renderCustomSectionsList();
-  renderConfiguratorFormInputs(WIZARD_PRODUCT_TEMPLATES[wizardState.subtype]);
-  calculateWizardPricing();
-  logSystemActivity(`Added custom spec section: "${sectionName}" with ${section.fields.length} field(s).`);
-  alert(`Custom section "${sectionName}" saved successfully!`);
-};
-
-window.deleteCustomItemSection = function(id) {
-  if (!confirm('Delete this custom spec section? This cannot be undone.')) return;
-  loadState();
-  ensureCustomItemDefinitions();
-  const idx = STATE.customItemDefinitions.findIndex(s => s.id === id);
-  if (idx !== -1) {
-    const section = STATE.customItemDefinitions[idx];
-    const name = section.name;
-    section.fields.forEach(field => {
-      delete wizardState.specs[field.id];
-    });
-    STATE.customItemDefinitions.splice(idx, 1);
-    saveState();
-    renderCustomSectionsList();
-    renderConfiguratorFormInputs(WIZARD_PRODUCT_TEMPLATES[wizardState.subtype]);
-    calculateWizardPricing();
-    logSystemActivity(`Deleted custom spec section: "${name}".`);
-  }
-};
-
-function renderCustomSectionsList() {
-  const container = document.getElementById('w-custom-items-sections-list');
-  if (!container) return;
-  loadState();
-  ensureCustomItemDefinitions();
-
-  if (STATE.customItemDefinitions.length === 0) {
-    container.innerHTML = '<p class="section-hint">No custom sections defined. Click "Add Custom Spec Section" to create one.</p>';
-    return;
-  }
-
-  container.innerHTML = STATE.customItemDefinitions.map(section => `
-    <div class="custom-section-card">
-      <div class="custom-section-card-info">
-        <span class="custom-section-card-name">${section.name}</span>
-        <span class="custom-section-card-count">${section.fields.length} field(s) · ${section.fields.map(f => f.name).join(', ')}</span>
-      </div>
-      <div class="custom-section-card-actions">
-        <button type="button" class="btn-edit-section" onclick="openEditCustomItemSectionModal('${section.id}')" title="Edit section">
-          <svg style="width:14px;height:14px;" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Edit
-        </button>
-        <button type="button" class="btn-delete-section" onclick="deleteCustomItemSection('${section.id}')" title="Delete section">
-          <svg style="width:14px;height:14px;" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
-          Delete
-        </button>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ------------------------------------------
-// EDIT CUSTOM ITEM SECTION
-// ------------------------------------------
-let _editSectionId = null;
-
-window.openEditCustomItemSectionModal = function(id) {
-  loadState();
-  ensureCustomItemDefinitions();
-  const section = STATE.customItemDefinitions.find(s => s.id === id);
-  if (!section) { alert('Section not found.'); return; }
-
-  _editSectionId = id;
-  const container = document.getElementById('edit-custom-item-modal-body');
-
-  let fieldsHtml = section.fields.map((field, idx) => {
-    const rowId = `edit-field-${Date.now()}-${idx}`;
-
-    return `
-      <div class="aci-field-row" id="${rowId}" data-field-idx="${idx}" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:16px; margin-bottom:16px;">
-        <div class="aci-field-row-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
-          <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Field #${idx + 1}</span>
-          <button type="button" onclick="removeEditFieldRow(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:600;">
-            ✕ Remove Field
-          </button>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-          <div>
-            <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Field Name *</label>
-            <input type="text" class="form-control form-control-sm edit-field-name" value="${field.name}" style="font-weight:600;">
-          </div>
-          <div>
-            <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Control Type *</label>
-            <select class="form-control form-control-sm edit-field-type" onchange="toggleEditFieldOptions(this)">
-              <option value="dropdown" ${field.type === 'dropdown' ? 'selected' : ''}>Dropdown Select Menu</option>
-              <option value="radio" ${field.type === 'radio' ? 'selected' : ''}>Selectable Radio Buttons</option>
-              <option value="checkbox" ${field.type === 'checkbox' ? 'selected' : ''}>Checkbox (Yes/No)</option>
-              <option value="text" ${field.type === 'text' ? 'selected' : ''}>Text Input Field</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="aci-default-text-group" style="${field.type === 'text' || field.type === 'checkbox' ? '' : 'display:none;'} margin-bottom:12px;">
-          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Default Value</label>
-          <input type="text" class="form-control form-control-sm edit-field-default" value="${field.defaultValue || ''}">
-        </div>
-
-        <div class="aci-options-builder-container" style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:12px; ${field.type === 'text' || field.type === 'checkbox' ? 'display:none;' : ''}">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div>
-              <label style="font-size:0.775rem; font-weight:700; color:#1E293B;">Options & Price Differentials List</label>
-              <span class="section-hint" style="font-size:0.7rem; color:#64748B; display:block;">Enter choice names and their exact price addition (+) or discount (-).</span>
-            </div>
-            <button type="button" class="btn btn-outline btn-xs" onclick="addOptionChoiceRow('${rowId}')" style="background:#0284C7; color:#FFFFFF; border:none; font-weight:700; padding:4px 10px; border-radius:4px;">
-              + Add Option Row
-            </button>
-          </div>
-
-          <div class="aci-option-items-table" id="aci-opt-table-${rowId}">
-            <!-- Option Choice Rows Injected Here -->
-          </div>
-        </div>
-      </div>
-    `;
-  }).join('');
-
-  container.innerHTML = `
-    <div style="margin-bottom:20px;">
-      <label style="font-weight:700; font-size:0.85rem; display:block; margin-bottom:6px;">Section Name</label>
-      <input type="text" id="edit-section-name" class="form-control" value="${section.name}" style="font-weight:600;">
-    </div>
-    <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
-      <label style="font-weight:700; font-size:0.85rem;">Fields / Specs</label>
-      <button type="button" class="btn btn-outline btn-xs" onclick="addEditFieldRow()" style="display:inline-flex;align-items:center;gap:4px;">
-        <svg style="width:12px;height:12px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Add Field
-      </button>
-    </div>
-    <div id="edit-fields-container">
-      ${fieldsHtml || '<p style="padding:20px; text-align:center; color:#64748B; font-size:0.85rem;">No fields.</p>'}
-    </div>
-  `;
-
-  // Pre-populate Option rows for existing fields
-  section.fields.forEach((field, idx) => {
-    const rowId = `edit-field-${Date.now()}-${idx}`;
-    if (field.options && field.options.length > 0) {
-      field.options.forEach(opt => {
-        const pDiff = field.priceDiffs && field.priceDiffs[opt] !== undefined ? field.priceDiffs[opt] : 0;
-        const isDef = field.defaultValue === opt;
-        addOptionChoiceRow(rowId, opt, pDiff, isDef);
-      });
-    } else if (field.type === 'dropdown' || field.type === 'radio') {
-      addOptionChoiceRow(rowId, 'Option 1', 0, true);
-    }
-  });
-
-  document.getElementById('edit-custom-item-modal').classList.add('active');
-};
-
-window.closeEditCustomItemSectionModal = function() {
-  document.getElementById('edit-custom-item-modal').classList.remove('active');
-  _editSectionId = null;
-};
-
-window.removeEditFieldRow = function(btn) {
-  const row = btn.closest('.aci-field-row');
-  if (row) row.remove();
-};
-
-window.addEditFieldRow = function() {
-  const container = document.getElementById('edit-fields-container');
-  const idx = container.querySelectorAll('.aci-field-row').length;
-  const rowId = `edit-field-${Date.now()}-${idx}`;
-
-  const html = `
-    <div class="aci-field-row" id="${rowId}" style="background:#F8FAFC; border:1px solid #CBD5E1; border-radius:8px; padding:16px; margin-bottom:16px;">
-      <div class="aci-field-row-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
-        <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">Field #${idx + 1}</span>
-        <button type="button" onclick="removeEditFieldRow(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 8px; font-size:0.75rem; cursor:pointer; font-weight:600;">
-          ✕ Remove Field
-        </button>
-      </div>
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Field Name *</label>
-          <input type="text" class="form-control form-control-sm edit-field-name" placeholder="e.g. Battery Voltage" style="font-weight:600;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Control Type *</label>
-          <select class="form-control form-control-sm edit-field-type" onchange="toggleEditFieldOptions(this)">
-            <option value="dropdown">Dropdown Select Menu</option>
-            <option value="radio">Selectable Radio Buttons</option>
-            <option value="checkbox">Checkbox (Yes/No)</option>
-            <option value="text">Text Input Field</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="aci-default-text-group" style="display:none; margin-bottom:12px;">
-        <label style="font-size:0.75rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Default Value</label>
-        <input type="text" class="form-control form-control-sm edit-field-default" placeholder="e.g. Standard">
-      </div>
-
-      <div class="aci-options-builder-container" style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:12px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <div>
-            <label style="font-size:0.775rem; font-weight:700; color:#1E293B;">Options & Price Differentials List</label>
-            <span class="section-hint" style="font-size:0.7rem; color:#64748B; display:block;">Enter choice names and their exact price addition (+) or discount (-).</span>
-          </div>
-          <button type="button" class="btn btn-outline btn-xs" onclick="addOptionChoiceRow('${rowId}')" style="background:#0284C7; color:#FFFFFF; border:none; font-weight:700; padding:4px 10px; border-radius:4px;">
-            + Add Option Row
-          </button>
-        </div>
-
-        <div class="aci-option-items-table" id="aci-opt-table-${rowId}">
-          <!-- Option Choice Rows Injected Here -->
-        </div>
-      </div>
-    </div>
-  `;
-  container.insertAdjacentHTML('beforeend', html);
-  addOptionChoiceRow(rowId, 'Option 1', 0, true);
-};
-
-window.toggleEditFieldOptions = function(select) {
-  const row = select.closest('.aci-field-row');
-  const optsContainer = row.querySelector('.aci-options-builder-container');
-  const defaultTextGroup = row.querySelector('.aci-default-text-group');
-
-  if (select.value === 'text' || select.value === 'checkbox') {
-    if (optsContainer) optsContainer.style.display = 'none';
-    if (defaultTextGroup) defaultTextGroup.style.display = 'block';
-  } else {
-    if (optsContainer) optsContainer.style.display = 'block';
-    if (defaultTextGroup) defaultTextGroup.style.display = 'none';
-  }
-};
-
-window.saveEditedCustomItemSection = function() {
-  const sectionName = document.getElementById('edit-section-name').value.trim();
-  if (!sectionName) { alert('Please enter a section name.'); return; }
-
-  const fieldRows = document.querySelectorAll('#edit-fields-container .aci-field-row');
-  if (fieldRows.length === 0) { alert('Please add at least one field.'); return; }
-
-  loadState();
-  ensureCustomItemDefinitions();
-  const section = STATE.customItemDefinitions.find(s => s.id === _editSectionId);
-  if (!section) { alert('Section not found.'); return; }
-
-  section.name = sectionName;
-  section.fields = [];
-
-  fieldRows.forEach((row, idx) => {
-    const name = row.querySelector('.edit-field-name').value.trim();
-    if (!name) return;
-    const type = row.querySelector('.edit-field-type').value;
-    const rowId = row.id;
-    let options = [];
-    let priceDiffs = {};
-    let defaultVal = '';
-
-    if (type === 'dropdown' || type === 'radio') {
-      const extracted = extractFieldOptionsAndPrices(row, rowId);
-      options = extracted.options;
-      priceDiffs = extracted.priceDiffs;
-      defaultVal = extracted.defaultVal;
-
-      if (options.length === 0) {
-        options = ['Standard', 'Custom'];
-        priceDiffs = { 'Standard': 0, 'Custom': 15000 };
-        defaultVal = 'Standard';
-      }
-    } else if (type === 'checkbox') {
-      defaultVal = 'Yes';
-    } else {
-      defaultVal = row.querySelector('.edit-field-default')?.value.trim() || 'Standard';
-    }
-
-    section.fields.push({
-      id: `cf_${_editSectionId}_${idx}`,
-      name,
-      type,
-      options: options.length > 0 ? options : [],
-      defaultValue: defaultVal,
-      priceDiffs: Object.keys(priceDiffs).length > 0 ? priceDiffs : undefined
-    });
-  });
-
-  if (section.fields.length === 0) { alert('Please fill in at least one valid field.'); return; }
-
-  saveState();
-  closeEditCustomItemSectionModal();
-  renderCustomSectionsList();
-  renderConfiguratorFormInputs(WIZARD_PRODUCT_TEMPLATES[wizardState.subtype]);
-  calculateWizardPricing();
-  logSystemActivity(`Edited custom spec section: "${sectionName}".`);
-  alert(`Custom section "${sectionName}" updated successfully!`);
-};
-
 // Render custom sections in the configurator
 function getCustomItemSpecs() {
   loadState();
   ensureCustomItemDefinitions();
   return STATE.customItemDefinitions || [];
 }
+
+// -------------------------------------------------------
+// EDIT COMPONENTS MODAL — Unified Editor for All Sections
+// -------------------------------------------------------
+
+window.openEditComponentsModal = function() {
+  const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
+  if (!template) {
+    alert("Please select a product category & subtype first.");
+    return;
+  }
+
+  const container = document.getElementById('edit-components-modal-body');
+  if (!container) return;
+
+  // Group specs by section
+  const sectionOrder = ['material', 'chassis', 'hydraulic', 'painting', 'accessories', 'dimensions', 'subframe'];
+  const sectionNames = {
+    material: 'Steel Sheets & Material Grade',
+    chassis: 'Structural Axil & Suspension',
+    hydraulic: 'Tipping Hydraulics & Cylinder Kit',
+    painting: 'Primer, Coatings & Finishing Colour',
+    accessories: 'Fitted Accessories & Safety Marker Lights',
+    dimensions: 'Product Dimensions (Feet/Inches)',
+    subframe: 'Subframe'
+  };
+
+  const sections = {};
+  template.specs.forEach(spec => {
+    const sec = spec.section || 'general';
+    if (!sections[sec]) sections[sec] = [];
+    sections[sec].push(spec);
+  });
+
+  // Add custom sections from STATE.customItemDefinitions
+  const customSections = getCustomItemSpecs();
+  customSections.forEach(cs => {
+    const secId = `custom-${cs.id}`;
+    sections[secId] = cs.fields.map((f, i) => ({
+      id: f.id,
+      name: f.name,
+      section: secId,
+      type: f.type,
+      options: f.options || [],
+      defaultValue: f.defaultValue || '',
+      priceDiffs: f.priceDiffs || {},
+      _customSectionName: cs.name
+    }));
+  });
+
+  let html = `
+    <div style="margin-bottom:16px; padding:12px; background:#EFF6FF; border-left:4px solid #3B82F6; border-radius:6px;">
+      <h4 style="margin:0; font-size:0.85rem; color:#1E40AF;">Editing Components for: <strong>${template.name}</strong></h4>
+      <p style="margin:4px 0 0 0; font-size:0.75rem; color:#1D4ED8;">Add, edit, or remove sections and specs. Each spec can be a dropdown, radio, checkbox, or text field with custom options and pricing.</p>
+    </div>
+    <div id="ec-sections-container">
+  `;
+
+  // Render built-in sections
+  sectionOrder.forEach(secId => {
+    const specs = sections[secId] || [];
+    if (secId === 'dimensions' && !specs.length) return;
+    const displayName = sectionNames[secId] || secId;
+    html += buildEditSectionCard(secId, displayName, specs, false);
+  });
+
+  // Render custom sections
+  Object.keys(sections).forEach(secId => {
+    if (sectionOrder.includes(secId)) return;
+    const specs = sections[secId];
+    const displayName = specs[0]?._customSectionName || secId;
+    html += buildEditSectionCard(secId, displayName, specs, true);
+  });
+
+  html += '</div>';
+
+  html += `
+    <div style="margin-top:16px; text-align:center;">
+      <button type="button" class="btn btn-outline btn-sm" onclick="addEditSectionCard()" style="font-weight:700; border-color:#0F172A; color:#0F172A; padding:8px 20px;">
+        <svg style="width:14px;height:14px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add New Section
+      </button>
+    </div>
+  `;
+
+  container.innerHTML = html;
+  document.getElementById('edit-components-modal').classList.add('active');
+  document.getElementById('edit-components-modal').style.display = 'flex';
+};
+
+function buildEditSectionCard(secId, displayName, specs, isCustom) {
+  const cardId = `ec-section-${secId}`;
+  let specsHtml = '';
+  specs.forEach((spec, idx) => {
+    const fieldRowId = `ec-field-${secId}-${idx}`;
+    specsHtml += buildEditSpecRow(spec, fieldRowId, idx);
+  });
+
+  return `
+    <div class="ec-section-card" id="${cardId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex:1;">
+          <span style="font-weight:700; font-size:0.9rem; color:#1E293B;">${displayName}</span>
+          ${isCustom ? '<span style="font-size:0.65rem; font-weight:600; color:#059669; background:#DCFCE7; padding:2px 8px; border-radius:4px;">custom</span>' : ''}
+          <span class="section-hint" style="font-size:0.7rem; color:#64748B;">${specs.length} spec(s)</span>
+        </div>
+        <input type="hidden" class="ec-section-id" value="${secId}">
+        <input type="hidden" class="ec-section-custom" value="${isCustom ? '1' : '0'}">
+        <button type="button" onclick="removeEditSectionCard(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+          ✕ Remove Section
+        </button>
+      </div>
+      <div class="ec-specs-container" data-section="${secId}">
+        ${specsHtml || '<p style="text-align:center; color:#94A3B8; font-size:0.8rem; padding:8px;">No specs in this section.</p>'}
+      </div>
+      <div style="margin-top:10px;">
+        <button type="button" class="btn btn-outline btn-xs" onclick="addSpecToEditSection(this)" style="font-weight:600; border-color:#0284C7; color:#0284C7;">
+          <svg style="width:12px;height:12px;margin-right:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Spec
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function buildEditSpecRow(spec, fieldRowId, idx) {
+  const optRows = spec.options && spec.options.length > 0
+    ? spec.options.map((opt, oi) => {
+        const pDiff = spec.priceDiffs && spec.priceDiffs[opt] !== undefined ? spec.priceDiffs[opt] : 0;
+        const isDef = spec.defaultValue === opt;
+        const choiceId = `ec-opt-${fieldRowId}-${oi}-${Date.now()}`;
+        return `
+          <div class="aci-opt-choice-row" id="${choiceId}" style="display:grid; grid-template-columns: 2fr 1.2fr 80px 32px; gap:8px; align-items:center; background:#FFFFFF; padding:8px 10px; border-radius:6px; border:1px solid #CBD5E1; margin-bottom:6px;">
+            <div>
+              <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Option / Choice Name</span>
+              <input type="text" class="form-control form-control-sm aci-opt-name" value="${opt}">
+            </div>
+            <div>
+              <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Price Diff (₹)</span>
+              <div style="display:flex; align-items:center; gap:2px;">
+                <span style="font-size:0.75rem; color:#64748B;">₹</span>
+                <input type="number" class="form-control form-control-sm aci-opt-price" value="${pDiff}">
+              </div>
+            </div>
+            <div style="text-align:center;">
+              <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Default</span>
+              <input type="radio" name="default-opt-${fieldRowId}" class="aci-opt-is-default" ${isDef ? 'checked' : ''} style="cursor:pointer;">
+            </div>
+            <div>
+              <button type="button" onclick="removeOptionChoiceRow('${choiceId}')" style="background:none; border:none; color:#EF4444; cursor:pointer; padding:4px;" title="Remove Option">
+                <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('')
+    : '';
+
+  const isTextOrCheckbox = spec.type === 'text' || spec.type === 'checkbox';
+  return `
+    <div class="aci-field-row ec-field-row" id="${fieldRowId}" style="background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px; padding:14px; margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
+        <span style="font-weight:700; font-size:0.8rem; color:#1E293B;">Spec #${idx + 1}</span>
+        <button type="button" onclick="removeSpecFromEditSection(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:2px 8px; font-size:0.7rem; cursor:pointer; font-weight:600;">
+          ✕ Remove
+        </button>
+      </div>
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:10px;">
+        <div>
+          <label style="font-size:0.7rem; font-weight:700; color:#334155; display:block; margin-bottom:3px;">Spec Name *</label>
+          <input type="text" class="form-control form-control-sm ec-field-name" value="${spec.name}" style="font-weight:600;">
+        </div>
+        <div>
+          <label style="font-size:0.7rem; font-weight:700; color:#334155; display:block; margin-bottom:3px;">Control Type *</label>
+          <select class="form-control form-control-sm ec-field-type" onchange="toggleFieldOptionsInput(this)">
+            <option value="dropdown" ${spec.type === 'dropdown' ? 'selected' : ''}>Dropdown</option>
+            <option value="radio" ${spec.type === 'radio' ? 'selected' : ''}>Radio Buttons</option>
+            <option value="checkbox" ${spec.type === 'checkbox' ? 'selected' : ''}>Checkbox</option>
+            <option value="text" ${spec.type === 'text' ? 'selected' : ''}>Text Input</option>
+            <option value="number" ${spec.type === 'number' ? 'selected' : ''}>Number</option>
+          </select>
+        </div>
+      </div>
+      <div class="aci-default-text-group" style="${isTextOrCheckbox ? '' : 'display:none;'} margin-bottom:10px;">
+        <label style="font-size:0.7rem; font-weight:700; color:#334155; display:block; margin-bottom:3px;">Default Value</label>
+        <input type="text" class="form-control form-control-sm ec-field-default" value="${spec.defaultValue || ''}">
+      </div>
+      <div class="aci-options-builder-container" style="background:#F1F5F9; border:1px solid #CBD5E1; border-radius:8px; padding:12px; ${isTextOrCheckbox ? 'display:none;' : ''}">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <div>
+            <label style="font-size:0.75rem; font-weight:700; color:#1E293B;">Options & Price Differentials</label>
+          </div>
+          <button type="button" class="btn btn-outline btn-xs" onclick="addOptionChoiceRow('${fieldRowId}')" style="background:#0284C7; color:#FFFFFF; border:none; font-weight:700; padding:4px 10px; border-radius:4px;">
+            + Add Option
+          </button>
+        </div>
+        <div class="aci-option-items-table" id="aci-opt-table-${fieldRowId}">
+          ${optRows}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.addSpecToEditSection = function(btn) {
+  const sectionCard = btn.closest('.ec-section-card');
+  const specsContainer = sectionCard.querySelector('.ec-specs-container');
+  const secId = sectionCard.querySelector('.ec-section-id')?.value || 'general';
+  const idx = specsContainer.querySelectorAll('.ec-field-row').length;
+  const fieldRowId = `ec-field-${secId}-${idx}-${Date.now()}`;
+
+  const emptySpec = {
+    id: `new_${fieldRowId}`,
+    name: '',
+    section: secId,
+    type: 'dropdown',
+    options: ['Option 1 (Standard)'],
+    defaultValue: 'Option 1 (Standard)',
+    priceDiffs: { 'Option 1 (Standard)': 0 }
+  };
+
+  const rowHtml = buildEditSpecRow(emptySpec, fieldRowId, idx);
+
+  // Remove "No specs" message if present
+  const noSpecsMsg = specsContainer.querySelector('p');
+  if (noSpecsMsg && specsContainer.children.length === 1) {
+    specsContainer.innerHTML = '';
+  }
+
+  specsContainer.insertAdjacentHTML('beforeend', rowHtml);
+  // Add an initial option row
+  addOptionChoiceRow(fieldRowId, 'Option 1 (Standard)', 0, true);
+  addOptionChoiceRow(fieldRowId, 'Option 2 (Upgrade)', 15000, false);
+};
+
+window.removeSpecFromEditSection = function(btn) {
+  const row = btn.closest('.ec-field-row');
+  if (row) row.remove();
+};
+
+window.addEditSectionCard = function() {
+  const container = document.getElementById('ec-sections-container');
+  if (!container) return;
+  const ts = Date.now();
+  const secId = `new-section-${ts}`;
+  const cardId = `ec-section-${secId}`;
+
+  const html = `
+    <div class="ec-section-card" id="${cardId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px; border-color:#059669;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex:1;">
+          <input type="text" class="form-control form-control-sm ec-section-name-input" placeholder="Enter section name..." value="New Section" style="font-weight:700; font-size:0.9rem; max-width:300px;">
+          <span style="font-size:0.65rem; font-weight:600; color:#059669; background:#DCFCE7; padding:2px 8px; border-radius:4px;">new</span>
+        </div>
+        <input type="hidden" class="ec-section-id" value="${secId}">
+        <input type="hidden" class="ec-section-custom" value="1">
+        <button type="button" onclick="removeEditSectionCard(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+          ✕ Remove Section
+        </button>
+      </div>
+      <div class="ec-specs-container" data-section="${secId}">
+        <p style="text-align:center; color:#94A3B8; font-size:0.8rem; padding:8px;">No specs yet. Click "Add Spec" below.</p>
+      </div>
+      <div style="margin-top:10px;">
+        <button type="button" class="btn btn-outline btn-xs" onclick="addSpecToEditSection(this)" style="font-weight:600; border-color:#0284C7; color:#0284C7;">
+          <svg style="width:12px;height:12px;margin-right:2px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add Spec
+        </button>
+      </div>
+    </div>
+  `;
+  container.insertAdjacentHTML('beforeend', html);
+};
+
+window.removeEditSectionCard = function(btn) {
+  const card = btn.closest('.ec-section-card');
+  if (card && confirm('Remove this section and all its specs?')) {
+    card.remove();
+  }
+};
+
+window.saveEditComponentsModal = function() {
+  const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
+  if (!template) return;
+
+  const sectionCards = document.querySelectorAll('#edit-components-modal-body .ec-section-card');
+  const newSpecs = [];
+  const newCustomSections = [];
+
+  sectionCards.forEach(card => {
+    const secId = card.querySelector('.ec-section-id')?.value || 'general';
+    const isCustom = card.querySelector('.ec-section-custom')?.value === '1';
+    const customSecName = isCustom ? (card.querySelector('.ec-section-name-input')?.value.trim() || 'Custom Section') : '';
+
+    const fieldRows = card.querySelectorAll('.ec-field-row');
+    const secSpecs = [];
+
+    fieldRows.forEach((row, idx) => {
+      const name = row.querySelector('.ec-field-name')?.value.trim();
+      if (!name) return;
+
+      const type = row.querySelector('.ec-field-type')?.value || 'dropdown';
+      const rowId = row.id;
+
+      let options = [];
+      let priceDiffs = {};
+      let defaultVal = '';
+
+      if (type === 'dropdown' || type === 'radio') {
+        const extracted = extractFieldOptionsAndPrices(row, rowId);
+        options = extracted.options;
+        priceDiffs = extracted.priceDiffs;
+        defaultVal = extracted.defaultVal;
+
+        if (options.length === 0) {
+          options = ['Standard', 'Custom'];
+          priceDiffs = { 'Standard': 0, 'Custom': 15000 };
+          defaultVal = 'Standard';
+        }
+      } else if (type === 'checkbox') {
+        defaultVal = 'Yes';
+      } else {
+        defaultVal = row.querySelector('.ec-field-default')?.value.trim() || '';
+      }
+
+      const specId = `ec_${secId}_${idx}`;
+      secSpecs.push({
+        id: specId,
+        name,
+        section: secId,
+        type,
+        options: options.length > 0 ? options : [],
+        defaultValue: defaultVal,
+        priceDiffs: Object.keys(priceDiffs).length > 0 ? priceDiffs : undefined
+      });
+    });
+
+    if (isCustom) {
+      newCustomSections.push({
+        id: secId.replace('new-section-', 'custom-'),
+        name: customSecName,
+        fields: secSpecs
+      });
+    } else {
+      newSpecs.push(...secSpecs);
+    }
+  });
+
+  // Save to STATE
+  loadState();
+  if (!STATE.productSpecOverrides) STATE.productSpecOverrides = {};
+  const groupKey = getSubtypeGroup(wizardState.subtype);
+  STATE.productSpecOverrides[groupKey] = { specs: newSpecs };
+
+  // Save custom sections
+  if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
+  STATE.customItemDefinitions = newCustomSections;
+
+  saveState();
+
+  // Apply to all group members
+  const members = getGroupMembers(groupKey);
+  members.forEach(memberKey => {
+    if (WIZARD_PRODUCT_TEMPLATES[memberKey]) {
+      WIZARD_PRODUCT_TEMPLATES[memberKey].specs = newSpecs.map(s => ({ ...s }));
+    }
+  });
+
+  closeEditComponentsModal();
+  renderConfiguratorFormInputs(template);
+  calculateWizardPricing();
+  logSystemActivity(`Updated components for ${template.name}.`);
+};
+
+window.closeEditComponentsModal = function() {
+  document.getElementById('edit-components-modal').classList.remove('active');
+  document.getElementById('edit-components-modal').style.display = '';
+};
 
 window.updateManualBasePrice = function(val) {
   wizardState.customBasePrice = parseFloat(val) || 0;
@@ -2035,178 +1812,6 @@ window.saveCurrentBasePriceAsDefault = function() {
   saveState();
   logSystemActivity(`Admin set market base price for ${wizardState.subtype} to ₹${currentBase.toLocaleString('en-IN')}.`);
   alert(`₹${currentBase.toLocaleString('en-IN')} saved as market baseline default price for ${template.name}!`);
-};
-
-window.openPartPricingMatrixModal = function() {
-  const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
-  if (!template) {
-    alert("Please select a product category & subtype first.");
-    return;
-  }
-
-  const container = document.getElementById('part-pricing-modal-body');
-  if (!container) return;
-
-  if (!STATE.adminPricing) STATE.adminPricing = {};
-
-  let html = `
-    <div style="margin-bottom:16px; padding:12px; background:#EFF6FF; border-left:4px solid #3B82F6; border-radius:6px;">
-      <h4 style="margin:0; font-size:0.85rem; color:#1E40AF;">Managing Component Part Prices for: <strong>${template.name}</strong></h4>
-      <p style="margin:4px 0 0 0; font-size:0.75rem; color:#1D4ED8;">Adjust the price differential (₹) for each customization option. Positive values add cost (+), negative values give a discount (-).</p>
-    </div>
-
-    <!-- Metal Price per kg -->
-    <div style="margin-bottom:20px; padding:16px; background:#FFF7ED; border:1.5px solid #FED7AA; border-radius:8px;">
-      <h5 style="margin:0 0 12px 0; font-size:0.85rem; font-weight:700; color:#9A3412; text-transform:uppercase; display:flex; align-items:center; gap:6px;">
-        <svg style="width:16px;height:16px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-        Metal Price
-      </h5>
-      <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-        <div style="display:flex; align-items:center; gap:8px; background:#ffffff; padding:8px 14px; border-radius:6px; border:1px solid #FED7AA;">
-          <span style="font-size:0.8rem; font-weight:600; color:#78350F; white-space:nowrap;">Steel (₹/kg)</span>
-          <input type="number" id="metal-price-steel" class="form-control form-control-sm" value="${STATE.adminPricing.metalPriceSteel || 0}" style="width:100px; text-align:right; font-weight:700; padding:4px 8px;" placeholder="0">
-        </div>
-        <div style="display:flex; align-items:center; gap:8px; background:#ffffff; padding:8px 14px; border-radius:6px; border:1px solid #FED7AA;">
-          <span style="font-size:0.8rem; font-weight:600; color:#78350F; white-space:nowrap;">Hardox (₹/kg)</span>
-          <input type="number" id="metal-price-hardox" class="form-control form-control-sm" value="${STATE.adminPricing.metalPriceHardox || 0}" style="width:100px; text-align:right; font-weight:700; padding:4px 8px;" placeholder="0">
-        </div>
-      </div>
-    </div>
-
-    <div style="margin-bottom:20px; position:relative;">
-      <input type="text" id="part-pricing-search-input" class="form-control" placeholder="Search component or option (e.g. Axle, Air Suspension, Floor, Hardox)..." oninput="filterPartPricingMatrixItems(this.value)" style="padding-left:36px; height:40px; border-radius:6px; font-size:0.85rem; border:1px solid #CBD5E1;">
-      <svg style="position:absolute; left:12px; top:12px; width:16px; height:16px; color:#64748B;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-    </div>
-  `;
-
-  template.specs.forEach(spec => {
-    if (spec.options && spec.options.length > 0) {
-      html += `
-        <div class="part-spec-group-section" data-spec-name="${spec.name.toLowerCase()}" style="margin-bottom:18px; padding-bottom:12px; border-bottom:1px solid #E2E8F0;">
-          <h5 style="margin:0 0 8px 0; font-size:0.825rem; font-weight:700; color:#334155; text-transform:uppercase;">${spec.name} Options</h5>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
-      `;
-
-      spec.options.forEach(opt => {
-        let currentDiff = getEffectiveSpecPriceDiff(spec, opt);
-
-        html += `
-          <div class="part-price-item-card" data-option-name="${opt.toLowerCase()}" style="display:flex; align-items:center; justify-content:space-between; background:#F8FAFC; padding:6px 10px; border-radius:6px; border:1px solid #E2E8F0;">
-            <span style="font-size:0.775rem; font-weight:600; color:#475569;">${opt}</span>
-            <div style="display:flex; align-items:center; gap:4px;">
-              <span style="font-size:0.75rem; color:#64748B;">₹</span>
-              <input type="number" class="form-control form-control-sm part-price-diff-input" data-spec-id="${spec.id}" data-option="${opt}" value="${currentDiff}" style="width:105px; text-align:right; font-weight:bold; padding:2px 6px;">
-            </div>
-          </div>
-        `;
-      });
-
-      // Show custom options in pricing matrix with delete
-      const customOpts = getCustomFieldOptions(spec.id);
-      customOpts.forEach(opt => {
-        html += `
-          <div class="part-price-item-card" data-option-name="${opt.name.toLowerCase()}" style="display:flex; align-items:center; justify-content:space-between; background:#F0FDF4; padding:6px 10px; border-radius:6px; border:1px solid #BBF7D0;">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:0.775rem; font-weight:600; color:#166534;">${opt.name}</span>
-              <span style="font-size:0.6rem; font-weight:600; color:#15803D; background:#DCFCE7; padding:1px 6px; border-radius:3px;">custom</span>
-            </div>
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:0.75rem; color:#64748B;">₹</span>
-              <input type="number" class="form-control form-control-sm part-price-diff-input" data-spec-id="${spec.id}" data-option="${opt.name}" value="${opt.priceDiff}" style="width:105px; text-align:right; font-weight:bold; padding:2px 6px;">
-              <button type="button" onclick="deleteCustomFieldOption('${spec.id}', '${opt.name}')" style="background:none;border:none;color:#DC2626;cursor:pointer;padding:2px;" title="Delete custom option">
-                <svg style="width:14px;height:14px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-          </div>
-        `;
-      });
-
-      html += `</div></div>`;
-    }
-  });
-
-  container.innerHTML = html;
-  document.getElementById('part-pricing-modal').classList.add('active');
-  setTimeout(() => {
-    const searchInp = document.getElementById('part-pricing-search-input');
-    if (searchInp) searchInp.focus();
-  }, 100);
-};
-
-window.filterPartPricingMatrixItems = function(query) {
-  const q = (query || '').toLowerCase().trim();
-  const specSections = document.querySelectorAll('#part-pricing-modal-body .part-spec-group-section');
-
-  specSections.forEach(section => {
-    const sectionName = section.getAttribute('data-spec-name') || '';
-    const items = section.querySelectorAll('.part-price-item-card');
-    let hasVisibleItem = false;
-
-    items.forEach(item => {
-      const optName = item.getAttribute('data-option-name') || '';
-      const match = !q || sectionName.includes(q) || optName.includes(q);
-
-      if (match) {
-        item.style.display = 'flex';
-        hasVisibleItem = true;
-      } else {
-        item.style.display = 'none';
-      }
-    });
-
-    if (hasVisibleItem) {
-      section.style.display = 'block';
-    } else {
-      section.style.display = 'none';
-    }
-  });
-};
-
-window.closePartPricingMatrixModal = function() {
-  document.getElementById('part-pricing-modal').classList.remove('active');
-};
-
-window.saveComponentPartPricingFromModal = function() {
-  const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
-  if (!template) return;
-
-  // Save metal prices per kg
-  if (!STATE.adminPricing) STATE.adminPricing = {};
-  STATE.adminPricing.metalPriceSteel = parseFloat(document.getElementById('metal-price-steel')?.value) || 0;
-  STATE.adminPricing.metalPriceHardox = parseFloat(document.getElementById('metal-price-hardox')?.value) || 0;
-
-  const inputs = document.querySelectorAll('#part-pricing-modal-body .part-price-diff-input');
-  inputs.forEach(input => {
-    const specId = input.getAttribute('data-spec-id');
-    const option = input.getAttribute('data-option');
-    const val = parseFloat(input.value) || 0;
-
-    const spec = template.specs.find(s => s.id === specId);
-    if (spec) {
-      if (!spec.priceDiffs) spec.priceDiffs = {};
-      spec.priceDiffs[option] = val;
-
-      if (specId === 'floor' && option.includes('6mm')) STATE.adminPricing.floor6 = val;
-      if (specId === 'floor' && option.includes('10mm')) STATE.adminPricing.floor10 = val;
-      if (specId === 'beam' && option.includes('Hardox')) STATE.adminPricing.steelHardox = val;
-      if (specId === 'axles' && option.includes('2x13T')) STATE.adminPricing.axle2 = val;
-      if (specId === 'axles' && option.includes('3x16T')) STATE.adminPricing.axle3_16 = val;
-    }
-
-    // Also save custom option prices
-    const customOpts = STATE.adminPricing?.customFieldOptions?.[getCustomFieldKey(specId)];
-    if (customOpts) {
-      const match = customOpts.find(c => c.name === option);
-      if (match) match.priceDiff = val;
-    }
-  });
-
-  saveState();
-  renderConfiguratorFormInputs(template);
-  calculateWizardPricing();
-  closePartPricingMatrixModal();
-  logSystemActivity(`Updated component part pricing matrix for ${template.name}.`);
-  alert(`Component part prices updated and saved as system market defaults for ${template.name}!`);
 };
 
 // Step 4 pricing calculator
