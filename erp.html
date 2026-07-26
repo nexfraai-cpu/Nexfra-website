@@ -224,9 +224,37 @@
             </h1>
             <p>Review newly generated quotations. Approved quotations are automatically dispatched to the Production Board and Work Orders List.</p>
           </div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary" onclick="renderApprovalsList('all')">All History</button>
-            <button class="btn btn-primary" onclick="renderApprovalsList('pending')">Pending Only</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="position:relative;">
+              <button type="button" class="btn btn-outline btn-xs" data-filter-btn="approvals" onclick="toggleModuleFilter('approvals')" style="font-weight:700; padding:4px 12px;">
+                <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+                Filter ▾
+              </button>
+              <div id="filter-dd-approvals" class="filter-dd" style="display:none; background:#fff; border:1.5px solid #CBD5E1; border-radius:8px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:300px; margin-top:6px;">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Date:</label>
+                    <input type="date" id="filter-approvals-from" class="form-control form-control-sm" onchange="setModuleFilter('approvals','dateFrom',this.value)" style="width:120px; font-size:0.75rem;">
+                    <span style="font-size:0.7rem; color:#94A3B8;">–</span>
+                    <input type="date" id="filter-approvals-to" class="form-control form-control-sm" onchange="setModuleFilter('approvals','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
+                  </div>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
+                    <select id="filter-approvals-cat" class="form-control form-control-sm" onchange="setModuleFilter('approvals','category',this.value)" style="flex:1; font-size:0.75rem;">
+                      <option value="All">All Categories</option>
+                      <option value="COMMERCIAL TRAILER">Commercial Trailer</option>
+                      <option value="TIPPER DUMPER BODY">Tipper Dumper Body</option>
+                      <option value="RIGID LOAD BODY">Rigid Load Body</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:8px;">
+                    <button type="button" class="btn btn-outline btn-xs" onclick="clearModuleFilters('approvals')" style="color:#EF4444; border-color:#FCA5A5; font-size:0.7rem;">✕ Clear Filters</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="renderApprovalsList('all')" style="font-size:0.75rem; padding:6px 12px;">All History</button>
+            <button class="btn btn-primary" onclick="renderApprovalsList('pending')" style="font-size:0.75rem; padding:6px 12px;">Pending Only</button>
           </div>
         </div>
 
@@ -890,10 +918,38 @@
 
       <!-- MODULE: WORK ORDERS -->
       <div class="module-view" id="view-workorders">
-        <div class="module-header">
+        <div class="module-header" style="display:flex; justify-content:space-between; align-items:center;">
           <div>
             <h1>Internal Work Orders Queue</h1>
             <p>Authorizations dispatched directly to shop floor welding and assembly teams.</p>
+          </div>
+          <div style="position:relative;">
+            <button type="button" class="btn btn-outline btn-xs" data-filter-btn="workorders" onclick="toggleModuleFilter('workorders')" style="font-weight:700; padding:4px 12px;">
+              <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+              Filter ▾
+            </button>
+            <div id="filter-dd-workorders" class="filter-dd" style="display:none; background:#fff; border:1.5px solid #CBD5E1; border-radius:8px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:300px; margin-top:6px;">
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Date:</label>
+                  <input type="date" id="filter-workorders-from" class="form-control form-control-sm" onchange="setModuleFilter('workorders','dateFrom',this.value)" style="width:120px; font-size:0.75rem;">
+                  <span style="font-size:0.7rem; color:#94A3B8;">–</span>
+                  <input type="date" id="filter-workorders-to" class="form-control form-control-sm" onchange="setModuleFilter('workorders','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
+                  <select id="filter-workorders-cat" class="form-control form-control-sm" onchange="setModuleFilter('workorders','category',this.value)" style="flex:1; font-size:0.75rem;">
+                    <option value="All">All Categories</option>
+                    <option value="COMMERCIAL TRAILER">Commercial Trailer</option>
+                    <option value="TIPPER DUMPER BODY">Tipper Dumper Body</option>
+                    <option value="RIGID LOAD BODY">Rigid Load Body</option>
+                  </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:8px;">
+                  <button type="button" class="btn btn-outline btn-xs" onclick="clearModuleFilters('workorders')" style="color:#EF4444; border-color:#FCA5A5; font-size:0.7rem;">✕ Clear Filters</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -909,9 +965,39 @@
             <h1>Shop Floor Production Board</h1>
             <p>Advance work orders visually along progressive phases from steel framing, sandblasting, and painting to QC.</p>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" onclick="openProgressionSettingsModal()" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; background:#ffffff; border-color:#CBD5E1; color:#0F172A; padding:8px 16px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <div style="position:relative;">
+              <button type="button" class="btn btn-outline btn-xs" data-filter-btn="production" onclick="toggleModuleFilter('production')" style="font-weight:700; padding:4px 12px;">
+                <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+                Filter ▾
+              </button>
+              <div id="filter-dd-production" class="filter-dd" style="display:none; background:#fff; border:1.5px solid #CBD5E1; border-radius:8px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:300px; margin-top:6px;">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Date:</label>
+                    <input type="date" id="filter-production-from" class="form-control form-control-sm" onchange="setModuleFilter('production','dateFrom',this.value)" style="width:120px; font-size:0.75rem;">
+                    <span style="font-size:0.7rem; color:#94A3B8;">–</span>
+                    <input type="date" id="filter-production-to" class="form-control form-control-sm" onchange="setModuleFilter('production','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
+                  </div>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
+                    <select id="filter-production-cat" class="form-control form-control-sm" onchange="setModuleFilter('production','category',this.value)" style="flex:1; font-size:0.75rem;">
+                      <option value="All">All Categories</option>
+                      <option value="COMMERCIAL TRAILER">Commercial Trailer</option>
+                      <option value="TIPPER DUMPER BODY">Tipper Dumper Body</option>
+                      <option value="RIGID LOAD BODY">Rigid Load Body</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:8px;">
+                    <button type="button" class="btn btn-outline btn-xs" onclick="clearModuleFilters('production')" style="color:#EF4444; border-color:#FCA5A5; font-size:0.7rem;">✕ Clear Filters</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="openProgressionSettingsModal()" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; background:#ffffff; border-color:#CBD5E1; color:#0F172A; padding:8px 16px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
             ⚙️ Pipeline Settings
           </button>
+          </div>
         </div>
         
         <div class="board-container" id="production-board-container">

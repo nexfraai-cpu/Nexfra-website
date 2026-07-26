@@ -320,6 +320,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Read URL query parameter routing
   handleUrlRouting();
+
+  // Close filter dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.filter-dd').forEach(el => {
+      if (el.style.display !== 'block') return;
+      const moduleKey = el.id.replace('filter-dd-', '');
+      const btn = document.querySelector(`[data-filter-btn="${moduleKey}"]`);
+      if (!el.contains(e.target) && (!btn || !btn.contains(e.target))) {
+        el.style.display = 'none';
+      }
+    });
+  });
 });
 
 function handleUrlRouting() {
@@ -2396,6 +2408,77 @@ window.printWizardPdf = function() {
 // 5. WORK ORDERS RENDERER
 // ------------------------------------------
 
+// --- Filter helpers (shared across Work Orders, Production Board, Approvals) ---
+window._moduleFilters = {};
+
+function getProductCategory(productName) {
+  const n = (productName || '').toLowerCase();
+  if (n.includes('flat bed') || n.includes('side wall') || n.includes('tip trailer')) return 'COMMERCIAL TRAILER';
+  if (n.includes('box body') || n.includes('rock body')) return 'TIPPER DUMPER BODY';
+  if (n.includes('rigid load body')) return 'RIGID LOAD BODY';
+  return 'OTHER';
+}
+
+function toggleModuleFilter(moduleName) {
+  const dd = document.getElementById('filter-dd-' + moduleName);
+  if (!dd) return;
+  const isVisible = dd.style.display === 'block';
+  // Close all other filter dropdowns
+  document.querySelectorAll('.filter-dd').forEach(el => el.style.display = 'none');
+  if (!isVisible) {
+    const f = window._moduleFilters[moduleName] || {};
+    const fromEl = document.getElementById('filter-' + moduleName + '-from');
+    const toEl = document.getElementById('filter-' + moduleName + '-to');
+    const catEl = document.getElementById('filter-' + moduleName + '-cat');
+    if (fromEl) fromEl.value = f.dateFrom || '';
+    if (toEl) toEl.value = f.dateTo || '';
+    if (catEl) catEl.value = f.category || 'All';
+    const btn = document.querySelector(`[data-filter-btn="${moduleName}"]`);
+    if (btn) {
+      const r = btn.getBoundingClientRect();
+      dd.style.position = 'fixed';
+      dd.style.top = (r.bottom + 6) + 'px';
+      dd.style.right = (window.innerWidth - r.right) + 'px';
+      dd.style.left = 'auto';
+      dd.style.bottom = 'auto';
+      dd.style.zIndex = 2147483647;
+      // Move to body to avoid any parent stacking context clipping
+      if (dd.parentElement !== document.body) {
+        document.body.appendChild(dd);
+      }
+    }
+    dd.style.display = 'block';
+  }
+}
+
+function setModuleFilter(moduleName, field, value) {
+  if (!window._moduleFilters[moduleName]) window._moduleFilters[moduleName] = {};
+  window._moduleFilters[moduleName][field] = value;
+  if (moduleName === 'workorders') renderWorkOrders();
+  else if (moduleName === 'production') renderProductionBoard();
+  else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
+}
+
+function clearModuleFilters(moduleName) {
+  delete window._moduleFilters[moduleName];
+  if (moduleName === 'workorders') renderWorkOrders();
+  else if (moduleName === 'production') renderProductionBoard();
+  else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
+}
+
+function applyModuleFilter(moduleName, items, dateField, productField) {
+  const f = window._moduleFilters[moduleName] || {};
+  if (!f.dateFrom && !f.dateTo && (!f.category || f.category === 'All')) return items;
+  return items.filter(item => {
+    const d = item[dateField] || '';
+    if (f.dateFrom && d < f.dateFrom) return false;
+    if (f.dateTo && d > f.dateTo) return false;
+    if (f.category && f.category !== 'All' && getProductCategory(item[productField]) !== f.category) return false;
+    return true;
+  });
+}
+// --- End filter helpers ---
+
 function renderWorkOrders() {
   loadState();
   const container = document.getElementById('workorders-container');
@@ -2406,7 +2489,8 @@ function renderWorkOrders() {
     return;
   }
 
-  container.innerHTML = STATE.workOrders.map(wo => {
+  const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product');
+  container.innerHTML = filtered.map(wo => {
     const collapsed = wo._collapsed !== false;
     return `
       <div class="wo-card" style="margin-bottom:10px; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
@@ -2840,6 +2924,7 @@ function getInitialProgressionState() {
 }
 
 window.renderApprovalsList = function(filter = 'pending') {
+  window._approvalsFilter = filter;
   loadState();
 
   const container = document.getElementById('approvals-cards-container');
@@ -2859,6 +2944,8 @@ window.renderApprovalsList = function(filter = 'pending') {
     quotes = pendingQuotes;
   }
 
+  const filtered = applyModuleFilter('approvals', quotes, 'date', 'productName');
+
   if (quotes.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; padding: 48px; text-align: center; background: white; border-radius: 12px; border: 1px dashed #CBD5E1; color: #64748B;">
@@ -2870,7 +2957,7 @@ window.renderApprovalsList = function(filter = 'pending') {
     return;
   }
 
-  container.innerHTML = quotes.map(q => {
+  container.innerHTML = filtered.map(q => {
     const isPending = q.status !== 'Approved' && q.status !== 'Denied';
     const isApproved = q.status === 'Approved';
     const isDenied = q.status === 'Denied';
@@ -3045,6 +3132,8 @@ function renderProductionBoard() {
   const container = document.getElementById('production-board-container');
   if (!container) return;
 
+  const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product');
+
   const columns = [
     { title: 'Not Started', status: 'Not Started', headerBg: '#F1F5F9', border: '#CBD5E1', countBg: '#64748B' },
     { title: 'Work in Progress', status: 'Work in Progress', headerBg: '#DBEAFE', border: '#93C5FD', countBg: '#2563EB' },
@@ -3054,7 +3143,7 @@ function renderProductionBoard() {
   let boardHtml = '';
 
   columns.forEach(col => {
-    const items = STATE.productionItems.filter(p => (p.columnStatus || 'Not Started') === col.status);
+    const items = filteredItems.filter(p => (p.columnStatus || 'Not Started') === col.status);
 
     const cardsHtml = items.map(item => {
       const pct = item.progressPct || 0;

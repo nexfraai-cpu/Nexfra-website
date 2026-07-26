@@ -11,13 +11,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
+  <link rel="stylesheet" href="styles.css">
   
   <!-- GSAP for Smooth Staging Transitions -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   
   <!-- html2pdf.js for High-Fidelity Client-side PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/styles-CFBr-OFZ.css">
 </head>
 <body style="background-color: var(--color-bg); overflow: hidden; height: 100vh; display: flex; flex-direction: column;">
 
@@ -224,9 +224,37 @@
             </h1>
             <p>Review newly generated quotations. Approved quotations are automatically dispatched to the Production Board and Work Orders List.</p>
           </div>
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary" onclick="renderApprovalsList('all')">All History</button>
-            <button class="btn btn-primary" onclick="renderApprovalsList('pending')">Pending Only</button>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="position:relative;">
+              <button type="button" class="btn btn-outline btn-xs" data-filter-btn="approvals" onclick="toggleModuleFilter('approvals')" style="font-weight:700; padding:4px 12px;">
+                <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+                Filter ▾
+              </button>
+              <div id="filter-dd-approvals" class="filter-dd" style="display:none; background:#fff; border:1.5px solid #CBD5E1; border-radius:8px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:300px; margin-top:6px;">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Date:</label>
+                    <input type="date" id="filter-approvals-from" class="form-control form-control-sm" onchange="setModuleFilter('approvals','dateFrom',this.value)" style="width:120px; font-size:0.75rem;">
+                    <span style="font-size:0.7rem; color:#94A3B8;">–</span>
+                    <input type="date" id="filter-approvals-to" class="form-control form-control-sm" onchange="setModuleFilter('approvals','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
+                  </div>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
+                    <select id="filter-approvals-cat" class="form-control form-control-sm" onchange="setModuleFilter('approvals','category',this.value)" style="flex:1; font-size:0.75rem;">
+                      <option value="All">All Categories</option>
+                      <option value="COMMERCIAL TRAILER">Commercial Trailer</option>
+                      <option value="TIPPER DUMPER BODY">Tipper Dumper Body</option>
+                      <option value="RIGID LOAD BODY">Rigid Load Body</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:8px;">
+                    <button type="button" class="btn btn-outline btn-xs" onclick="clearModuleFilters('approvals')" style="color:#EF4444; border-color:#FCA5A5; font-size:0.7rem;">✕ Clear Filters</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-secondary" onclick="renderApprovalsList('all')" style="font-size:0.75rem; padding:6px 12px;">All History</button>
+            <button class="btn btn-primary" onclick="renderApprovalsList('pending')" style="font-size:0.75rem; padding:6px 12px;">Pending Only</button>
           </div>
         </div>
 
@@ -355,7 +383,7 @@
             <!-- Trailer Card -->
             <div class="category-card" id="cat-card-trailer" onclick="selectProductCategory('trailer')">
               <div class="card-img-wrap">
-                <img src="/assets/flatbed_trailer-BaiHwITw.jpg" alt="Commercial Trailer">
+                <img src="assets/flatbed_trailer.jpg" alt="Commercial Trailer">
               </div>
               <div class="card-details">
                 <h3>
@@ -369,7 +397,7 @@
             <!-- Tipper Card -->
             <div class="category-card" id="cat-card-tipper" onclick="selectProductCategory('tipper')">
               <div class="card-img-wrap">
-                <img src="/assets/box_body_tipper-CgRqPuY4.jpg" alt="Dumper Body">
+                <img src="assets/box_body_tipper.jpg" alt="Dumper Body">
               </div>
               <div class="card-details">
                 <h3>
@@ -383,7 +411,7 @@
             <!-- Rigid Load Body Card -->
             <div class="category-card" id="cat-card-rigid" onclick="selectProductCategory('rigid')">
               <div class="card-img-wrap">
-                <img src="/assets/nexfra_hero-NqD3WG3k.jpg" alt="Rigid Load Body">
+                <img src="assets/nexfra_hero.jpg" alt="Rigid Load Body">
               </div>
               <div class="card-details">
                 <h3>
@@ -408,21 +436,21 @@
           <!-- Trailer Subtypes Grid -->
           <div class="selection-cards-grid subtype-grid-group" id="subtypes-trailer-container" style="display: none;">
             <div class="subtype-card" id="sub-card-flatbed" onclick="selectProductSubtype('flatbed')">
-              <div class="card-img-wrap"><img src="/assets/flatbed_trailer-BaiHwITw.jpg" alt="Flatbed"></div>
+              <div class="card-img-wrap"><img src="assets/flatbed_trailer.jpg" alt="Flatbed"></div>
               <div class="card-details">
                 <h3>Flat Bed Trailer</h3>
                 <p>Standard 40ft triple-axle flat container flatbed for standard dry cargo.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-sidewall" onclick="selectProductSubtype('sidewall')">
-              <div class="card-img-wrap"><img src="/assets/tip_trailer-CNI1GP_o.jpg" alt="Sidewall"></div>
+              <div class="card-img-wrap"><img src="assets/tip_trailer.jpg" alt="Sidewall"></div>
               <div class="card-details">
                 <h3>Side Wall Trailer</h3>
                 <p>Standard payload side gate trailer for bag cargo and local freight.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-tiptrailer" onclick="selectProductSubtype('tiptrailer')">
-              <div class="card-img-wrap"><img src="/assets/tip_trailer-CNI1GP_o.jpg" alt="Tip Trailer"></div>
+              <div class="card-img-wrap"><img src="assets/tip_trailer.jpg" alt="Tip Trailer"></div>
               <div class="card-details">
                 <h3>Tip Trailer</h3>
                 <p>Semi-trailer dump chassis for massive sand/aggregate transport.</p>
@@ -433,14 +461,14 @@
           <!-- Tipper Subtypes Grid -->
           <div class="selection-cards-grid subtype-grid-group" id="subtypes-tipper-container" style="display: none;">
             <div class="subtype-card" id="sub-card-boxbody" onclick="selectProductSubtype('boxbody')">
-              <div class="card-img-wrap"><img src="/assets/box_body_tipper-CgRqPuY4.jpg" alt="Box Body"></div>
+              <div class="card-img-wrap"><img src="assets/box_body_tipper.jpg" alt="Box Body"></div>
               <div class="card-details">
                 <h3>Box Body Tipper</h3>
                 <p>Standard square box dumper for coal, sand, and aggregate haulage.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-rockbody" onclick="selectProductSubtype('rockbody')">
-              <div class="card-img-wrap"><img src="/assets/rock_body_tipper-sd4I-u8-.jpg" alt="Rock Body"></div>
+              <div class="card-img-wrap"><img src="assets/rock_body_tipper.jpg" alt="Rock Body"></div>
               <div class="card-details">
                 <h3>Rock Body Tipper</h3>
                 <p>Deep-V shape rock body with thick wear-resistant lining for hard mining.</p>
@@ -451,14 +479,14 @@
           <!-- Rigid Subtypes Grid -->
           <div class="selection-cards-grid subtype-grid-group" id="subtypes-rigid-container" style="display: none;">
             <div class="subtype-card" id="sub-card-rigid28" onclick="selectProductSubtype('rigid28')">
-              <div class="card-img-wrap"><img src="/assets/nexfra_hero-NqD3WG3k.jpg" alt="28 Ft"></div>
+              <div class="card-img-wrap"><img src="assets/nexfra_hero.jpg" alt="28 Ft"></div>
               <div class="card-details">
                 <h3>28 Feet Load Body</h3>
                 <p>Standard rigid frame tray for multi-axle freight carrier trucks.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-rigid30" onclick="selectProductSubtype('rigid30')">
-              <div class="card-img-wrap"><img src="/assets/nexfra_hero-NqD3WG3k.jpg" alt="30 Ft"></div>
+              <div class="card-img-wrap"><img src="assets/nexfra_hero.jpg" alt="30 Ft"></div>
               <div class="card-details">
                 <h3>30 Feet Load Body</h3>
                 <p>Extended frame rigid body for express payload cargo shipping.</p>
@@ -500,16 +528,10 @@
             <div class="configurator-forms-box">
               <div style="display:flex; justify-content:space-between; align-items:center;" class="mb-md">
                 <h2 class="text-uppercase" style="font-size: 0.95rem; color: var(--color-primary); font-weight:700; margin:0;">Customize Vehicle Specs</h2>
-                <div style="display:flex; align-items:center; gap:8px;">
-                <button type="button" class="btn btn-outline btn-sm" onclick="openCustomItemsManagerModal()" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;border-color:#059669;color:#059669;background:#ECFDF5;padding:5px 10px;border-radius:6px;">
-                  <svg style="width:15px;height:15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
-                  ✏️ Edit Custom Items
+                <button type="button" class="btn btn-outline btn-sm" onclick="openEditComponentsModal()" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;border-color:var(--color-primary);color:var(--color-primary);background:#F0FDF4;padding:5px 10px;border-radius:6px;">
+                  <svg style="width:15px;height:15px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+                  🛠 Edit Components
                 </button>
-                <button type="button" class="btn btn-outline btn-sm" onclick="openPartPricingMatrixModal()" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;border-color:var(--color-primary);color:var(--color-primary);background:#F0FDF4;padding:5px 10px;border-radius:6px;">
-                  <svg style="width:15px;height:15px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                  ⚙️ Edit Component Part Prices
-                </button>
-                </div>
               </div>
               
               <!-- SECTION A: STEEL & MATERIAL PANELS -->
@@ -608,20 +630,22 @@
                 </div>
               </div>
 
-              <!-- SECTION G: CUSTOM ITEMS (User-Defined Sections) -->
-              <div class="card mt-md" style="padding: 24px;">
-                <h3 class="mb-sm text-uppercase" style="font-size:0.8rem;letter-spacing:0.5px;color:var(--color-primary)">7. Custom Spec Sections</h3>
-                <p class="section-hint mb-md">Add reusable custom spec sections (e.g. electrical system, additional body options). These persist and are available for all products.</p>
-                
-                <div id="w-custom-items-sections-list">
-                  <!-- Custom sections rendered here -->
+              <!-- SECTION G: SUBFRAME -->
+              <div class="collapsible-section" id="spec-sec-subframe">
+                <div class="collapse-header" onclick="toggleCollapseSection('spec-sec-subframe')">
+                  <span>7. Subframe</span>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="nr-badge" id="nr-badge-sec-subframe" onclick="event.stopPropagation();toggleSectionRequired('spec-sec-subframe')">Section Required</span>
+                    <svg class="collapse-header-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
                 </div>
-
-                <button type="button" class="btn btn-outline btn-sm mt-sm" onclick="openAddCustomItemSectionModal()">
-                  <svg class="icon-sm" viewBox="0 0 24 24" style="width:14px;height:14px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  + Add Custom Spec Section
-                </button>
+                <div class="collapse-content">
+                  <div class="spec-grid-control" id="specs-subframe-controls-inject">
+                    <!-- Dynamic Subframe Inputs injected by JS -->
+                  </div>
+                </div>
               </div>
+
             </div>
 
             <!-- Right Sticky Price Preview Panel -->
@@ -687,7 +711,7 @@
                 <div class="pdf-page" style="box-shadow: none;">
                   <div class="pdf-header">
                     <div class="pdf-header-logo">
-                      <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                     <div class="pdf-header-text">
                       <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -697,7 +721,7 @@
                       <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
                     </div>
                     <div class="pdf-header-iso">
-                      <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                   </div>
                   <div class="pdf-header-line"></div>
@@ -780,7 +804,7 @@
                 <div class="pdf-page" style="box-shadow: none;">
                   <div class="pdf-header">
                     <div class="pdf-header-logo">
-                      <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                     <div class="pdf-header-text">
                       <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -790,7 +814,7 @@
                       <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
                     </div>
                     <div class="pdf-header-iso">
-                      <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                   </div>
                   <div class="pdf-header-line"></div>
@@ -894,10 +918,38 @@
 
       <!-- MODULE: WORK ORDERS -->
       <div class="module-view" id="view-workorders">
-        <div class="module-header">
+        <div class="module-header" style="display:flex; justify-content:space-between; align-items:center;">
           <div>
             <h1>Internal Work Orders Queue</h1>
             <p>Authorizations dispatched directly to shop floor welding and assembly teams.</p>
+          </div>
+          <div style="position:relative;">
+            <button type="button" class="btn btn-outline btn-xs" data-filter-btn="workorders" onclick="toggleModuleFilter('workorders')" style="font-weight:700; padding:4px 12px;">
+              <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+              Filter ▾
+            </button>
+            <div id="filter-dd-workorders" class="filter-dd" style="display:none; background:#fff; border:1.5px solid #CBD5E1; border-radius:8px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:300px; margin-top:6px;">
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Date:</label>
+                  <input type="date" id="filter-workorders-from" class="form-control form-control-sm" onchange="setModuleFilter('workorders','dateFrom',this.value)" style="width:120px; font-size:0.75rem;">
+                  <span style="font-size:0.7rem; color:#94A3B8;">–</span>
+                  <input type="date" id="filter-workorders-to" class="form-control form-control-sm" onchange="setModuleFilter('workorders','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                  <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
+                  <select id="filter-workorders-cat" class="form-control form-control-sm" onchange="setModuleFilter('workorders','category',this.value)" style="flex:1; font-size:0.75rem;">
+                    <option value="All">All Categories</option>
+                    <option value="COMMERCIAL TRAILER">Commercial Trailer</option>
+                    <option value="TIPPER DUMPER BODY">Tipper Dumper Body</option>
+                    <option value="RIGID LOAD BODY">Rigid Load Body</option>
+                  </select>
+                </div>
+                <div style="display:flex; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:8px;">
+                  <button type="button" class="btn btn-outline btn-xs" onclick="clearModuleFilters('workorders')" style="color:#EF4444; border-color:#FCA5A5; font-size:0.7rem;">✕ Clear Filters</button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -913,9 +965,39 @@
             <h1>Shop Floor Production Board</h1>
             <p>Advance work orders visually along progressive phases from steel framing, sandblasting, and painting to QC.</p>
           </div>
-          <button type="button" class="btn btn-outline btn-sm" onclick="openProgressionSettingsModal()" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; background:#ffffff; border-color:#CBD5E1; color:#0F172A; padding:8px 16px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
+          <div style="display:flex; gap:8px; align-items:center;">
+            <div style="position:relative;">
+              <button type="button" class="btn btn-outline btn-xs" data-filter-btn="production" onclick="toggleModuleFilter('production')" style="font-weight:700; padding:4px 12px;">
+                <svg style="width:12px;height:12px;margin-right:4px;" viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="4" y1="6" x2="20" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="10" y1="18" x2="14" y2="18"/></svg>
+                Filter ▾
+              </button>
+              <div id="filter-dd-production" class="filter-dd" style="display:none; background:#fff; border:1.5px solid #CBD5E1; border-radius:8px; padding:14px; box-shadow:0 8px 24px rgba(0,0,0,0.15); min-width:300px; margin-top:6px;">
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Date:</label>
+                    <input type="date" id="filter-production-from" class="form-control form-control-sm" onchange="setModuleFilter('production','dateFrom',this.value)" style="width:120px; font-size:0.75rem;">
+                    <span style="font-size:0.7rem; color:#94A3B8;">–</span>
+                    <input type="date" id="filter-production-to" class="form-control form-control-sm" onchange="setModuleFilter('production','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
+                  </div>
+                  <div style="display:flex; gap:8px; align-items:center;">
+                    <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
+                    <select id="filter-production-cat" class="form-control form-control-sm" onchange="setModuleFilter('production','category',this.value)" style="flex:1; font-size:0.75rem;">
+                      <option value="All">All Categories</option>
+                      <option value="COMMERCIAL TRAILER">Commercial Trailer</option>
+                      <option value="TIPPER DUMPER BODY">Tipper Dumper Body</option>
+                      <option value="RIGID LOAD BODY">Rigid Load Body</option>
+                    </select>
+                  </div>
+                  <div style="display:flex; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:8px;">
+                    <button type="button" class="btn btn-outline btn-xs" onclick="clearModuleFilters('production')" style="color:#EF4444; border-color:#FCA5A5; font-size:0.7rem;">✕ Clear Filters</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="openProgressionSettingsModal()" style="display:inline-flex; align-items:center; gap:8px; font-weight:700; background:#ffffff; border-color:#CBD5E1; color:#0F172A; padding:8px 16px; border-radius:6px; box-shadow:0 1px 3px rgba(0,0,0,0.1);">
             ⚙️ Pipeline Settings
           </button>
+          </div>
         </div>
         
         <div class="board-container" id="production-board-container">
@@ -1120,7 +1202,7 @@
           <div class="pdf-page" id="pdf-page-1">
             <div class="pdf-header">
               <div class="pdf-header-logo">
-                <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
               <div class="pdf-header-text">
                 <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -1130,7 +1212,7 @@
                 <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
               </div>
               <div class="pdf-header-iso">
-                <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
             </div>
             <div class="pdf-header-line"></div>
@@ -1213,7 +1295,7 @@
           <div class="pdf-page" id="pdf-page-2">
             <div class="pdf-header">
               <div class="pdf-header-logo">
-                <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
               <div class="pdf-header-text">
                 <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -1223,7 +1305,7 @@
                 <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
               </div>
               <div class="pdf-header-iso">
-                <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
             </div>
             <div class="pdf-header-line"></div>
@@ -1276,114 +1358,30 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- COMPONENT PART PRICING MATRIX MODAL -->
+  <!-- EDIT COMPONENTS MODAL -->
   <!-- ========================================== -->
-  <div class="pdf-modal" id="part-pricing-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:720px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:90vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
+  <div class="pdf-modal" id="edit-components-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:860px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:95vh;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
         <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          ⚙️ Edit Component Part Pricing Matrix
+          🛠 Edit Components
         </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closePartPricingMatrixModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
-      </div>
-      
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="part-pricing-modal-body">
-        <!-- Injected dynamically by JS per active product model -->
-      </div>
-      
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center;">
-        <span class="section-hint" style="font-size:0.75rem;">Prices saved here update defaults for future quotations.</span>
-        <div style="display:flex; gap:12px;">
-          <button type="button" class="btn btn-outline btn-sm" onclick="closePartPricingMatrixModal()">Cancel</button>
-          <button type="button" class="btn btn-primary btn-sm" onclick="saveComponentPartPricingFromModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Component Prices as Market Defaults</button>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-outline btn-xs" onclick="resetEditComponentsModal()" style="color:#F97316; border-color:#F97316; padding:4px 10px;">↺ Reset to Default</button>
+          <button type="button" class="btn btn-outline btn-xs" onclick="closeEditComponentsModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- CUSTOM ITEMS MANAGER MODAL -->
-  <!-- ========================================== -->
-  <div class="pdf-modal" id="custom-items-manager-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:600px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:90vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          ✏️ Custom Items Manager
-        </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closeCustomItemsManagerModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
-      </div>
       
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="custom-items-manager-body">
+      <div style="padding:20px 24px; overflow-y:auto; flex:1;" id="edit-components-modal-body">
         <!-- Injected dynamically by JS -->
       </div>
       
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeCustomItemsManagerModal()">Close</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- ADD CUSTOM ITEM SECTION MODAL -->
-  <!-- ========================================== -->
-  <div class="pdf-modal" id="add-custom-item-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:800px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:95vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          + Add Custom Spec Section
-        </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closeAddCustomItemSectionModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
-      </div>
-      
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="add-custom-item-modal-body">
-        <div style="margin-bottom:20px;">
-          <label style="font-weight:700; font-size:0.85rem; display:block; margin-bottom:6px;">Section Name</label>
-          <input type="text" id="aci-section-name" class="form-control" placeholder="e.g. Electrical System, Additional Body Options" style="font-weight:600;">
+      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <span class="section-hint" style="font-size:0.75rem;">Edit sections, specs, options, and prices. Changes persist for future quotations.</span>
+        <div style="display:flex; gap:12px;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="closeEditComponentsModal()">Cancel</button>
+          <button type="button" class="btn btn-primary btn-sm" onclick="saveEditComponentsModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Changes</button>
         </div>
-
-        <div style="margin-bottom:16px; display:flex; align-items:center; justify-content:space-between;">
-          <label style="font-weight:700; font-size:0.85rem;">Fields / Specs</label>
-          <button type="button" class="btn btn-outline btn-xs" onclick="addFieldRowToModal()" style="display:inline-flex;align-items:center;gap:4px;">
-            <svg style="width:12px;height:12px;" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add Field
-          </button>
-        </div>
-
-        <div id="aci-fields-container">
-          <!-- Field rows injected here -->
-        </div>
-
-        <div id="aci-no-fields-msg" style="padding:20px; background:#F8FAFC; border-radius:8px; text-align:center; color:#64748B; font-size:0.85rem;">
-          No fields yet. Click "Add Field" to add specs to this section.
-        </div>
-      </div>
-      
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeAddCustomItemSectionModal()">Cancel</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="saveCustomItemSection()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Section</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ========================================== -->
-  <!-- EDIT CUSTOM ITEM SECTION MODAL -->
-  <!-- ========================================== -->
-  <div class="pdf-modal" id="edit-custom-item-modal" style="z-index:9999;">
-    <div class="pdf-modal-container" style="max-width:800px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:95vh;">
-      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
-        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
-          ✏️ Edit Custom Spec Section
-        </h3>
-        <button type="button" class="btn btn-outline btn-xs" onclick="closeEditCustomItemSectionModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
-      </div>
-      
-      <div style="padding:24px; max-height:65vh; overflow-y:auto;" id="edit-custom-item-modal-body">
-        <!-- Injected -->
-      </div>
-      
-      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="closeEditCustomItemSectionModal()">Cancel</button>
-        <button type="button" class="btn btn-primary btn-sm" onclick="saveEditedCustomItemSection()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Changes</button>
       </div>
     </div>
   </div>
