@@ -2451,6 +2451,28 @@ function toggleModuleFilter(moduleName) {
   }
 }
 
+function setDatePreset(moduleName, months) {
+  const now = new Date();
+  const from = new Date(now);
+  if (months === 12) {
+    from.setFullYear(from.getFullYear() - 1);
+  } else {
+    from.setMonth(from.getMonth() - months);
+  }
+  const fromStr = from.toISOString().slice(0, 10);
+  const toStr = now.toISOString().slice(0, 10);
+  const fromEl = document.getElementById('filter-' + moduleName + '-from');
+  const toEl = document.getElementById('filter-' + moduleName + '-to');
+  if (fromEl) fromEl.value = fromStr;
+  if (toEl) toEl.value = toStr;
+  if (!window._moduleFilters[moduleName]) window._moduleFilters[moduleName] = {};
+  window._moduleFilters[moduleName].dateFrom = fromStr;
+  window._moduleFilters[moduleName].dateTo = toStr;
+  if (moduleName === 'workorders') renderWorkOrders();
+  else if (moduleName === 'production') renderProductionBoard();
+  else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
+}
+
 function setModuleFilter(moduleName, field, value) {
   if (!window._moduleFilters[moduleName]) window._moduleFilters[moduleName] = {};
   window._moduleFilters[moduleName][field] = value;

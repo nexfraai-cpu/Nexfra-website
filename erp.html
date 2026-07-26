@@ -238,6 +238,12 @@
                     <span style="font-size:0.7rem; color:#94A3B8;">–</span>
                     <input type="date" id="filter-approvals-to" class="form-control form-control-sm" onchange="setModuleFilter('approvals','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
                   </div>
+                  <div style="display:flex; gap:4px; flex-wrap:wrap; padding:2px 0;">
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('approvals',1)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">1M</button>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('approvals',2)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">2M</button>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('approvals',5)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">5M</button>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('approvals',12)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">1Y</button>
+                  </div>
                   <div style="display:flex; gap:8px; align-items:center;">
                     <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
                     <select id="filter-approvals-cat" class="form-control form-control-sm" onchange="setModuleFilter('approvals','category',this.value)" style="flex:1; font-size:0.75rem;">
@@ -936,6 +942,12 @@
                   <span style="font-size:0.7rem; color:#94A3B8;">–</span>
                   <input type="date" id="filter-workorders-to" class="form-control form-control-sm" onchange="setModuleFilter('workorders','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
                 </div>
+                <div style="display:flex; gap:4px; flex-wrap:wrap; padding:2px 0;">
+                  <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('workorders',1)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">1M</button>
+                  <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('workorders',2)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">2M</button>
+                  <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('workorders',5)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">5M</button>
+                  <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('workorders',12)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">1Y</button>
+                </div>
                 <div style="display:flex; gap:8px; align-items:center;">
                   <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
                   <select id="filter-workorders-cat" class="form-control form-control-sm" onchange="setModuleFilter('workorders','category',this.value)" style="flex:1; font-size:0.75rem;">
@@ -978,6 +990,12 @@
                     <input type="date" id="filter-production-from" class="form-control form-control-sm" onchange="setModuleFilter('production','dateFrom',this.value)" style="width:120px; font-size:0.75rem;">
                     <span style="font-size:0.7rem; color:#94A3B8;">–</span>
                     <input type="date" id="filter-production-to" class="form-control form-control-sm" onchange="setModuleFilter('production','dateTo',this.value)" style="width:120px; font-size:0.75rem;">
+                  </div>
+                  <div style="display:flex; gap:4px; flex-wrap:wrap; padding:2px 0;">
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('production',1)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">1M</button>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('production',2)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">2M</button>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('production',5)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">5M</button>
+                    <button type="button" class="btn btn-outline btn-xs" onclick="setDatePreset('production',12)" style="font-size:0.65rem; padding:2px 6px; font-weight:600;">1Y</button>
                   </div>
                   <div style="display:flex; gap:8px; align-items:center;">
                     <label style="font-size:0.7rem; font-weight:700; color:#475569; white-space:nowrap;">Category:</label>
