@@ -2494,19 +2494,29 @@ function setModuleFilter(moduleName, field, value) {
 
 function clearModuleFilters(moduleName) {
   delete window._moduleFilters[moduleName];
+  const searchEl = document.getElementById('search-' + moduleName);
+  if (searchEl) searchEl.value = '';
   if (moduleName === 'workorders') renderWorkOrders();
   else if (moduleName === 'production') renderProductionBoard();
   else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
 }
 
-function applyModuleFilter(moduleName, items, dateField, productField) {
+function applyModuleFilter(moduleName, items, dateField, productField, searchFields) {
   const f = window._moduleFilters[moduleName] || {};
-  if (!f.dateFrom && !f.dateTo && (!f.category || f.category === 'All')) return items;
+  const searchTerm = (f.search || '').toLowerCase().trim();
+  if (!f.dateFrom && !f.dateTo && (!f.category || f.category === 'All') && !searchTerm) return items;
   return items.filter(item => {
     const d = item[dateField] || '';
     if (f.dateFrom && d < f.dateFrom) return false;
     if (f.dateTo && d > f.dateTo) return false;
     if (f.category && f.category !== 'All' && getProductCategory(item[productField]) !== f.category) return false;
+    if (searchTerm && searchFields) {
+      const match = searchFields.some(field => {
+        const val = item[field];
+        return val && String(val).toLowerCase().includes(searchTerm);
+      });
+      if (!match) return false;
+    }
     return true;
   });
 }
@@ -2522,7 +2532,7 @@ function renderWorkOrders() {
     return;
   }
 
-  const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product');
+  const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
   const urgentOnly = window._moduleFilters && window._moduleFilters.workorders && window._moduleFilters.workorders.urgent === '1';
   const displayItems = urgentOnly ? filtered.filter(wo => wo.urgent) : filtered;
   container.innerHTML = displayItems.map(wo => {
@@ -3048,7 +3058,7 @@ window.renderApprovalsList = function(filter = 'pending') {
     quotes = pendingQuotes;
   }
 
-  const filtered = applyModuleFilter('approvals', quotes, 'date', 'productName');
+  const filtered = applyModuleFilter('approvals', quotes, 'date', 'productName', ['id', 'customerName', 'productName']);
 
   if (quotes.length === 0) {
     container.innerHTML = `
@@ -3201,7 +3211,7 @@ function renderProductionBoard() {
   const container = document.getElementById('production-board-container');
   if (!container) return;
 
-  const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product');
+  const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
   const urgentOnly = window._moduleFilters && window._moduleFilters.production && window._moduleFilters.production.urgent === '1';
   const displayItems = urgentOnly ? filteredItems.filter(item => item.urgent) : filteredItems;
 
