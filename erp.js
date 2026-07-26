@@ -2560,7 +2560,7 @@ function renderWorkOrders() {
               <svg class="icon-sm" viewBox="0 0 24 24" style="width:14px;height:14px; fill:none; stroke:currentColor;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
               Show Quotation
             </button>
-            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); switchModule('status')" style="background:#0F172A; border:none; color:#fff; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px;">Track Board</button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openOrderProgressionModal('${wo.quoteId}')" style="background:#0F172A; border:none; color:#fff; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px;">Track Order</button>
           </div>
         </div>
       </div>
@@ -2583,6 +2583,7 @@ window.setWorkOrderDueDate = function(id) {
   const input = document.getElementById('due-' + id);
   if (!input || !input.value) return;
   wo.dueDate = input.value;
+  ensureProductionItem(wo.quoteId, input.value);
   saveState();
   renderWorkOrders();
 };
@@ -2591,9 +2592,30 @@ window.clearWorkOrderDueDate = function(id) {
   const wo = STATE.workOrders.find(w => w.id === id);
   if (!wo) return;
   wo.dueDate = null;
+  if (STATE.productionItems) {
+    STATE.productionItems = STATE.productionItems.filter(p => p.quoteId !== wo.quoteId);
+  }
   saveState();
   renderWorkOrders();
 };
+
+function ensureProductionItem(quoteId, dueDate) {
+  if (!STATE.productionItems) STATE.productionItems = [];
+  if (STATE.productionItems.find(p => p.quoteId === quoteId)) return;
+  const quote = STATE.quotations.find(q => q.id === quoteId);
+  const wo = STATE.workOrders.find(w => w.quoteId === quoteId);
+  STATE.productionItems.push({
+    id: quoteId,
+    quoteId: quoteId,
+    customerName: quote ? quote.customerName : (wo ? wo.customerName : 'Client'),
+    product: quote ? quote.productName : (wo ? wo.product : 'Custom Body'),
+    date: quote ? quote.date : (wo ? wo.date : new Date().toISOString().split('T')[0]),
+    columnStatus: 'Not Started',
+    progressPct: 0,
+    progressionMap: {},
+    dueDate: dueDate
+  });
+}
 
 // ------------------------------------------
 // 6. REDESIGNED PRODUCTION BOARD & ORDER PROGRESSION
@@ -3082,24 +3104,7 @@ window.approveQuotation = function(quoteId) {
 
   q.status = 'Approved';
 
-  // 1. Move to Production Board under "Not Started"
-  if (!STATE.productionItems) STATE.productionItems = [];
-  let prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
-  if (!prodItem) {
-    prodItem = {
-      id: quoteId,
-      quoteId: quoteId,
-      customerName: q.customerName || 'Valued Client',
-      product: q.productName || 'Commercial Body',
-      date: q.date || new Date().toISOString().split('T')[0],
-      columnStatus: 'Not Started',
-      progressPct: 0,
-      progressionMap: {}
-    };
-    STATE.productionItems.push(prodItem);
-  }
-
-  // 2. Move to Work Orders List
+  // 1. Move to Work Orders List
   if (!STATE.workOrders) STATE.workOrders = [];
   let wo = STATE.workOrders.find(w => w.quoteId === quoteId);
   if (!wo) {
@@ -3128,12 +3133,11 @@ window.approveQuotation = function(quoteId) {
     }
   }
 
-  logSystemActivity(`Quotation ${quoteId} approved and dispatched to Work Orders & Production Board.`);
+  logSystemActivity(`Quotation ${quoteId} approved and dispatched to Work Orders.`);
   saveState();
 
-  showToastNotification(`Quotation ${quoteId} Approved! Dispatched to Work Orders List and Production Board.`);
+  showToastNotification(`Quotation ${quoteId} Approved! Dispatched to Work Orders List.`);
   renderApprovalsList('pending');
-  if (typeof renderProductionBoard === 'function') renderProductionBoard();
   if (typeof renderWorkOrders === 'function') renderWorkOrders();
 };
 
@@ -3161,30 +3165,11 @@ window.showQuotationFromBoard = function(quoteId) {
 };
 
 function syncProductionItemsWithQuotations() {
-  if (!STATE.productionItems) STATE.productionItems = [];
-  if (STATE.quotations && STATE.quotations.length > 0) {
-    STATE.quotations.filter(q => q.status === 'Approved').forEach(q => {
-      let existing = STATE.productionItems.find(p => p.quoteId === q.id || p.id === q.id);
-      if (!existing) {
-        const client = STATE.customers ? STATE.customers.find(c => c.id === q.customerId) : null;
-        STATE.productionItems.push({
-          id: q.id,
-          quoteId: q.id,
-          customerName: client ? client.company : (q.customerName || 'Client'),
-          product: q.productName || 'Custom Vehicle Body',
-          date: q.date || new Date().toISOString().split('T')[0],
-          columnStatus: 'Not Started',
-          progressPct: 0,
-          progressionMap: {}
-        });
-      }
-    });
-  }
+  // No-op: production items are now created only when a due date is set on a work order.
 }
 
 function renderProductionBoard() {
   loadState();
-  syncProductionItemsWithQuotations();
 
   const container = document.getElementById('production-board-container');
   if (!container) return;
@@ -3211,7 +3196,7 @@ function renderProductionBoard() {
             <span style="font-size:0.7rem; font-weight:800; color:${col.status === 'Finished' ? '#059669' : (col.status === 'Work in Progress' ? '#2563EB' : '#64748B')};">${pct}% Complete</span>
           </div>
 
-          <div style="font-weight:700; font-size:0.875rem; color:#1E293B; margin-bottom:2px;">${item.customerName}</div>
+          <div style="font-weight:700; font-size:0.875rem; color:#1E293B; margin-bottom:2px;">${item.dueDate ? `Due: ${item.dueDate}` : 'No due date'}</div>
           <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
 
           <!-- Mini Progress Bar -->
@@ -3250,7 +3235,6 @@ function renderProductionBoard() {
 
 window.openOrderProgressionModal = function(quoteId) {
   loadState();
-  syncProductionItemsWithQuotations();
 
   const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
   if (!prodItem) return;
