@@ -1523,6 +1523,10 @@ function buildEditSectionCard(secId, displayName, specs, isCustom) {
     <div class="ec-section-card" id="${cardId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
         <div style="display:flex; align-items:center; gap:8px; flex:1;">
+          <div style="display:flex; gap:4px;">
+            <button type="button" onclick="moveEditSection(this, -1)" title="Move up" style="background:none; border:1px solid #CBD5E1; border-radius:4px; cursor:pointer; padding:2px 6px; font-size:0.65rem; color:#475569;">▲</button>
+            <button type="button" onclick="moveEditSection(this, 1)" title="Move down" style="background:none; border:1px solid #CBD5E1; border-radius:4px; cursor:pointer; padding:2px 6px; font-size:0.65rem; color:#475569;">▼</button>
+          </div>
           <span style="font-weight:700; font-size:0.9rem; color:#1E293B;">${displayName}</span>
           ${isCustom ? '<span style="font-size:0.65rem; font-weight:600; color:#059669; background:#DCFCE7; padding:2px 8px; border-radius:4px;">custom</span>' : ''}
           <span class="section-hint" style="font-size:0.7rem; color:#64748B;">${specs.length} spec(s)</span>
@@ -1583,7 +1587,11 @@ function buildEditSpecRow(spec, fieldRowId, idx) {
   return `
     <div class="aci-field-row ec-field-row" id="${fieldRowId}" style="background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px; padding:14px; margin-bottom:12px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
-        <span style="font-weight:700; font-size:0.8rem; color:#1E293B;">Spec #${idx + 1}</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <button type="button" onclick="moveEditSpecRow(this, -1)" title="Move up" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:1px 5px; font-size:0.6rem; color:#475569;">▲</button>
+          <button type="button" onclick="moveEditSpecRow(this, 1)" title="Move down" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:1px 5px; font-size:0.6rem; color:#475569;">▼</button>
+          <span style="font-weight:700; font-size:0.8rem; color:#1E293B;">Spec #${idx + 1}</span>
+        </div>
         <button type="button" onclick="removeSpecFromEditSection(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:2px 8px; font-size:0.7rem; cursor:pointer; font-weight:600;">
           ✕ Remove
         </button>
@@ -1672,6 +1680,10 @@ window.addEditSectionCard = function() {
     <div class="ec-section-card" id="${cardId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px; border-color:#059669;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
         <div style="display:flex; align-items:center; gap:8px; flex:1;">
+          <div style="display:flex; gap:4px;">
+            <button type="button" onclick="moveEditSection(this, -1)" title="Move up" style="background:none; border:1px solid #CBD5E1; border-radius:4px; cursor:pointer; padding:2px 6px; font-size:0.65rem; color:#475569;">▲</button>
+            <button type="button" onclick="moveEditSection(this, 1)" title="Move down" style="background:none; border:1px solid #CBD5E1; border-radius:4px; cursor:pointer; padding:2px 6px; font-size:0.65rem; color:#475569;">▼</button>
+          </div>
           <input type="text" class="form-control form-control-sm ec-section-name-input" placeholder="Enter section name..." value="New Section" style="font-weight:700; font-size:0.9rem; max-width:300px;">
           <span style="font-size:0.65rem; font-weight:600; color:#059669; background:#DCFCE7; padding:2px 8px; border-radius:4px;">new</span>
         </div>
@@ -1699,6 +1711,38 @@ window.removeEditSectionCard = function(btn) {
   const card = btn.closest('.ec-section-card');
   if (card && confirm('Remove this section and all its specs?')) {
     card.remove();
+  }
+};
+
+window.moveEditSection = function(btn, direction) {
+  const card = btn.closest('.ec-section-card');
+  if (!card) return;
+  const parent = card.parentElement;
+  if (!parent) return;
+  const siblings = [...parent.querySelectorAll(':scope > .ec-section-card')];
+  const idx = siblings.indexOf(card);
+  const target = idx + direction;
+  if (target < 0 || target >= siblings.length) return;
+  if (direction < 0) {
+    parent.insertBefore(card, siblings[target]);
+  } else {
+    parent.insertBefore(card, siblings[target].nextElementSibling);
+  }
+};
+
+window.moveEditSpecRow = function(btn, direction) {
+  const row = btn.closest('.ec-field-row');
+  if (!row) return;
+  const parent = row.parentElement;
+  if (!parent) return;
+  const siblings = [...parent.querySelectorAll(':scope > .ec-field-row')];
+  const idx = siblings.indexOf(row);
+  const target = idx + direction;
+  if (target < 0 || target >= siblings.length) return;
+  if (direction < 0) {
+    parent.insertBefore(row, siblings[target]);
+  } else {
+    parent.insertBefore(row, siblings[target].nextElementSibling);
   }
 };
 
