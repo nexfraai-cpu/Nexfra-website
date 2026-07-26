@@ -2016,8 +2016,23 @@ function generateQuotationFinalReview() {
   document.getElementById('w-pdf-to-gst').innerText = `GST NO: ${c.gst}`;
 
   const capacityLabel = wizardState.capacity && wizardState.capacity !== 'NA' ? `${wizardState.capacity} ` : '';
-  document.getElementById('w-pdf-subj-text').innerText = `Subject: Quotation for -${c.model.toUpperCase()} , ${capacityLabel}${template.name.toUpperCase()} with sub frame and Hydraulic Kit`;
-  document.getElementById('w-pdf-table-desc').innerHTML = `${capacityLabel}${template.name.toUpperCase()} WITH SUBFRAME and CYLINDER KIT<br>Regular TAIL DOOR ${c.model}`;
+
+  // Build descriptor: conditionally include subframe and hydraulic kit
+  const subframeRequired = !wizardState.notRequired['subframe'];
+  const hydraulicRequired = !wizardState.notRequired['cylinder'];
+  const extras = [];
+  if (subframeRequired) extras.push('subframe');
+  if (hydraulicRequired) extras.push('Hydraulic Kit');
+  const extrasStr = extras.length > 0 ? ` with ${extras.join(' & ')}` : '';
+
+  const dimsStr = `${lenVal} L × ${widthVal} W × ${heightVal} H`;
+  document.getElementById('w-pdf-subj-text').innerText = `Subject: Quotation for -${c.model.toUpperCase()} , ${capacityLabel}${template.name.toUpperCase()} (${dimsStr})${extrasStr}`;
+
+  const descExtras = [];
+  if (subframeRequired) descExtras.push('WITH SUBFRAME');
+  if (hydraulicRequired) descExtras.push('CYLINDER KIT');
+  const descExtrasStr = descExtras.length > 0 ? ` ${descExtras.join(' & ')}` : '';
+  document.getElementById('w-pdf-table-desc').innerHTML = `${capacityLabel}${template.name.toUpperCase()}${descExtrasStr}<br>Regular TAIL DOOR ${c.model}`;
 
   // Price columns
   document.getElementById('w-pdf-table-basic').innerText = formatPdfPrice(basicAmount);
@@ -2431,6 +2446,14 @@ function getDefaultProgressionSchema() {
           ]
         },
         {
+          id: "sub_steel_section_bars",
+          name: "Steel Section and Bars",
+          items: [
+            { id: "steelSection_ordered", name: "Ordered" },
+            { id: "steelSection_received", name: "Received" }
+          ]
+        },
+        {
           id: "sub_aclass_bop",
           name: "A Class BOP",
           items: [
@@ -2492,13 +2515,13 @@ function getDefaultProgressionSchema() {
     },
     {
       id: "sec_welding",
-      name: "5. Welding",
+      name: "5. Cubing & Welding",
       subsections: [
         {
-          id: "sub_welding_status",
-          name: "Welding Process",
+          id: "sub_cubing_status",
+          name: "Cubing Process",
           items: [
-            { id: "welding_done", name: "Welding Done" }
+            { id: "cubing_done", name: "Cubing Done" }
           ]
         }
       ]
@@ -2570,6 +2593,18 @@ function getDefaultProgressionSchema() {
       id: "sec_qc_dispatch",
       name: "10. Quality Check & Dispatch",
       subsections: [
+        {
+          id: "sub_qc_checks",
+          name: "QC Checks",
+          items: [
+            { id: "qc_dimensions", name: "Dimensions" },
+            { id: "qc_welding", name: "Welding" },
+            { id: "qc_hydraulic", name: "Hydraulic" },
+            { id: "qc_functional", name: "Functional" },
+            { id: "qc_painting", name: "Painting" },
+            { id: "qc_visuals", name: "Visuals" }
+          ]
+        },
         {
           id: "sub_final_dispatch",
           name: "Final Delivery Stages",
@@ -3159,6 +3194,33 @@ function renderOrderProgressionBody(prodItem) {
         `;
       }).join('')}
     </div>
+
+    <!-- 11. Dispatched Section (permanent, text-input based) -->
+    <div class="card" style="padding:16px; background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px;">
+      <h4 style="margin:0 0 12px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">11. Dispatched</h4>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Vehicle Number</label>
+          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.vehicleNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'vehicleNo', this.value)" placeholder="e.g. TN 01 AB 1234" style="font-size:0.8rem;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Chassis Number</label>
+          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.chassisNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'chassisNo', this.value)" placeholder="e.g. 1234567890" style="font-size:0.8rem;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Driver Name</label>
+          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.driverName) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'driverName', this.value)" placeholder="e.g. Rajesh Kumar" style="font-size:0.8rem;">
+        </div>
+        <div>
+          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Driver Number</label>
+          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.driverNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'driverNo', this.value)" placeholder="e.g. 9876543210" style="font-size:0.8rem;">
+        </div>
+        <div style="grid-column:span 2;">
+          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Date & Time of Dispatch</label>
+          <input type="datetime-local" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.dispatchedAt) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'dispatchedAt', this.value)" style="font-size:0.8rem;">
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -3196,6 +3258,15 @@ window.toggleProgressionMapKey = function(quoteId, key, isChecked) {
   saveState();
   renderOrderProgressionBody(prodItem);
   renderProductionBoard();
+};
+
+window.updateDispatchedData = function(quoteId, field, value) {
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
+  if (!prodItem.dispatchedData) prodItem.dispatchedData = {};
+  prodItem.dispatchedData[field] = value;
+  saveState();
 };
 
 // ------------------------------------------
