@@ -2355,7 +2355,8 @@ window.convertWizardToWorkOrder = function() {
     progress: 0,
     specs: specDetails,
     notes: `Configured dynamically via ERP Wizard. Sales rep: ${c.salesperson}`,
-    dueDate: null
+    dueDate: null,
+    urgent: false
   });
 
   logSystemActivity(`Work Order ${woId} successfully dispatched for quote: ${quoteId}.`);
@@ -2432,9 +2433,11 @@ function toggleModuleFilter(moduleName) {
     const fromEl = document.getElementById('filter-' + moduleName + '-from');
     const toEl = document.getElementById('filter-' + moduleName + '-to');
     const catEl = document.getElementById('filter-' + moduleName + '-cat');
+    const urgentEl = document.getElementById('filter-' + moduleName + '-urgent');
     if (fromEl) fromEl.value = f.dateFrom || '';
     if (toEl) toEl.value = f.dateTo || '';
     if (catEl) catEl.value = f.category || 'All';
+    if (urgentEl) urgentEl.checked = f.urgent === '1';
     const btn = document.querySelector(`[data-filter-btn="${moduleName}"]`);
     if (btn) {
       const r = btn.getBoundingClientRect();
@@ -2514,12 +2517,16 @@ function renderWorkOrders() {
   }
 
   const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product');
-  container.innerHTML = filtered.map(wo => {
+  const urgentOnly = window._moduleFilters && window._moduleFilters.workorders && window._moduleFilters.workorders.urgent === '1';
+  const displayItems = urgentOnly ? filtered.filter(wo => wo.urgent) : filtered;
+  container.innerHTML = displayItems.map(wo => {
     const collapsed = wo._collapsed !== false;
     const todayStr = new Date().toISOString().split('T')[0];
     let dueStatus = '';
     let daysUntil = null;
-    if (wo.dueDate) {
+    if (wo.urgent) {
+      dueStatus = 'URGENT';
+    } else if (wo.dueDate) {
       daysUntil = Math.ceil((new Date(wo.dueDate) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
       dueStatus = daysUntil <= 3 ? 'URGENT' : 'ON SCHEDULE';
     }
@@ -2561,6 +2568,7 @@ function renderWorkOrders() {
               Show Quotation
             </button>
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openOrderProgressionModal('${wo.quoteId}')" style="background:#0F172A; border:none; color:#fff; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px;">Track Order</button>
+            <button class="btn btn-sm" onclick="event.stopPropagation(); toggleWorkOrderUrgent('${wo.id}')" style="background:${wo.urgent ? '#DC2626' : '#F1F5F9'}; border:1.5px solid ${wo.urgent ? '#DC2626' : '#CBD5E1'}; color:${wo.urgent ? '#fff' : '#475569'}; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; cursor:pointer;">${wo.urgent ? '✓ Urgent' : 'Set Urgent'}</button>
           </div>
         </div>
       </div>
@@ -2575,6 +2583,14 @@ window.toggleWorkOrder = function(id) {
     saveState();
     renderWorkOrders();
   }
+};
+
+window.toggleWorkOrderUrgent = function(id) {
+  const wo = STATE.workOrders.find(w => w.id === id);
+  if (!wo) return;
+  wo.urgent = !wo.urgent;
+  saveState();
+  renderWorkOrders();
 };
 
 window.setWorkOrderDueDate = function(id) {
@@ -3121,7 +3137,8 @@ window.approveQuotation = function(quoteId) {
         ? Object.entries(q.specs).map(([k, v]) => `${k}: ${v}`)
         : (Array.isArray(q.specs) ? q.specs : []),
       notes: `Approved quotation ${quoteId} dispatched to production shop floor.`,
-      dueDate: null
+      dueDate: null,
+      urgent: false
     });
   }
 

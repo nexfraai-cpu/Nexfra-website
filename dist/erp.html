@@ -957,6 +957,12 @@
                     <option value="RIGID LOAD BODY">Rigid Load Body</option>
                   </select>
                 </div>
+                <div style="display:flex; align-items:center; gap:8px; padding-top:4px;">
+                  <label style="font-size:0.7rem; font-weight:700; color:#EF4444; white-space:nowrap; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" id="filter-workorders-urgent" onchange="setModuleFilter('workorders','urgent',this.checked ? '1' : '')" style="accent-color:#DC2626;">
+                    Urgent only
+                  </label>
+                </div>
                 <div style="display:flex; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:8px;">
                   <button type="button" class="btn btn-outline btn-xs" onclick="clearModuleFilters('workorders')" style="color:#EF4444; border-color:#FCA5A5; font-size:0.7rem;">✕ Clear Filters</button>
                 </div>
