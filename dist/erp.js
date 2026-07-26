@@ -2283,6 +2283,7 @@ window.saveWizardQuotation = function() {
       total: wizardState.total || (template ? template.basePrice : 520000),
       status: 'Pending Approval',
       specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
+      notRequired: JSON.parse(JSON.stringify(wizardState.notRequired || {})),
       scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
       terms: wizardState.terms || []
     };
@@ -3792,8 +3793,22 @@ window.openPdfPreview = function(quoteId) {
     productFamilyText = 'ROCK BODY TIPPER';
   }
 
-  document.getElementById('pdf-subj-text').innerText = `Subject: Quotation for -${chassisName} , ${capacityName} ${productFamilyText} with sub frame and Hydraulic Kit`;
-  document.getElementById('pdf-table-desc').innerHTML = `${capacityName} ${productFamilyText} WITH SUBFRAME and CYLINDER KIT<br>Regular TAIL DOOR ${chassisName}`;
+  const nr = quote.notRequired || {};
+  const showSubframe = !nr['subframe'];
+  const showCylinder = !nr['cylinder'];
+
+  const subStr = [];
+  if (showSubframe) subStr.push('sub frame');
+  if (showCylinder) subStr.push('Hydraulic Kit');
+  const extStr = subStr.length > 0 ? ` with ${subStr.join(' & ')}` : '';
+
+  const descSubStr = [];
+  if (showSubframe) descSubStr.push('WITH SUBFRAME');
+  if (showCylinder) descSubStr.push('CYLINDER KIT');
+  const descExtStr = descSubStr.length > 0 ? ` ${descSubStr.join(' & ')}` : '';
+
+  document.getElementById('pdf-subj-text').innerText = `Subject: Quotation for -${chassisName} , ${capacityName} ${productFamilyText}${extStr}`;
+  document.getElementById('pdf-table-desc').innerHTML = `${capacityName} ${productFamilyText}${descExtStr}<br>Regular TAIL DOOR ${chassisName}`;
 
   document.getElementById('pdf-table-basic').innerText = formatPdfPrice(basicVal);
   document.getElementById('pdf-table-gst').innerText = formatPdfPrice(gstVal);
