@@ -2407,54 +2407,53 @@ function renderWorkOrders() {
   }
 
   container.innerHTML = STATE.workOrders.map(wo => {
+    const collapsed = wo._collapsed !== false;
     return `
-      <div class="wo-card">
-        <div class="wo-header">
-          <span class="wo-id">${wo.id}</span>
-          <span class="wo-date">Allocated: ${wo.date}</span>
-        </div>
-        <div class="wo-body">
-          <div class="wo-meta">
-            <div class="wo-meta-item">
-              <strong>Client Account</strong>
-              ${wo.customerName}
-            </div>
-            <div class="wo-meta-item">
-              <strong>Vehicle Target</strong>
-              ${wo.product}
-            </div>
-            <div class="wo-meta-item">
-              <strong>Production Phase</strong>
-              <span style="color:var(--color-primary);font-weight:700">${wo.stage}</span>
-            </div>
-            <div class="wo-meta-item">
-              <strong>Assembly Progress</strong>
-              ${wo.progress}%
-            </div>
+      <div class="wo-card" style="margin-bottom:10px; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+        <div class="wo-header" onclick="toggleWorkOrder('${wo.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#F8FAFC; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #E2E8F0'}; transition:background 0.15s;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px;">${wo.id}</span>
+            <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${wo.customerName}</span>
+            <span style="font-size:0.75rem; font-weight:600; color:var(--color-primary);">${wo.product}</span>
+            <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Stage: ${wo.stage}</span>
+            <span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span>
           </div>
-          
-          <div class="wo-specs-box">
-            <h4>TECHNICAL SPECIFICATIONS PRINT</h4>
-            <ul>
-              ${wo.specs.map(spec => `<li><span>${spec}</span></li>`).join('')}
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.7rem; color:#94A3B8;">${wo.date}</span>
+            <span style="font-size:0.75rem; color:#64748B; transition:transform 0.2s; ${collapsed ? '' : 'transform:rotate(180deg);'}">▼</span>
+          </div>
+        </div>
+        <div class="wo-body" style="${collapsed ? 'display:none;' : ''} padding:16px;">
+          <div class="wo-specs-box" style="background:#F1F5F9; padding:12px; border-radius:6px; margin-bottom:12px;">
+            <h4 style="margin:0 0 8px 0; font-size:0.8rem; font-weight:800; color:#1E293B;">TECHNICAL SPECIFICATIONS PRINT</h4>
+            <ul style="margin:0; padding-left:20px; display:flex; flex-wrap:wrap; gap:4px 20px;">
+              ${wo.specs.map(spec => `<li style="font-size:0.78rem; color:#475569; min-width:180px;"><span>${spec}</span></li>`).join('')}
             </ul>
           </div>
-          
-          <div class="wo-notes">
+          <div class="wo-notes" style="font-size:0.8rem; color:#475569; margin-bottom:12px;">
             <strong>Factory Notes:</strong> ${wo.notes}
           </div>
-        </div>
-        <div class="wo-footer">
-          <button class="btn btn-outline btn-sm" onclick="alert('Print triggers sent to local printer successfully.')">
-            <svg class="icon-sm" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            Print WO Card
-          </button>
-          <button class="btn class-primary btn-sm" onclick="switchModule('status')" style="background-color: var(--color-primary); color: #fff; padding: 8px 16px; border: none; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; border-radius: 2px;">Track Board</button>
+          <div class="wo-footer" style="display:flex; gap:12px;">
+            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); alert('Print triggers sent to local printer successfully.')">
+              <svg class="icon-sm" viewBox="0 0 24 24" style="width:14px;height:14px;"><path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></path></svg>
+              Print WO Card
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); switchModule('status')" style="background:#0F172A; border:none; color:#fff; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px;">Track Board</button>
+          </div>
         </div>
       </div>
     `;
   }).join('');
 }
+
+window.toggleWorkOrder = function(id) {
+  const wo = STATE.workOrders.find(w => w.id === id);
+  if (wo) {
+    wo._collapsed = wo._collapsed !== false ? false : true;
+    saveState();
+    renderWorkOrders();
+  }
+};
 
 // ------------------------------------------
 // 6. REDESIGNED PRODUCTION BOARD & ORDER PROGRESSION
