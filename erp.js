@@ -2574,7 +2574,7 @@ function renderWorkOrders() {
           </div>
           <div class="wo-due" style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:8px 12px; background:#F8FAFC; border-radius:6px; border:1px solid #E2E8F0;">
             <span style="font-size:0.75rem; font-weight:700; color:#475569;">Due Date:</span>
-            <input type="date" id="due-${wo.id}" value="${wo.dueDate || ''}" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
+            <input type="date" id="due-${wo.id}" value="${wo.dueDate || ''}" min="${new Date().toISOString().split('T')[0]}" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
             <button type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); setWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; font-weight:700;">Save</button>
             ${wo.dueDate ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); clearWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; color:#EF4444; border-color:#FCA5A5; font-weight:700;">Clear</button>` : ''}
           </div>
@@ -2617,6 +2617,11 @@ window.setWorkOrderDueDate = function(id) {
   if (!wo) return;
   const input = document.getElementById('due-' + id);
   if (!input || !input.value) return;
+  const today = new Date().toISOString().split('T')[0];
+  if (input.value < today) {
+    alert('Due date cannot be in the past. Please select today or a future date.');
+    return;
+  }
   wo.dueDate = input.value;
   ensureProductionItem(wo.quoteId, input.value);
   saveState();
