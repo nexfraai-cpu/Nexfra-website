@@ -2353,7 +2353,8 @@ window.convertWizardToWorkOrder = function() {
     stage: 'Pending',
     progress: 0,
     specs: specDetails,
-    notes: `Configured dynamically via ERP Wizard. Sales rep: ${c.salesperson}`
+    notes: `Configured dynamically via ERP Wizard. Sales rep: ${c.salesperson}`,
+    dueDate: null
   });
 
   logSystemActivity(`Work Order ${woId} successfully dispatched for quote: ${quoteId}.`);
@@ -2514,6 +2515,13 @@ function renderWorkOrders() {
   const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product');
   container.innerHTML = filtered.map(wo => {
     const collapsed = wo._collapsed !== false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    let dueStatus = '';
+    let daysUntil = null;
+    if (wo.dueDate) {
+      daysUntil = Math.ceil((new Date(wo.dueDate) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
+      dueStatus = daysUntil <= 3 ? 'URGENT' : 'ON SCHEDULE';
+    }
     return `
       <div class="wo-card" style="margin-bottom:10px; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
         <div class="wo-header" onclick="toggleWorkOrder('${wo.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#F8FAFC; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #E2E8F0'}; transition:background 0.15s;">
@@ -2525,7 +2533,8 @@ function renderWorkOrders() {
             <span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
-            <span style="font-size:0.7rem; color:#94A3B8;">${wo.date}</span>
+            ${wo.dueDate ? `<span style="font-size:0.7rem; font-weight:700; color:#475569;">Due: ${wo.dueDate}</span>` : `<span style="font-size:0.7rem; color:#94A3B8;">${wo.date}</span>`}
+            ${dueStatus ? `<span style="font-size:0.65rem; font-weight:800; padding:2px 8px; border-radius:4px; ${dueStatus === 'URGENT' ? 'background:#FEE2E2; color:#DC2626;' : 'background:#D1FAE5; color:#059669;'}">${dueStatus}</span>` : ''}
             <span style="font-size:0.75rem; color:#64748B; transition:transform 0.2s; ${collapsed ? '' : 'transform:rotate(180deg);'}">▼</span>
           </div>
         </div>
@@ -2538,6 +2547,12 @@ function renderWorkOrders() {
           </div>
           <div class="wo-notes" style="font-size:0.8rem; color:#475569; margin-bottom:12px;">
             <strong>Factory Notes:</strong> ${wo.notes}
+          </div>
+          <div class="wo-due" style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:8px 12px; background:#F8FAFC; border-radius:6px; border:1px solid #E2E8F0;">
+            <span style="font-size:0.75rem; font-weight:700; color:#475569;">Due Date:</span>
+            <input type="date" id="due-${wo.id}" value="${wo.dueDate || ''}" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
+            <button type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); setWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; font-weight:700;">Save</button>
+            ${wo.dueDate ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); clearWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; color:#EF4444; border-color:#FCA5A5; font-weight:700;">Clear</button>` : ''}
           </div>
           <div class="wo-footer" style="display:flex; gap:12px;">
             <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openPdfPreview('${wo.quoteId}')">
@@ -2559,6 +2574,24 @@ window.toggleWorkOrder = function(id) {
     saveState();
     renderWorkOrders();
   }
+};
+
+window.setWorkOrderDueDate = function(id) {
+  const wo = STATE.workOrders.find(w => w.id === id);
+  if (!wo) return;
+  const input = document.getElementById('due-' + id);
+  if (!input || !input.value) return;
+  wo.dueDate = input.value;
+  saveState();
+  renderWorkOrders();
+};
+
+window.clearWorkOrderDueDate = function(id) {
+  const wo = STATE.workOrders.find(w => w.id === id);
+  if (!wo) return;
+  wo.dueDate = null;
+  saveState();
+  renderWorkOrders();
 };
 
 // ------------------------------------------
@@ -3081,7 +3114,8 @@ window.approveQuotation = function(quoteId) {
       specs: typeof q.specs === 'object' && !Array.isArray(q.specs)
         ? Object.entries(q.specs).map(([k, v]) => `${k}: ${v}`)
         : (Array.isArray(q.specs) ? q.specs : []),
-      notes: `Approved quotation ${quoteId} dispatched to production shop floor.`
+      notes: `Approved quotation ${quoteId} dispatched to production shop floor.`,
+      dueDate: null
     });
   }
 
