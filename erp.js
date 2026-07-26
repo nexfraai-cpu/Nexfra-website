@@ -2653,6 +2653,7 @@ function ensureProductionItem(quoteId, dueDate) {
     columnStatus: 'Not Started',
     progressPct: 0,
     progressionMap: {},
+    remarks: {},
     dueDate: dueDate,
     urgent: wo ? !!wo.urgent : false
   });
@@ -3308,6 +3309,57 @@ window.closeOrderProgressionModal = function() {
   if (modal) modal.classList.remove('active');
 };
 
+let _remarkContext = null;
+
+window.openRemarkModal = function(quoteId, secId) {
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
+  if (!prodItem.remarks) prodItem.remarks = {};
+
+  _remarkContext = { quoteId, secId };
+
+  const overlay = document.getElementById('remark-modal-overlay');
+  const textarea = document.getElementById('remark-textarea');
+  const title = document.getElementById('remark-modal-title');
+
+  if (title) {
+    const schema = getProgressionSchema();
+    const sec = schema.find(s => s.id === secId);
+    title.innerText = 'Remark' + (sec ? ' for ' + sec.name : '');
+  }
+
+  if (textarea) {
+    textarea.value = prodItem.remarks[secId] || '';
+  }
+
+  if (overlay) {
+    overlay.style.display = 'flex';
+  }
+};
+
+window.closeRemarkModal = function() {
+  const overlay = document.getElementById('remark-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+  _remarkContext = null;
+};
+
+window.saveRemark = function() {
+  if (!_remarkContext) return;
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === _remarkContext.quoteId || p.id === _remarkContext.quoteId);
+  if (!prodItem) return;
+
+  if (!prodItem.remarks) prodItem.remarks = {};
+  const textarea = document.getElementById('remark-textarea');
+  prodItem.remarks[_remarkContext.secId] = textarea ? textarea.value : '';
+
+  saveState();
+  closeRemarkModal();
+  renderOrderProgressionBody(prodItem);
+  renderProductionBoard();
+};
+
 function renderOrderProgressionBody(prodItem) {
   const schema = getProgressionSchema();
   if (!prodItem.progressionMap) prodItem.progressionMap = {};
@@ -3408,6 +3460,15 @@ function renderOrderProgressionBody(prodItem) {
                   </div>
                 </div>
               `).join('')}
+              <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <strong style="font-size:0.8rem; color:#334155;">Remark:</strong>
+                  <button type="button" onclick="openRemarkModal('${prodItem.quoteId}','${sec.id}')" style="font-size:0.7rem; font-weight:600; padding:2px 10px; border-radius:4px; border:1.5px solid #CBD5E1; background:#fff; color:#0F172A; cursor:pointer;">
+                    ${(prodItem.remarks && prodItem.remarks[sec.id]) ? 'Edit Remark' : '+ Add Remark'}
+                  </button>
+                </div>
+                ${(prodItem.remarks && prodItem.remarks[sec.id]) ? `<p style="margin:6px 0 0 0; font-size:0.75rem; color:#475569; padding:6px 8px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:4px; white-space:pre-wrap;">${escapeHtml(prodItem.remarks[sec.id])}</p>` : ''}
+              </div>
             </div>
 
           </div>
