@@ -2076,6 +2076,9 @@ function generateQuotationFinalReview() {
   // Build descriptor: conditionally include subframe and hydraulic kit
   const subframeRequired = !wizardState.notRequired['subframe'];
   const hydraulicRequired = !wizardState.notRequired['cylinder'];
+  const lenVal = document.getElementById('w-dim-length') ? document.getElementById('w-dim-length').value : template.dimensions.length;
+  const heightVal = document.getElementById('w-dim-height') ? document.getElementById('w-dim-height').value : template.dimensions.height;
+  const widthVal = document.getElementById('w-dim-width') ? document.getElementById('w-dim-width').value : template.dimensions.width;
   const extras = [];
   if (subframeRequired) extras.push('subframe');
   if (hydraulicRequired) extras.push('Hydraulic Kit');
@@ -2107,9 +2110,6 @@ function generateQuotationFinalReview() {
   let count = 1;
 
   // Add category dimensions
-  const lenVal = document.getElementById('w-dim-length') ? document.getElementById('w-dim-length').value : template.dimensions.length;
-  const heightVal = document.getElementById('w-dim-height') ? document.getElementById('w-dim-height').value : template.dimensions.height;
-  const widthVal = document.getElementById('w-dim-width') ? document.getElementById('w-dim-width').value : template.dimensions.width;
 
   // Populate spec list elements dynamically (built-in specs)
   Object.keys(wizardState.specs).forEach(key => {
