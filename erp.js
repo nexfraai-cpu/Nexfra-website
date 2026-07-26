@@ -856,6 +856,11 @@ function renderConfiguratorFormInputs(template) {
     const secSpecs = template.specs.filter(s => s.section === secId);
     
     if (secSpecs.length === 0) {
+      const secBadge = document.getElementById(`nr-badge-sec-${secId}`);
+      if (secBadge) {
+        secBadge.classList.remove('active');
+        secBadge.textContent = 'Section Required';
+      }
       container.innerHTML = '<span class="section-hint col-span-2" style="font-size:0.8rem; color:#64748B; padding:8px 0; display:block;">No extra modifications needed for this module.</span>';
       return;
     }
@@ -2074,8 +2079,9 @@ function generateQuotationFinalReview() {
   const capacityLabel = wizardState.capacity && wizardState.capacity !== 'NA' ? `${wizardState.capacity} ` : '';
 
   // Build descriptor: conditionally include subframe and hydraulic kit
-  const subframeRequired = !wizardState.notRequired['subframe'];
-  const hydraulicRequired = !wizardState.notRequired['cylinder'];
+  const hasSubframeSpec = template.specs.some(s => s.id === 'subframe');
+  const subframeRequired = hasSubframeSpec && !wizardState.notRequired['subframe'];
+  const hydraulicRequired = !!template.specs.some(s => s.id === 'cylinder') && !wizardState.notRequired['cylinder'];
   const lenVal = document.getElementById('w-dim-length') ? document.getElementById('w-dim-length').value : template.dimensions.length;
   const heightVal = document.getElementById('w-dim-height') ? document.getElementById('w-dim-height').value : template.dimensions.height;
   const widthVal = document.getElementById('w-dim-width') ? document.getElementById('w-dim-width').value : template.dimensions.width;
@@ -2589,6 +2595,9 @@ window.toggleWorkOrderUrgent = function(id) {
   const wo = STATE.workOrders.find(w => w.id === id);
   if (!wo) return;
   wo.urgent = !wo.urgent;
+  // Sync to production item if it exists
+  const prod = STATE.productionItems ? STATE.productionItems.find(p => p.quoteId === wo.quoteId) : null;
+  if (prod) prod.urgent = wo.urgent;
   saveState();
   renderWorkOrders();
 };
@@ -2629,7 +2638,8 @@ function ensureProductionItem(quoteId, dueDate) {
     columnStatus: 'Not Started',
     progressPct: 0,
     progressionMap: {},
-    dueDate: dueDate
+    dueDate: dueDate,
+    urgent: wo ? !!wo.urgent : false
   });
 }
 
@@ -3192,6 +3202,8 @@ function renderProductionBoard() {
   if (!container) return;
 
   const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product');
+  const urgentOnly = window._moduleFilters && window._moduleFilters.production && window._moduleFilters.production.urgent === '1';
+  const displayItems = urgentOnly ? filteredItems.filter(item => item.urgent) : filteredItems;
 
   const columns = [
     { title: 'Not Started', status: 'Not Started', headerBg: '#F1F5F9', border: '#CBD5E1', countBg: '#64748B' },
@@ -3202,7 +3214,7 @@ function renderProductionBoard() {
   let boardHtml = '';
 
   columns.forEach(col => {
-    const items = filteredItems.filter(p => (p.columnStatus || 'Not Started') === col.status);
+    const items = displayItems.filter(p => (p.columnStatus || 'Not Started') === col.status);
 
     const cardsHtml = items.map(item => {
       const pct = item.progressPct || 0;
@@ -3213,7 +3225,10 @@ function renderProductionBoard() {
             <span style="font-size:0.7rem; font-weight:800; color:${col.status === 'Finished' ? '#059669' : (col.status === 'Work in Progress' ? '#2563EB' : '#64748B')};">${pct}% Complete</span>
           </div>
 
-          <div style="font-weight:700; font-size:0.875rem; color:#1E293B; margin-bottom:2px;">${item.dueDate ? `Due: ${item.dueDate}` : 'No due date'}</div>
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${item.dueDate ? `Due: ${item.dueDate}` : 'No due date'}</div>
+            ${item.urgent ? '<span style="font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:4px; background:#FEE2E2; color:#DC2626; letter-spacing:0.5px;">URGENT</span>' : ''}
+          </div>
           <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
 
           <!-- Mini Progress Bar -->
@@ -3826,6 +3841,8 @@ window.openPdfPreview = function(quoteId) {
   let count = 1;
 
   Object.keys(quote.specs).forEach(key => {
+    if (nr[key]) return;
+    if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
     specsHtml += `
       <div class="pdf-specs-item">
         <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
