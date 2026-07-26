@@ -2497,7 +2497,7 @@ function renderWorkOrders() {
         <div class="wo-header" onclick="toggleWorkOrder('${wo.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#F8FAFC; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #E2E8F0'}; transition:background 0.15s;">
           <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
             <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px;">${wo.id}</span>
-            <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${wo.customerName}</span>
+            <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${wo.quoteId}</span>
             <span style="font-size:0.75rem; font-weight:600; color:var(--color-primary);">${wo.product}</span>
             <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Stage: ${wo.stage}</span>
             <span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span>
