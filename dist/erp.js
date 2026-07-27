@@ -2136,7 +2136,11 @@ function generateQuotationFinalReview() {
   // Build descriptor: conditionally include subframe and hydraulic kit
   const hasSubframeSpec = template.specs.some(s => s.id === 'subframe');
   const subframeRequired = hasSubframeSpec && !wizardState.notRequired['subframe'];
-  const hydraulicRequired = !!template.specs.some(s => s.id === 'cylinder') && !wizardState.notRequired['cylinder'];
+  const hasCylinderSpec = template.specs.some(s => s.id === 'cylinder');
+  const cylBadge = document.getElementById('nr-badge-cylinder');
+  const badgeRequired = !cylBadge || !cylBadge.classList.contains('active');
+  const stateRequired = !wizardState.notRequired['cylinder'];
+  const hydraulicRequired = hasCylinderSpec && (badgeRequired || stateRequired);
   const lenVal = document.getElementById('w-dim-length') ? document.getElementById('w-dim-length').value : template.dimensions.length;
   const heightVal = document.getElementById('w-dim-height') ? document.getElementById('w-dim-height').value : template.dimensions.height;
   const widthVal = document.getElementById('w-dim-width') ? document.getElementById('w-dim-width').value : template.dimensions.width;
@@ -2147,6 +2151,23 @@ function generateQuotationFinalReview() {
 
   const dimsStr = `${lenVal} L × ${widthVal} W × ${heightVal} H`;
   document.getElementById('w-pdf-subj-text').innerText = `Subject: Quotation for -${c.model.toUpperCase()} , ${capacityLabel}${template.name.toUpperCase()} (${dimsStr})${extrasStr}`;
+
+  // Diagnostics
+  const diagEl = document.getElementById('w-pdf-diagnostics');
+  if (diagEl) {
+    diagEl.innerHTML = `
+      <b>Diagnostics:</b><br>
+      hasCylinderSpec: ${hasCylinderSpec}<br>
+      wizardState.notRequired['cylinder']: ${JSON.stringify(wizardState.notRequired['cylinder'])}<br>
+      stateRequired: ${stateRequired}<br>
+      badgeRequired: ${badgeRequired}<br>
+      cylBadge found: ${!!cylBadge}<br>
+      cylBadge active: ${cylBadge ? cylBadge.classList.contains('active') : 'N/A'}<br>
+      hydraulicRequired: ${hydraulicRequired}<br>
+      extras: [${extras.join(', ')}]<br>
+      extrasStr: ${extrasStr || '(empty)'}
+    `;
+  }
 
   const descExtras = [];
   if (subframeRequired) descExtras.push('WITH SUBFRAME');
@@ -3348,6 +3369,7 @@ function renderProductionBoard() {
 
     const cardsHtml = items.map(item => {
       const pct = item.progressPct || 0;
+      const isOverdue = item.dueDate ? (() => { const d = new Date(item.dueDate + 'T00:00:00'); const t = new Date(); t.setHours(0,0,0,0); return d < t; })() : false;
       return `
         <div class="board-card" data-quote-id="${item.quoteId}" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; margin-bottom:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
           <div onclick="toggleBoardCard('${item.quoteId}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; cursor:pointer; user-select:none;">
@@ -3360,7 +3382,7 @@ function renderProductionBoard() {
 
           <div class="board-card-body" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease, padding 0.3s ease; padding:0 10px;">
             <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${item.dueDate ? `Due: ${item.dueDate}` : 'No due date'}</div>
+              <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${isOverdue ? '<span style="color:#DC2626;">Due date passed</span>' : (item.dueDate ? `Due: ${item.dueDate}` : 'No due date')}</div>
               ${item.urgent ? '<span style="font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:4px; background:#FEE2E2; color:#DC2626; letter-spacing:0.5px;">URGENT</span>' : ''}
             </div>
             <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
