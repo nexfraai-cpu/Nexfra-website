@@ -4319,7 +4319,6 @@ function closePdfPreview() {
   const modal = document.getElementById('pdf-preview-modal');
   if (modal) {
     modal.classList.remove('active');
-    switchModule('status');
   }
 }
 

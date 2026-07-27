@@ -3056,6 +3056,36 @@ function renderWorkOrders() {
       daysUntil = Math.ceil((new Date(wo.dueDate) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
       dueStatus = daysUntil <= 3 ? 'URGENT' : 'ON SCHEDULE';
     }
+    var woProdHtml = '';
+    (function(){
+      var pi = STATE.productionItems ? STATE.productionItems.find(function(p){ return p.quoteId === wo.quoteId; }) : null;
+      if (!pi) return;
+      var schema = getProgressionSchema();
+      var map = pi.progressionMap || {};
+      var stages = schema.map(function(sec){
+        var allDone = true;
+        sec.subsections.forEach(function(sub){
+          sub.items.forEach(function(item){
+            var key = sec.id + '_' + sub.id + '_' + item.id;
+            if (!map[key]) allDone = false;
+          });
+        });
+        return { name: sec.name.replace(/^\d+\.\s*/,''), done: allDone };
+      });
+      if (stages.length === 0) return;
+      var lineHtml = '';
+      stages.forEach(function(s, i){
+        lineHtml += '<div style="display:flex;align-items:center;flex-shrink:0;">';
+        lineHtml += '<span style="padding:4px 10px;border-radius:4px;font-size:0.7rem;font-weight:700;white-space:nowrap;background:' + (s.done ? '#10B981' : '#E2E8F0') + ';color:' + (s.done ? '#fff' : '#64748B') + ';">' + s.name + '</span>';
+        if (i < stages.length - 1) {
+          lineHtml += '<div style="width:16px;height:3px;background:' + (s.done ? '#10B981' : '#E2E8F0') + ';margin:0 3px;flex-shrink:0;"></div>';
+        }
+        lineHtml += '</div>';
+      });
+      woProdHtml = '<div class="wo-prod-box" style="background:#F1F5F9;padding:12px;border-radius:6px;margin-bottom:12px;">'
+        + '<h4 style="margin:0 0 8px 0;font-size:0.8rem;font-weight:800;color:#1E293B;">PRODUCTION</h4>'
+        + '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0;">' + lineHtml + '</div></div>';
+    })();
     return `
       <div class="wo-card" style="margin-bottom:10px; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
         <div class="wo-header" onclick="toggleWorkOrder('${wo.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#F8FAFC; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #E2E8F0'}; transition:background 0.15s;">
@@ -3079,6 +3109,7 @@ function renderWorkOrders() {
               ${wo.specs.map(spec => `<li style="font-size:0.78rem; color:#475569; min-width:180px;"><span>${spec}</span></li>`).join('')}
             </ul>
           </div>
+          ${woProdHtml}
           <div class="wo-notes" style="font-size:0.8rem; color:#475569; margin-bottom:12px;">
             <strong>Factory Notes:</strong> ${wo.notes}
           </div>
@@ -4319,7 +4350,6 @@ function closePdfPreview() {
   const modal = document.getElementById('pdf-preview-modal');
   if (modal) {
     modal.classList.remove('active');
-    switchModule('status');
   }
 }
 
