@@ -2639,7 +2639,7 @@ function renderWorkOrders() {
             <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${wo.quoteId}</span>
             <span style="font-size:0.75rem; font-weight:600; color:var(--color-primary);">${wo.product}</span>
             <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Stage: ${wo.stage}</span>
-            <span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span>
+            <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:60px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; display:inline-block;"><span style="display:block; width:${Math.min(parseInt(wo.progress) || 0, 100)}%; height:100%; background:${parseInt(wo.progress) >= 100 ? '#10B981' : '#3B82F6'}; border-radius:3px; transition:width 0.3s;"></span></span><span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span></span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             ${wo.dueDate ? `<span style="font-size:0.7rem; font-weight:700; color:#475569;">Due: ${wo.dueDate}</span>` : `<span style="font-size:0.7rem; color:#94A3B8;">${wo.date}</span>`}
@@ -2717,6 +2717,8 @@ window.clearWorkOrderDueDate = function(id) {
   const wo = STATE.workOrders.find(w => w.id === id);
   if (!wo) return;
   wo.dueDate = null;
+  wo.stage = 'Pending';
+  wo.progress = 0;
   if (STATE.productionItems) {
     STATE.productionItems = STATE.productionItems.filter(p => p.quoteId !== wo.quoteId);
   }
@@ -3361,6 +3363,7 @@ function renderProductionBoard() {
     const cardsHtml = items.map(item => {
       const pct = item.progressPct || 0;
       const isOverdue = item.dueDate ? (() => { const d = new Date(item.dueDate + 'T00:00:00'); const t = new Date(); t.setHours(0,0,0,0); return d < t; })() : false;
+      const woForItem = STATE.workOrders.find(w => w.quoteId === item.quoteId);
       return `
         <div class="board-card" data-quote-id="${item.quoteId}" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; margin-bottom:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
           <div onclick="toggleBoardCard('${item.quoteId}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; cursor:pointer; user-select:none;">
@@ -3373,6 +3376,7 @@ function renderProductionBoard() {
 
           <div class="board-card-body" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease, padding 0.3s ease; padding:0 10px;">
             <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              ${woForItem ? `<span style="background:#0F172A; color:#fff; font-weight:800; font-size:0.7rem; padding:2px 8px; border-radius:4px;">${woForItem.id}</span>` : ''}
               <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${isOverdue ? '<span style="color:#DC2626;">Due date passed</span>' : (item.dueDate ? `Due: ${item.dueDate}` : 'No due date')}</div>
               ${item.urgent ? '<span style="font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:4px; background:#FEE2E2; color:#DC2626; letter-spacing:0.5px;">URGENT</span>' : ''}
             </div>
@@ -3488,6 +3492,7 @@ window.saveRemark = function() {
   closeRemarkModal();
   renderOrderProgressionBody(prodItem);
   renderProductionBoard();
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
 };
 
 function renderOrderProgressionBody(prodItem) {
@@ -3528,6 +3533,13 @@ function renderOrderProgressionBody(prodItem) {
 
   prodItem.columnStatus = status;
   prodItem.progressPct = pct;
+
+  // Sync to matching work order for consistent display across modules
+  const wo = STATE.workOrders.find(w => w.quoteId === prodItem.quoteId);
+  if (wo) {
+    wo.stage = status;
+    wo.progress = pct;
+  }
   saveState();
 
   // Update Header UI
@@ -3656,6 +3668,7 @@ window.toggleEntireSectionDone = function(quoteId, secId, markDone) {
   saveState();
   renderOrderProgressionBody(prodItem);
   renderProductionBoard();
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
 };
 
 window.toggleProgressionMapKey = function(quoteId, key, isChecked) {
@@ -3669,6 +3682,7 @@ window.toggleProgressionMapKey = function(quoteId, key, isChecked) {
   saveState();
   renderOrderProgressionBody(prodItem);
   renderProductionBoard();
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
 };
 
 window.updateDispatchedData = function(quoteId, field, value) {
