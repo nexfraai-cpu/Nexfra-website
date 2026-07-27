@@ -3236,6 +3236,23 @@ window.toggleApprovalCard = function(quoteId) {
   }
 };
 
+window.toggleBoardCard = function(quoteId) {
+  const card = document.querySelector(`.board-card[data-quote-id="${quoteId}"]`);
+  if (!card) return;
+  const body = card.querySelector('.board-card-body');
+  const chevron = card.querySelector('.board-chevron');
+  const isOpen = body.style.maxHeight && body.style.maxHeight !== '0px';
+  if (isOpen) {
+    body.style.maxHeight = '0px';
+    body.style.padding = '0 10px';
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+  } else {
+    body.style.maxHeight = body.scrollHeight + 80 + 'px';
+    body.style.padding = '10px';
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  }
+};
+
 window.approveQuotation = function(quoteId) {
   loadState();
   const q = STATE.quotations.find(x => x.id === quoteId);
@@ -3332,31 +3349,34 @@ function renderProductionBoard() {
     const cardsHtml = items.map(item => {
       const pct = item.progressPct || 0;
       return `
-        <div class="board-card" onclick="openOrderProgressionModal('${item.quoteId}')" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; padding:14px; margin-bottom:12px; cursor:pointer; transition:all 0.2s ease; position:relative; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+        <div class="board-card" data-quote-id="${item.quoteId}" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; margin-bottom:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+          <div onclick="toggleBoardCard('${item.quoteId}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; cursor:pointer; user-select:none;">
             <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; font-family:'Outfit',sans-serif;">${item.quoteId}</span>
-            <span style="font-size:0.7rem; font-weight:800; color:${col.status === 'Finished' ? '#059669' : (col.status === 'Work in Progress' ? '#2563EB' : '#64748B')};">${pct}% Complete</span>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:0.7rem; font-weight:800; color:${col.status === 'Finished' ? '#059669' : (col.status === 'Work in Progress' ? '#2563EB' : '#64748B')};">${pct}% Complete</span>
+              <span class="board-chevron" style="font-size:0.75rem; color:#94A3B8; transition:transform 0.2s;">▾</span>
+            </div>
           </div>
 
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${item.dueDate ? `Due: ${item.dueDate}` : 'No due date'}</div>
-            ${item.urgent ? '<span style="font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:4px; background:#FEE2E2; color:#DC2626; letter-spacing:0.5px;">URGENT</span>' : ''}
-          </div>
-          <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
+          <div class="board-card-body" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease, padding 0.3s ease; padding:0 10px;">
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${item.dueDate ? `Due: ${item.dueDate}` : 'No due date'}</div>
+              ${item.urgent ? '<span style="font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:4px; background:#FEE2E2; color:#DC2626; letter-spacing:0.5px;">URGENT</span>' : ''}
+            </div>
+            <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
 
-          <!-- Mini Progress Bar -->
-          <div style="width:100%; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; margin-bottom:12px;">
-            <div style="width:${pct}%; height:100%; background:${col.status === 'Finished' ? '#10B981' : '#3B82F6'}; transition:width 0.3s ease;"></div>
-          </div>
+            <div style="width:100%; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; margin-bottom:12px;">
+              <div style="width:${pct}%; height:100%; background:${col.status === 'Finished' ? '#10B981' : '#3B82F6'}; transition:width 0.3s ease;"></div>
+            </div>
 
-          <!-- Card Actions -->
-          <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #F1F5F9; padding-top:10px;" onclick="event.stopPropagation()">
-            <button type="button" class="btn btn-outline btn-xs" onclick="openPdfPreview('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 8px;">
-              📄 Show Quotation
-            </button>
-            <button type="button" class="btn btn-primary btn-xs" onclick="openOrderProgressionModal('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 10px; background:#0F172A; border:none; color:white;">
-              Track Order &rarr;
-            </button>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #F1F5F9; padding:10px 0;" onclick="event.stopPropagation()">
+              <button type="button" class="btn btn-outline btn-xs" onclick="openPdfPreview('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 8px;">
+                📄 Show Quotation
+              </button>
+              <button type="button" class="btn btn-primary btn-xs" onclick="openOrderProgressionModal('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 10px; background:#0F172A; border:none; color:white;">
+                Track Order &rarr;
+              </button>
+            </div>
           </div>
         </div>
       `;
