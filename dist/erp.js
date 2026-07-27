@@ -2353,6 +2353,7 @@ window.saveWizardQuotation = function() {
       customerName: client.company || client.name,
       productName: template ? template.name : 'Custom Trailer',
       date: c.date,
+      createdAt: new Date().toISOString(),
       total: wizardState.total || (template ? template.basePrice : 520000),
       status: 'Pending Approval',
       specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
@@ -3165,50 +3166,74 @@ window.renderApprovalsList = function(filter = 'pending') {
     }
 
     const formattedPrice = `₹${(q.total || 0).toLocaleString('en-IN')}`;
+    const createdDate = q.createdAt ? new Date(q.createdAt).toLocaleString('en-GB') : (q.date || '');
 
     return `
-      <div class="card" style="border: 1px solid #E2E8F0; border-radius: 12px; background: white; padding: 22px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); display: flex; flex-direction: column; gap: 16px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F1F5F9; padding-bottom:12px;">
+      <div class="card approvals-card" data-quote-id="${q.id}" style="border: 1px solid #E2E8F0; border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden;">
+        <div onclick="toggleApprovalCard('${q.id}')" style="display:flex; justify-content:space-between; align-items:center; padding: 1px 8px; cursor:pointer; user-select:none;">
           <div>
-            <span style="font-size:0.75rem; font-weight:700; color:#64748B; letter-spacing:0.5px; text-transform:uppercase;">Quotation Number</span>
-            <h3 style="margin: 2px 0 0 0; font-size:1.2rem; color:#0F172A; font-weight:800;">${q.id}</h3>
+            <div style="font-size:0.77rem; font-weight:700; color:#64748B; letter-spacing:0.5px; text-transform:uppercase; line-height:1.1;">Quotation Number</div>
+            <div style="margin:0; font-size:1.12rem; color:#0F172A; font-weight:800; line-height:1.2;">${q.id}</div>
+            <div style="font-size:0.77rem; color:#94A3B8; line-height:1.1;">${createdDate}</div>
           </div>
-          <span style="font-size:0.75rem; font-weight:700; padding:4px 12px; border-radius:12px; ${statusBadgeClass}">
-            ${statusText}
-          </span>
-        </div>
-
-        <div style="padding: 14px; background: #F8FAFC; border-radius: 8px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; border: 1px solid #F1F5F9;">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="color:#64748B; font-weight:600;">Customer Name:</span>
-            <strong style="color:#1E293B; font-size:0.95rem;">${q.customerName || 'Valued Client'}</strong>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <span style="color:#64748B; font-weight:600;">Product:</span>
-            <strong style="color:#334155;">${q.productName || 'Commercial Vehicle'}</strong>
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:8px; border-top:1px dashed #CBD5E1;">
-            <span style="color:#64748B; font-weight:600;">Quotation Total:</span>
-            <strong style="color:#059669; font-size:1.05rem;">${formattedPrice}</strong>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <span style="font-size:0.77rem; font-weight:700; padding:1px 6px; border-radius:6px; ${statusBadgeClass}">
+              ${statusText}
+            </span>
+            <span class="approvals-chevron" style="font-size:1.05rem; color:#94A3B8; transition:transform 0.2s;">▾</span>
           </div>
         </div>
 
-        <div style="display:flex; gap:10px; margin-top:auto; padding-top:4px;">
-          ${isPending ? `
-            <button onclick="approveQuotation('${q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
-              ✓ Approve
+        <div class="approvals-body" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease, padding 0.3s ease; padding:0 20px;">
+          <div style="padding: 14px; background: #F8FAFC; border-radius: 8px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; border: 1px solid #F1F5F9; margin-bottom:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="color:#64748B; font-weight:600;">Customer Name:</span>
+              <strong style="color:#1E293B; font-size:0.95rem;">${q.customerName || 'Valued Client'}</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="color:#64748B; font-weight:600;">Product:</span>
+              <strong style="color:#334155;">${q.productName || 'Commercial Vehicle'}</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px; padding-top:8px; border-top:1px dashed #CBD5E1;">
+              <span style="color:#64748B; font-weight:600;">Quotation Total:</span>
+              <strong style="color:#059669; font-size:1.05rem;">${formattedPrice}</strong>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:10px; padding-bottom:16px;">
+            ${isPending ? `
+              <button onclick="approveQuotation('${q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
+                ✓ Approve
+              </button>
+              <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
+                ✕ Deny
+              </button>
+            ` : ''}
+            <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
+              📄 Show PDF
             </button>
-            <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
-              ✕ Deny
-            </button>
-          ` : ''}
-          <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
-            📄 Show PDF
-          </button>
+          </div>
         </div>
       </div>
     `;
   }).join('');
+};
+
+window.toggleApprovalCard = function(quoteId) {
+  const card = document.querySelector(`.approvals-card[data-quote-id="${quoteId}"]`);
+  if (!card) return;
+  const body = card.querySelector('.approvals-body');
+  const chevron = card.querySelector('.approvals-chevron');
+  const isOpen = body.style.maxHeight && body.style.maxHeight !== '0px';
+  if (isOpen) {
+    body.style.maxHeight = '0px';
+    body.style.padding = '0 20px';
+    if (chevron) chevron.style.transform = 'rotate(0deg)';
+  } else {
+    body.style.maxHeight = body.scrollHeight + 80 + 'px';
+    body.style.padding = '16px 20px';
+    if (chevron) chevron.style.transform = 'rotate(180deg)';
+  }
 };
 
 window.approveQuotation = function(quoteId) {
