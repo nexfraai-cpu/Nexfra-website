@@ -166,7 +166,7 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
       { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
       { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } },
-      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm formed section Nexfra standard", "8mm formed section Nexfra standard", "Custom"], defaultValue: "6mm formed section Nexfra standard", priceDiffs: { "6mm formed section Nexfra standard": 0, "8mm formed section Nexfra standard": 25000, "Custom": 30000 } }
+      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm", "8mm", "Custom"], defaultValue: "6mm", priceDiffs: { "6mm": 0, "8mm": 25000, "Custom": 30000 } }
     ]
   },
   rigid30: {
@@ -184,7 +184,7 @@ const WIZARD_PRODUCT_TEMPLATES = {
       { id: "painting", name: "Painting", section: "painting", type: "dropdown", options: ["Epoxy primer and PU top coat Nippon paint", "Epoxy primer and Epoxy paint", "Custom"], defaultValue: "Epoxy primer and PU top coat Nippon paint", priceDiffs: { "Epoxy primer and PU top coat Nippon paint": 0, "Epoxy primer and Epoxy paint": -10000, "Custom": 15000 } },
       { id: "marker_lamps", name: "Side Lamp", section: "accessories", type: "dropdown", options: ["Side Marker Lamp 6 no's and top marker lamp 2 no's", "Standard 4 marker lamps", "Custom"], defaultValue: "Side Marker Lamp 6 no's and top marker lamp 2 no's", priceDiffs: { "Side Marker Lamp 6 no's and top marker lamp 2 no's": 0, "Standard 4 marker lamps": -5000, "Custom": 10000 } },
       { id: "supd_rupd", name: "SUPD / RUPD Protection", section: "accessories", type: "dropdown", options: ["Standard Heavy Duty RTO", "Custom"], defaultValue: "Standard Heavy Duty RTO", priceDiffs: { "Standard Heavy Duty RTO": 0, "Custom": 8000 } },
-      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm formed section Nexfra standard", "8mm formed section Nexfra standard", "Custom"], defaultValue: "6mm formed section Nexfra standard", priceDiffs: { "6mm formed section Nexfra standard": 0, "8mm formed section Nexfra standard": 25000, "Custom": 30000 } }
+      { id: "subframe", name: "Subframe", section: "subframe", type: "dropdown", options: ["6mm", "8mm", "Custom"], defaultValue: "6mm", priceDiffs: { "6mm": 0, "8mm": 25000, "Custom": 30000 } }
     ]
   }
 };
@@ -1513,7 +1513,7 @@ window.openEditComponentsModal = function() {
   // Render built-in sections
   sectionOrder.forEach(secId => {
     const specs = sections[secId] || [];
-    if (secId === 'dimensions' && !specs.length) return;
+    if ((secId === 'dimensions' || secId === 'subframe') && !specs.length) return;
     const displayName = sectionNames[secId] || secId;
     html += buildEditSectionCard(secId, displayName, specs, false);
   });
@@ -2370,8 +2370,10 @@ window.saveWizardQuotation = function() {
     // 2. Save quote record with status: 'Pending Approval'
     const newQuote = {
       id: quoteId,
+      subtype: subtype,
       customerId: client.id,
       customerName: client.company || client.name,
+      model: wizardState.customer.model || 'Commercial Vehicle',
       productName: template ? template.name : 'Custom Trailer',
       date: c.date,
       createdAt: new Date().toISOString(),
@@ -2379,6 +2381,12 @@ window.saveWizardQuotation = function() {
       status: 'Pending Approval',
       specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
       notRequired: JSON.parse(JSON.stringify(wizardState.notRequired || {})),
+      capacity: wizardState.capacity || 'NA',
+      dimensions: {
+        length: document.getElementById('w-dim-length')?.value || template.dimensions.length,
+        height: document.getElementById('w-dim-height')?.value || template.dimensions.height,
+        width: document.getElementById('w-dim-width')?.value || template.dimensions.width
+      },
       scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
       terms: wizardState.terms || [],
       bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {}))
@@ -4007,79 +4015,132 @@ window.openPdfPreview = function(quoteId) {
   document.getElementById('pdf-to-address-2').innerText = clientAddress.substring(45) || 'GST Registered Address';
   document.getElementById('pdf-to-gst').innerText = `GST NO: ${clientGst}`;
 
-  let chassisName = 'EICHER-6035XPT';
-  let capacityName = '25 CBM';
-  let productFamilyText = 'TIPPER BOX BODY';
+  // Find matching template for consistent rendering
+  const template = quote.subtype
+    ? WIZARD_PRODUCT_TEMPLATES[quote.subtype]
+    : Object.values(WIZARD_PRODUCT_TEMPLATES).find(t => t.name === quote.productName);
 
-  if (quote.productName.includes('Flat Bed')) {
-    chassisName = 'HEAVY HAULER';
-    capacityName = '40 Ft';
-    productFamilyText = 'FLAT BED TRAILER';
-  } else if (quote.productName.includes('Tip')) {
-    chassisName = 'TATA PRIMA';
-    capacityName = '36 CBM';
-    productFamilyText = 'TIP TRAILER';
-  } else if (quote.productName.includes('Rock')) {
-    chassisName = 'CAT-777G';
-    capacityName = '16 CBM';
-    productFamilyText = 'ROCK BODY TIPPER';
-  }
+  if (template) {
+    // === Template-based rendering (matches wizard PDF exactly) ===
+    const capacityLabel = quote.capacity && quote.capacity !== 'NA' ? `${quote.capacity} ` : '';
+    const dims = quote.dimensions || template.dimensions;
 
-  const nr = quote.notRequired || {};
-  const showSubframe = !nr['subframe'];
-  const showCylinder = !nr['cylinder'];
+    const hasSubframeSpec = template.specs.some(s => s.id === 'subframe');
+    const nr = quote.notRequired || {};
+    const subframeRequired = hasSubframeSpec && !nr['subframe'];
+    const hasCylinderSpec = template.specs.some(s => s.id === 'cylinder');
+    const hydraulicRequired = hasCylinderSpec && !nr['cylinder'];
 
-  const subStr = [];
-  if (showSubframe) subStr.push('sub frame');
-  if (showCylinder) subStr.push('Hydraulic Kit');
-  const extStr = subStr.length > 0 ? ` with ${subStr.join(' & ')}` : '';
+    const extras = [];
+    if (subframeRequired) extras.push('subframe');
+    if (hydraulicRequired) extras.push('Hydraulic Kit');
+    const extrasStr = extras.length > 0 ? ` with ${extras.join(' & ')}` : '';
 
-  const descSubStr = [];
-  if (showSubframe) descSubStr.push('WITH SUBFRAME');
-  if (showCylinder) descSubStr.push('CYLINDER KIT');
-  const descExtStr = descSubStr.length > 0 ? ` ${descSubStr.join(' & ')}` : '';
+    const dimsStr = `${dims.length} L × ${dims.width} W × ${dims.height} H`;
+    const modelLabel = (quote.model || quote.customerName || 'Commercial Vehicle').toUpperCase();
+    document.getElementById('pdf-subj-text').innerText = `Subject: Quotation for -${modelLabel} , ${capacityLabel}${template.name.toUpperCase()} (${dimsStr})${extrasStr}`;
 
-  document.getElementById('pdf-subj-text').innerText = `Subject: Quotation for -${chassisName} , ${capacityName} ${productFamilyText}${extStr}`;
-  document.getElementById('pdf-table-desc').innerHTML = `${capacityName} ${productFamilyText}${descExtStr}<br>Regular TAIL DOOR ${chassisName}`;
+    const descExtras = [];
+    if (subframeRequired) descExtras.push('WITH SUBFRAME');
+    if (hydraulicRequired) descExtras.push('CYLINDER KIT');
+    const descExtrasStr = descExtras.length > 0 ? ` ${descExtras.join(' & ')}` : '';
+    document.getElementById('pdf-table-desc').innerHTML = `${capacityLabel}${template.name.toUpperCase()}${descExtrasStr}<br>Regular TAIL DOOR ${modelLabel}`;
 
-  document.getElementById('pdf-table-basic').innerText = formatPdfPrice(basicVal);
-  document.getElementById('pdf-table-gst').innerText = formatPdfPrice(gstVal);
-  document.getElementById('pdf-table-total').innerText = formatPdfPrice(basicVal);
-  document.getElementById('pdf-table-gst-total').innerText = formatPdfPrice(gstVal);
-  
-  document.getElementById('pdf-grand-total-label').innerText = formatPdfPrice(grandTotalVal);
-  document.getElementById('pdf-grand-total-val').innerText = formatPdfPrice(grandTotalVal);
+    // Spec list with friendly names from template + custom items
+    const specsContainer = document.getElementById('pdf-specs-list-container');
+    let specsHtml = '';
+    let count = 1;
+    Object.keys(quote.specs).forEach(key => {
+      if (nr[key]) return;
+      if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
+      const specInfo = template.specs.find(s => s.id === key);
+      if (specInfo) {
+        let val = quote.specs[key];
+        if (typeof val === 'string' && val.toLowerCase() === 'custom') {
+          const desc = quote.specs[key + '_custom_desc'];
+          if (desc) val += ` - ${desc}`;
+        }
+        specsHtml += `
+          <div class="pdf-specs-item">
+            <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
+            <span>${specInfo.name} = ${val}</span>
+          </div>
+        `;
+      }
+    });
+    if (quote.customItems && quote.customItems.length > 0) {
+      quote.customItems.forEach(item => {
+        specsHtml += `
+          <div class="pdf-specs-item">
+            <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
+            <span>Accessory = ${item.name} (Qty: ${item.qty})</span>
+          </div>
+        `;
+      });
+    }
+    if (specsContainer) specsContainer.innerHTML = specsHtml;
+  } else {
+    // === Fallback: Legacy non-template quotes ===
+    let chassisName = 'EICHER-6035XPT';
+    let capacityName = '25 CBM';
+    let productFamilyText = 'TIPPER BOX BODY';
 
-  document.getElementById('pdf-words-val').innerText = priceToIndianWords(grandTotalVal);
-  
-  const specsContainer = document.getElementById('pdf-specs-list-container');
-  let specsHtml = '';
-  let count = 1;
+    if (quote.productName && quote.productName.includes('Flat Bed')) {
+      chassisName = 'HEAVY HAULER';
+      capacityName = '40 Ft';
+      productFamilyText = 'FLAT BED TRAILER';
+    } else if (quote.productName && quote.productName.includes('Tip')) {
+      chassisName = 'TATA PRIMA';
+      capacityName = '36 CBM';
+      productFamilyText = 'TIP TRAILER';
+    } else if (quote.productName && quote.productName.includes('Rock')) {
+      chassisName = 'CAT-777G';
+      capacityName = '16 CBM';
+      productFamilyText = 'ROCK BODY TIPPER';
+    }
 
-  Object.keys(quote.specs).forEach(key => {
-    if (nr[key]) return;
-    if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
-    specsHtml += `
-      <div class="pdf-specs-item">
-        <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
-        <span>${key.toUpperCase()} = ${quote.specs[key]}</span>
-      </div>
-    `;
-  });
+    const nr = quote.notRequired || {};
+    const hasSubframeSpec = quote.specs && 'subframe' in quote.specs;
+    const showSubframe = hasSubframeSpec && !nr['subframe'];
+    const showCylinder = !nr['cylinder'];
 
-  if (quote.customItems && quote.customItems.length > 0) {
-    quote.customItems.forEach(item => {
+    const subStr = [];
+    if (showSubframe) subStr.push('sub frame');
+    if (showCylinder) subStr.push('Hydraulic Kit');
+    const extStr = subStr.length > 0 ? ` with ${subStr.join(' & ')}` : '';
+
+    const descSubStr = [];
+    if (showSubframe) descSubStr.push('WITH SUBFRAME');
+    if (showCylinder) descSubStr.push('CYLINDER KIT');
+    const descExtStr = descSubStr.length > 0 ? ` ${descSubStr.join(' & ')}` : '';
+
+    document.getElementById('pdf-subj-text').innerText = `Subject: Quotation for -${chassisName} , ${capacityName} ${productFamilyText}${extStr}`;
+    document.getElementById('pdf-table-desc').innerHTML = `${capacityName} ${productFamilyText}${descExtStr}<br>Regular TAIL DOOR ${chassisName}`;
+
+    const specsContainer = document.getElementById('pdf-specs-list-container');
+    let specsHtml = '';
+    let count = 1;
+    Object.keys(quote.specs).forEach(key => {
+      if (nr[key]) return;
+      if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
       specsHtml += `
         <div class="pdf-specs-item">
           <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
-          <span>Accessory = ${item.name} (Qty: ${item.qty})</span>
+          <span>${key.toUpperCase()} = ${quote.specs[key]}</span>
         </div>
       `;
     });
-  }
-
-  if (specsContainer) {
-    specsContainer.innerHTML = specsHtml;
+    if (quote.customItems && quote.customItems.length > 0) {
+      quote.customItems.forEach(item => {
+        specsHtml += `
+          <div class="pdf-specs-item">
+            <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
+            <span>Accessory = ${item.name} (Qty: ${item.qty})</span>
+          </div>
+        `;
+      });
+    }
+    if (specsContainer) specsContainer.innerHTML = specsHtml;
   }
 
   // Set salesperson name
