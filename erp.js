@@ -855,15 +855,15 @@ function renderConfiguratorFormInputs(template) {
     // Filter specs for this section
     const secSpecs = template.specs.filter(s => s.section === secId);
     
+    // Hide entire section wrapper if no specs exist for this section
+    const secWrapper = document.getElementById(`spec-sec-${secId}`);
+    
     if (secSpecs.length === 0) {
-      const secBadge = document.getElementById(`nr-badge-sec-${secId}`);
-      if (secBadge) {
-        secBadge.classList.remove('active');
-        secBadge.textContent = 'Section Required';
-      }
-      container.innerHTML = '<span class="section-hint col-span-2" style="font-size:0.8rem; color:#64748B; padding:8px 0; display:block;">No extra modifications needed for this module.</span>';
+      if (secWrapper && secId !== 'dimensions') secWrapper.style.display = 'none';
       return;
     }
+    
+    if (secWrapper) secWrapper.style.display = '';
 
     container.innerHTML = secSpecs.map(spec => {
       const isNr = !!wizardState.notRequired[spec.id];
