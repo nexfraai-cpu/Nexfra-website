@@ -3287,9 +3287,15 @@ window.approveQuotation = function(quoteId) {
       date: q.date || new Date().toISOString().split('T')[0],
       stage: 'Pending',
       progress: 0,
-      specs: typeof q.specs === 'object' && !Array.isArray(q.specs)
-        ? Object.entries(q.specs).map(([k, v]) => `${k}: ${v}`)
-        : (Array.isArray(q.specs) ? q.specs : []),
+      specs: (() => {
+        const raw = typeof q.specs === 'object' && !Array.isArray(q.specs) ? q.specs : {};
+        const nr = q.notRequired || {};
+        const t = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : Object.values(WIZARD_PRODUCT_TEMPLATES).find(t => t.name === q.productName);
+        return Object.entries(raw).filter(([k]) => !nr[k] && !k.endsWith('_custom_desc') && !k.endsWith('_custom_price')).map(([k, v]) => {
+          const specInfo = t ? t.specs.find(s => s.id === k) : null;
+          return `${specInfo ? specInfo.name : k}: ${v}`;
+        });
+      })(),
       notes: `Approved quotation ${quoteId} dispatched to production shop floor.`,
       dueDate: null,
       urgent: false
