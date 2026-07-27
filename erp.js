@@ -2297,6 +2297,377 @@ window.showToastNotification = function(message, type = 'success') {
   }, 4000);
 };
 
+// ===== INLINE QUOTATION EDIT SYSTEM (APPROVALS PAGE) =====
+window._editState = null;
+
+window.editQuotation = function(quoteId) {
+  loadState();
+  const q = STATE.quotations.find(x => x.id === quoteId);
+  if (!q) return;
+
+  const template = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : null;
+  if (!template) { showToastNotification('Product template not found.', 'error'); return; }
+
+  const categoryMap = { flatbed: 'trailer', sidewall: 'trailer', tiptrailer: 'trailer', boxbody: 'tipper', rockbody: 'tipper', rigid28: 'rigid', rigid30: 'rigid' };
+
+  window._editState = {
+    quoteId: quoteId,
+    subtype: q.subtype,
+    capacity: q.capacity || 'NA',
+    category: categoryMap[q.subtype] || '',
+    specs: JSON.parse(JSON.stringify(q.specs || {})),
+    notRequired: JSON.parse(JSON.stringify(q.notRequired || {})),
+    model: q.model || 'Commercial Vehicle',
+    customerName: q.customerName || '',
+    date: q.date || new Date().toISOString().split('T')[0],
+    total: q.total || 0,
+    manualTotal: null,
+    dimensions: JSON.parse(JSON.stringify(q.dimensions || template.dimensions || {})),
+    scopeOfWork: q.scopeOfWork || 'As Mentioned above',
+    terms: q.terms ? q.terms.slice() : []
+  };
+
+  renderInlineEditForm(quoteId, template);
+};
+
+function renderInlineEditForm(quoteId, template) {
+  const container = document.getElementById('approvals-cards-container');
+  if (!container) return;
+  const e = window._editState;
+  if (!e) return;
+
+  const sections = ['material', 'chassis', 'hydraulic', 'painting', 'accessories', 'subframe'];
+  const sectionLabels = {
+    material: 'Steel Sheets & Material Grade',
+    chassis: 'Chassis & Body Structure', hydraulic: 'Hydraulic System Configuration',
+    painting: 'Painting & Finish', accessories: 'Accessories & add-ons', subframe: 'Subframe Configuration'
+  };
+
+  let specsHtml = '';
+  sections.forEach(secId => {
+    const secSpecs = template.specs.filter(s => s.section === secId);
+    if (secSpecs.length === 0) return;
+    specsHtml += '<div class="spec-section-card" style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px;margin-bottom:16px;">';
+    specsHtml += '<h4 style="margin:0 0 14px 0;font-size:0.85rem;font-weight:700;color:#0F172A;">' + (sectionLabels[secId] || secId) + '</h4>';
+    specsHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">';
+    secSpecs.forEach(spec => { specsHtml += buildEditSpecControl(spec); });
+    specsHtml += '</div></div>';
+  });
+
+  const dims = e.dimensions || {};
+  const pd = v => { if (!v) return { n: '', u: 'Feet' }; const m = String(v).match(/^([\d.]+)\s*(.*)$/); return m ? { n: m[1], u: m[2] || 'Feet' } : { n: v, u: 'Feet' }; };
+  const l = pd(dims.length), h = pd(dims.height), w = pd(dims.width);
+
+  const sel = (v, o) => v.includes(o) ? 'selected' : (o === 'Feet' && !v ? 'selected' : '');
+
+  container.innerHTML = '<div style="grid-column:1/-1;background:#ffffff;border-radius:12px;border:1.5px solid #CBD5E1;overflow:hidden;box-shadow:0 4px 12px rgba(0,0,0,0.08);">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:#F8FAFC;border-bottom:1px solid #E2E8F0;">'
+    + '<div><h2 style="margin:0;font-size:1.1rem;font-weight:800;color:#0F172A;">Editing: ' + quoteId + '</h2>'
+    + '<p style="margin:2px 0 0 0;font-size:0.8rem;color:#64748B;">' + template.name + ' — Modify specs, dimensions, and price below</p></div>'
+    + '<button onclick="cancelEditQuotation()" style="background:none;border:1px solid #CBD5E1;border-radius:6px;padding:8px 14px;cursor:pointer;font-size:0.85rem;font-weight:600;color:#475569;">✕ Cancel</button></div>'
+    + '<div style="padding:20px;max-height:calc(100vh - 280px);overflow-y:auto;">'
+    // Customer
+    + '<div class="spec-section-card" style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px;margin-bottom:16px;">'
+    + '<h4 style="margin:0 0 14px 0;font-size:0.85rem;font-weight:700;color:#0F172A;">Customer Details</h4>'
+    + '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;">'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Customer Name</label>'
+    + '<input type="text" id="edit-cust-name" class="form-control" value="' + escHtml(e.customerName) + '" oninput="onEditCustChange(\'customerName\',this.value)" style="font-weight:600;"></div>'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Model / Chassis</label>'
+    + '<input type="text" class="form-control" value="' + escHtml(e.model) + '" oninput="onEditCustChange(\'model\',this.value)" style="font-weight:600;"></div>'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Date</label>'
+    + '<input type="date" class="form-control" value="' + e.date + '" oninput="onEditCustChange(\'date\',this.value)" style="font-weight:600;"></div>'
+    + '</div></div>'
+    // Specs
+    + specsHtml
+    // Dimensions
+    + '<div class="spec-section-card" style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px;margin-bottom:16px;">'
+    + '<h4 style="margin:0 0 14px 0;font-size:0.85rem;font-weight:700;color:#0F172A;">\uD83D\uDCCF Product Dimensions</h4>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Overall Length</label>'
+    + '<div style="display:flex;gap:4px;"><input type="number" step="0.1" id="e-dim-l-n" class="form-control" value="' + l.n + '" oninput="onEditDim(\'length\')" style="font-weight:700;height:38px;">'
+    + '<select id="e-dim-l-u" class="form-control" onchange="onEditDim(\'length\')" style="width:90px;font-weight:600;height:38px;">'
+    + '<option value="Feet" ' + sel(l.u,'Feet') + '>Feet</option><option value="Meters" ' + sel(l.u,'Meter') + '>Meters</option>'
+    + '<option value="Inches" ' + sel(l.u,'Inch') + '>Inches</option><option value="mm" ' + sel(l.u,'mm') + '>mm</option></select></div></div>'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Side Wall Height</label>'
+    + '<div style="display:flex;gap:4px;"><input type="text" id="e-dim-h-n" class="form-control" value="' + h.n + '" oninput="onEditDim(\'height\')" style="font-weight:700;height:38px;">'
+    + '<select id="e-dim-h-u" class="form-control" onchange="onEditDim(\'height\')" style="width:90px;font-weight:600;height:38px;">'
+    + '<option value="Feet" ' + sel(h.u,'Feet') + '>Feet</option><option value="Inches" ' + sel(h.u,'Inch') + '>Inches</option>'
+    + '<option value="Meters" ' + sel(h.u,'Meter') + '>Meters</option><option value="NA" ' + (h.n === 'NA' || h.u === 'NA' ? 'selected' : '') + '>NA</option></select></div></div>'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;display:block;margin-bottom:6px;">Overall Width</label>'
+    + '<div style="display:flex;gap:4px;"><input type="number" step="0.5" id="e-dim-w-n" class="form-control" value="' + w.n + '" oninput="onEditDim(\'width\')" style="font-weight:700;height:38px;">'
+    + '<select id="e-dim-w-u" class="form-control" onchange="onEditDim(\'width\')" style="width:95px;font-weight:600;height:38px;">'
+    + '<option value="Inches" ' + sel(w.u,'Inch') + '>Inches</option><option value="Feet" ' + sel(w.u,'Feet') + '>Feet</option>'
+    + '<option value="mm" ' + sel(w.u,'mm') + '>mm</option></select></div></div></div></div>'
+    // Price
+    + '<div class="spec-section-card" style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px;margin-bottom:16px;">'
+    + '<h4 style="margin:0 0 14px 0;font-size:0.85rem;font-weight:700;color:#0F172A;">\uD83D\uDCB0 Final Price</h4>'
+    + '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">'
+    + '<div style="flex:1;min-width:200px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Override Final Price (\u20B9)</label>'
+    + '<div style="display:flex;gap:6px;align-items:center;"><input type="number" id="e-price-input" class="form-control" placeholder="Use calculated" value="' + (e.total || '') + '" oninput="onEditPriceChange(this.value)" style="flex:1;font-weight:700;">'
+    + '<button type="button" onclick="document.getElementById(\'e-price-input\').value=\'\';onEditPriceChange(\'\')" style="background:none;border:1px solid #CBD5E1;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.75rem;font-weight:600;color:#64748B;">\u2715 Reset</button></div>'
+    + '<small style="color:#94A3B8;font-size:0.7rem;">Leave empty for auto-calculated price</small></div>'
+    + '<div style="padding:12px 24px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;text-align:center;">'
+    + '<span style="font-size:0.7rem;font-weight:600;color:#059669;display:block;">Final Price</span>'
+    + '<span id="e-price-display" style="font-size:1.3rem;font-weight:800;color:#059669;">\u20B9' + (e.total || 0).toLocaleString('en-IN') + '</span></div></div></div>'
+    // Terms & Scope
+    + '<div class="spec-section-card" style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px;margin-bottom:16px;">'
+    + '<h4 style="margin:0 0 14px 0;font-size:0.85rem;font-weight:700;color:#0F172A;">\uD83D\uDCCB Scope & Terms</h4>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Scope of Work</label>'
+    + '<textarea class="form-control" rows="4" oninput="onEditScopeChange(this.value)" style="font-weight:600;">' + escHtml(e.scopeOfWork) + '</textarea></div>'
+    + '<div><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Terms & Conditions</label>'
+    + '<textarea class="form-control" rows="4" oninput="onEditTermsChange(this.value)" style="font-weight:600;">' + escHtml(e.terms.join('\n')) + '</textarea></div></div></div>'
+    // End
+    + '</div>'
+    // Footer
+    + '<div style="display:flex;justify-content:flex-end;gap:12px;padding:16px 20px;background:#F8FAFC;border-top:1px solid #E2E8F0;">'
+    + '<button onclick="cancelEditQuotation()" class="btn btn-secondary" style="font-weight:700;padding:10px 24px;">Cancel</button>'
+    + '<button onclick="saveEditQuotation(true)" class="btn btn-primary" style="font-weight:700;padding:10px 24px;background:#0284C7;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(2,132,199,0.2);">\uD83D\uDCC4 Save &amp; View PDF</button>'
+    + '<button onclick="saveEditQuotation()" class="btn btn-primary" style="font-weight:700;padding:10px 24px;background:#059669;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(5,150,105,0.2);">\u2713 Save Changes</button>'
+    + '</div></div>';
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function buildEditSpecControl(spec) {
+  const e = window._editState;
+  if (!e) return '';
+  const isNr = !!e.notRequired[spec.id];
+  const selectedVal = e.specs[spec.id] !== undefined ? e.specs[spec.id] : (spec.defaultValue || '');
+  const rawOpts = (spec.options && spec.options.length) ? spec.options
+    : (spec.priceDiffs && Object.keys(spec.priceDiffs).length) ? Object.keys(spec.priceDiffs) : ['Standard', 'Custom'];
+  const hasCustom = rawOpts.some(o => typeof o === 'string' && o.toLowerCase() === 'custom');
+  const allOpts = rawOpts.filter(o => typeof o === 'string' && o.toLowerCase() !== 'custom');
+
+  let ctrl = '';
+  if (spec.type === 'dropdown') {
+    ctrl = '<select class="form-control" onchange="onEditSpecChange(\'' + spec.id + '\',this.value)" ' + (isNr ? 'disabled' : '') + ' style="width:100%;font-weight:600;min-height:42px;padding:8px 12px;">'
+      + allOpts.map(o => '<option value="' + escHtml(o) + '" ' + (o === selectedVal ? 'selected' : '') + '>' + escHtml(o) + '</option>').join('')
+      + (hasCustom ? '<option value="Custom" ' + (selectedVal === 'Custom' ? 'selected' : '') + '>Custom</option>' : '')
+      + '</select>';
+  } else if (spec.type === 'radio' || spec.type === 'checkbox') {
+    ctrl = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">'
+      + allOpts.map(o => '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:0.8rem;font-weight:600;color:#334155;background:#F8FAFC;padding:4px 10px;border-radius:6px;border:1px solid #CBD5E1;">'
+        + '<input type="radio" name="e-spec-' + spec.id + '" value="' + escHtml(o) + '" ' + (o === selectedVal ? 'checked' : '') + ' onchange="onEditSpecChange(\'' + spec.id + '\',this.value)" ' + (isNr ? 'disabled' : '') + '>'
+        + escHtml(o) + '</label>').join('')
+      + (hasCustom ? '<label style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-size:0.8rem;font-weight:600;color:#334155;background:#F8FAFC;padding:4px 10px;border-radius:6px;border:1px solid #CBD5E1;">'
+        + '<input type="radio" name="e-spec-' + spec.id + '" value="Custom" ' + (selectedVal === 'Custom' ? 'checked' : '') + ' onchange="onEditSpecChange(\'' + spec.id + '\',this.value)" ' + (isNr ? 'disabled' : '') + '>Custom</label>' : '')
+      + '</div>';
+  } else if (spec.type === 'text') {
+    ctrl = '<input type="text" class="form-control" value="' + escHtml(selectedVal) + '" oninput="onEditSpecChange(\'' + spec.id + '\',this.value)" ' + (isNr ? 'disabled' : '') + ' style="width:100%;font-weight:600;min-height:42px;padding:8px 12px;margin-top:4px;">';
+  }
+
+  return '<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+    + '<label style="font-size:0.8rem;font-weight:700;color:#1E293B;margin:0;">' + escHtml(spec.name) + '</label>'
+    + '<span style="font-size:0.65rem;font-weight:600;padding:1px 6px;border-radius:4px;cursor:pointer;background:' + (isNr ? '#FEE2E2' : '#F1F5F9') + ';color:' + (isNr ? '#DC2626' : '#64748B') + ';" onclick="onEditToggleNr(\'' + spec.id + '\')">' + (isNr ? 'Not Required' : 'Required') + '</span></div>'
+    + ctrl + '</div>';
+}
+
+window.onEditSpecChange = function(id, val) {
+  if (window._editState) _editState.specs[id] = val;
+};
+
+window.onEditToggleNr = function(id) {
+  if (!window._editState) return;
+  _editState.notRequired[id] = !_editState.notRequired[id];
+  const t = WIZARD_PRODUCT_TEMPLATES[_editState.subtype];
+  if (t) renderInlineEditForm(_editState.quoteId, t);
+};
+
+window.onEditCustChange = function(field, val) {
+  if (window._editState) _editState[field] = val;
+};
+
+window.onEditDim = function(dim) {
+  if (!window._editState) return;
+  const nEl = document.getElementById('e-dim-' + dim.charAt(0) + '-n');
+  const uEl = document.getElementById('e-dim-' + dim.charAt(0) + '-u');
+  if (nEl && uEl) _editState.dimensions[dim] = nEl.value + ' ' + uEl.value;
+};
+
+window.onEditPriceChange = function(val) {
+  if (!window._editState) return;
+  _editState.manualTotal = (val !== '' && val !== null) ? parseFloat(val) : null;
+  const d = document.getElementById('e-price-display');
+  if (d) {
+    const t = _editState.manualTotal !== null ? _editState.manualTotal : _editState.total;
+    d.textContent = '\u20B9' + (t || 0).toLocaleString('en-IN');
+  }
+};
+
+window.onEditScopeChange = function(val) {
+  if (window._editState) _editState.scopeOfWork = val;
+};
+
+window.onEditTermsChange = function(val) {
+  if (window._editState) _editState.terms = val.split('\n').filter(t => t.trim());
+};
+
+window.cancelEditQuotation = function() {
+  window._editState = null;
+  renderApprovalsList(window._approvalsFilter || 'pending');
+};
+
+window.saveEditQuotation = function(showPdf) {
+  loadState();
+  const e = window._editState;
+  if (!e || !e.quoteId) return;
+
+  const q = STATE.quotations.find(x => x.id === e.quoteId);
+  if (!q) return;
+
+  const template = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : null;
+
+  q.customerName = e.customerName || q.customerName;
+  q.model = e.model || q.model;
+  q.date = e.date || q.date;
+  q.productName = template ? template.name : q.productName;
+  q.total = e.manualTotal !== null ? e.manualTotal : (e.total || q.total);
+  q.specs = JSON.parse(JSON.stringify(e.specs || {}));
+  q.notRequired = JSON.parse(JSON.stringify(e.notRequired || {}));
+  q.dimensions = JSON.parse(JSON.stringify(e.dimensions || q.dimensions));
+  q.scopeOfWork = e.scopeOfWork || q.scopeOfWork;
+  q.terms = e.terms || q.terms;
+
+  // Sync linked work orders
+  if (q.workOrderIds) {
+    q.workOrderIds.forEach(woId => {
+      const wo = STATE.workOrders ? STATE.workOrders.find(w => w.id === woId) : null;
+      if (wo) {
+        wo.customer = q.customerName;
+        wo.product = q.productName;
+        wo.total = q.total;
+        wo.specs = Object.entries(q.specs || {}).filter(([k]) => !q.notRequired[k] && !k.endsWith('_custom_desc') && !k.endsWith('_custom_price')).map(([k, v]) => {
+          const si = template ? template.specs.find(s => s.id === k) : null;
+          return (si ? si.name : k) + ': ' + v;
+        });
+      }
+    });
+  }
+
+  // Sync production items
+  if (STATE.productionItems) {
+    STATE.productionItems.forEach(p => {
+      if (p.quoteId === e.quoteId || p.id === e.quoteId) {
+        p.customerName = q.customerName;
+        p.product = q.productName;
+      }
+    });
+  }
+
+  logSystemActivity('Quotation ' + e.quoteId + ' details updated via inline edit.');
+  saveState();
+
+  window._editState = null;
+
+  // Look up client for address/gst
+  var editClient = STATE.customers ? STATE.customers.find(function(c) { return c.id === q.customerId || (c.company && c.company === q.customerName); }) : null;
+
+  if (showPdf) {
+    showToastNotification('Quotation ' + q.id + ' updated! Opening PDF preview.');
+    renderApprovalsList(window._approvalsFilter || 'pending');
+    setTimeout(function() { renderPdfFromQuote(q, editClient); }, 200);
+  } else {
+    showToastNotification('Quotation ' + q.id + ' updated successfully!');
+    switchModule('approvals');
+    renderApprovalsList(window._approvalsFilter || 'pending');
+  }
+};
+
+function renderPdfFromQuote(quote, client) {
+  if (!quote) return;
+  currentPreviewQuoteId = quote.id;
+
+  var clientAddr = client ? client.address : '';
+  var clientGst = client ? client.gst : '';
+  var clientCo = client ? client.company : '';
+
+  var template = quote.subtype
+    ? WIZARD_PRODUCT_TEMPLATES[quote.subtype]
+    : Object.values(WIZARD_PRODUCT_TEMPLATES).find(function(t) { return t.name === quote.productName; });
+
+  var grandTotalVal = quote.total || 0;
+  var basicVal = Math.round(grandTotalVal / 1.18);
+  var gstVal = grandTotalVal - basicVal;
+
+  document.getElementById('pdf-ref-no').innerText = 'REF:- ' + quote.id;
+  document.getElementById('pdf-date-val').innerText = 'DATE: ' + new Date(quote.date).toLocaleDateString('en-GB').replace(/\//g,'.');
+  document.getElementById('pdf-to-company').innerText = 'M/s ' + (clientCo || quote.customerName || 'Valued Client').toUpperCase();
+  document.getElementById('pdf-to-address-1').innerText = (clientAddr || '').substring(0, 45) || 'Registered Office';
+  document.getElementById('pdf-to-address-2').innerText = (clientAddr || '').substring(45) || 'GST Registered Address';
+  document.getElementById('pdf-to-gst').innerText = 'GST NO: ' + (clientGst || 'Pending');
+
+  if (template) {
+    var capacityLabel = quote.capacity && quote.capacity !== 'NA' ? quote.capacity + ' ' : '';
+    var dims = quote.dimensions || template.dimensions;
+    var nr = quote.notRequired || {};
+    var subframeReq = template.specs.some(function(s) { return s.id === 'subframe'; }) && !nr['subframe'];
+    var hydraulicReq = template.specs.some(function(s) { return s.id === 'cylinder'; }) && !nr['cylinder'];
+    var extras = []; if (subframeReq) extras.push('subframe'); if (hydraulicReq) extras.push('Hydraulic Kit');
+    var extrasStr = extras.length ? ' with ' + extras.join(' & ') : '';
+    var dimsStr = (dims.length || '') + ' L \u00D7 ' + (dims.width || '') + ' W \u00D7 ' + (dims.height || '') + ' H';
+    var modelLabel = (quote.model || quote.customerName || 'Commercial Vehicle').toUpperCase();
+    document.getElementById('pdf-subj-text').innerText = 'Subject: Quotation for -' + modelLabel + ' , ' + capacityLabel + template.name.toUpperCase() + ' (' + dimsStr + ')' + extrasStr;
+    var descExtras = []; if (subframeReq) descExtras.push('WITH SUBFRAME'); if (hydraulicReq) descExtras.push('CYLINDER KIT');
+    var descExtrasStr = descExtras.length ? ' ' + descExtras.join(' & ') : '';
+    document.getElementById('pdf-table-desc').innerHTML = capacityLabel + template.name.toUpperCase() + descExtrasStr + '<br>Regular TAIL DOOR ' + modelLabel;
+
+    var specsContainer = document.getElementById('pdf-specs-list-container');
+    var sHtml = ''; var cnt = 1;
+    Object.keys(quote.specs || {}).forEach(function(k) {
+      if (nr[k]) return;
+      if (k.endsWith('_custom_desc') || k.endsWith('_custom_price')) return;
+      var si = template.specs.find(function(s) { return s.id === k; });
+      if (si) {
+        var v = quote.specs[k];
+        if (typeof v === 'string' && v.toLowerCase() === 'custom') {
+          var d = quote.specs[k + '_custom_desc'];
+          if (d) v += ' - ' + d;
+        }
+        sHtml += '<div class="pdf-specs-item"><span style="font-weight:bold;min-width:26px;">' + (cnt++) + '.</span><span>' + si.name + ' = ' + v + '</span></div>';
+      }
+    });
+    // Add dimension specs (matching wizard PDF behavior)
+    sHtml += '<div class="pdf-specs-item"><span style="font-weight:bold;min-width:26px;">' + (cnt++) + '.</span><span>Overall Length Dimension = ' + (dims.length || 'NA') + '</span></div>';
+    sHtml += '<div class="pdf-specs-item"><span style="font-weight:bold;min-width:26px;">' + (cnt++) + '.</span><span>Side Gate Height Dimension = ' + (dims.height || 'NA') + '</span></div>';
+    sHtml += '<div class="pdf-specs-item"><span style="font-weight:bold;min-width:26px;">' + (cnt++) + '.</span><span>Overall Frame Width Dimension = ' + (dims.width || 'NA') + '</span></div>';
+    // Add custom items if present
+    if (quote.customItems && quote.customItems.length) {
+      quote.customItems.forEach(function(item) {
+        sHtml += '<div class="pdf-specs-item"><span style="font-weight:bold;min-width:26px;">' + (cnt++) + '.</span><span>Accessory = ' + item.name + ' (Qty: ' + item.qty + ')</span></div>';
+      });
+    }
+    if (specsContainer) specsContainer.innerHTML = sHtml;
+  }
+
+  document.getElementById('pdf-table-basic').innerText = formatPdfPrice(basicVal);
+  document.getElementById('pdf-table-gst').innerText = formatPdfPrice(gstVal);
+  document.getElementById('pdf-table-total').innerText = formatPdfPrice(basicVal);
+  document.getElementById('pdf-table-gst-total').innerText = formatPdfPrice(gstVal);
+  document.getElementById('pdf-grand-total-label').innerText = formatPdfPrice(grandTotalVal);
+  document.getElementById('pdf-grand-total-val').innerText = formatPdfPrice(grandTotalVal);
+  document.getElementById('pdf-words-val').innerText = priceToIndianWords(grandTotalVal);
+
+  document.getElementById('pdf-terms-list').innerHTML = (quote.terms || []).map(function(t) { return '<li>' + t + '</li>'; }).join('');
+  var scopeEl = document.getElementById('pdf-scope-val');
+  if (scopeEl) scopeEl.innerText = quote.scopeOfWork || 'As Mentioned above';
+
+  var spEl = document.getElementById('pdf-salesperson');
+  if (spEl) spEl.innerText = quote.salesperson || '';
+
+  var bd = quote.bankDetails || {};
+  var bMap = { 'pdf-bank-company': 'companyName', 'pdf-bank-name': 'bankName', 'pdf-bank-account': 'accountNumber', 'pdf-bank-type': 'accountType', 'pdf-bank-ifsc': 'ifsc' };
+  Object.keys(bMap).forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el && bd[bMap[id]]) el.innerText = bd[bMap[id]];
+  });
+
+  document.getElementById('pdf-preview-modal').classList.add('active');
+}
+
 window.saveWizardQuotation = function() {
   try {
     loadState();
@@ -3273,6 +3644,9 @@ window.renderApprovalsList = function(filter = 'pending') {
                 ✕ Deny
               </button>
             ` : ''}
+            <button onclick="editQuotation('${q.id}')" class="btn" style="flex:0; background:#F59E0B; color:white; font-weight:700; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.85rem; box-shadow:0 2px 4px rgba(245,158,11,0.2);" title="Edit Quotation Details">
+              ✏️ Edit
+            </button>
             <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
               📄 Show PDF
             </button>
@@ -4041,181 +4415,8 @@ function priceToIndianWords(num) {
 // Global modal preview populator
 window.openPdfPreview = function(quoteId) {
   loadState();
-  const quote = STATE.quotations.find(q => q.id === quoteId);
-  if (!quote) return;
-
-  currentPreviewQuoteId = quoteId;
-
-  const client = STATE.customers.find(c => c.id === quote.customerId);
-  const clientCompany = client ? client.company : 'Company Name';
-  const clientAddress = client ? client.address : 'Registered Address';
-  const clientGst = client ? client.gst : 'Pending';
-
-  // Math variables
-  const grandTotalVal = quote.total;
-  const basicVal = Math.round(grandTotalVal / 1.18);
-  const gstVal = grandTotalVal - basicVal;
-
-  // Ref details
-  document.getElementById('pdf-ref-no').innerText = `REF:- ${quote.id}`;
-  document.getElementById('pdf-date-val').innerText = `DATE: ${new Date(quote.date).toLocaleDateString('en-GB').replace(/\//g,'.')}`;
-  
-  document.getElementById('pdf-to-company').innerText = `M/s ${clientCompany.toUpperCase()}`;
-  document.getElementById('pdf-to-address-1').innerText = clientAddress.substring(0, 45);
-  document.getElementById('pdf-to-address-2').innerText = clientAddress.substring(45) || 'GST Registered Address';
-  document.getElementById('pdf-to-gst').innerText = `GST NO: ${clientGst}`;
-
-  // Find matching template for consistent rendering
-  const template = quote.subtype
-    ? WIZARD_PRODUCT_TEMPLATES[quote.subtype]
-    : Object.values(WIZARD_PRODUCT_TEMPLATES).find(t => t.name === quote.productName);
-
-  if (template) {
-    // === Template-based rendering (matches wizard PDF exactly) ===
-    const capacityLabel = quote.capacity && quote.capacity !== 'NA' ? `${quote.capacity} ` : '';
-    const dims = quote.dimensions || template.dimensions;
-
-    const hasSubframeSpec = template.specs.some(s => s.id === 'subframe');
-    const nr = quote.notRequired || {};
-    const subframeRequired = hasSubframeSpec && !nr['subframe'];
-    const hasCylinderSpec = template.specs.some(s => s.id === 'cylinder');
-    const hydraulicRequired = hasCylinderSpec && !nr['cylinder'];
-
-    const extras = [];
-    if (subframeRequired) extras.push('subframe');
-    if (hydraulicRequired) extras.push('Hydraulic Kit');
-    const extrasStr = extras.length > 0 ? ` with ${extras.join(' & ')}` : '';
-
-    const dimsStr = `${dims.length} L × ${dims.width} W × ${dims.height} H`;
-    const modelLabel = (quote.model || quote.customerName || 'Commercial Vehicle').toUpperCase();
-    document.getElementById('pdf-subj-text').innerText = `Subject: Quotation for -${modelLabel} , ${capacityLabel}${template.name.toUpperCase()} (${dimsStr})${extrasStr}`;
-
-    const descExtras = [];
-    if (subframeRequired) descExtras.push('WITH SUBFRAME');
-    if (hydraulicRequired) descExtras.push('CYLINDER KIT');
-    const descExtrasStr = descExtras.length > 0 ? ` ${descExtras.join(' & ')}` : '';
-    document.getElementById('pdf-table-desc').innerHTML = `${capacityLabel}${template.name.toUpperCase()}${descExtrasStr}<br>Regular TAIL DOOR ${modelLabel}`;
-
-    // Spec list with friendly names from template + custom items
-    const specsContainer = document.getElementById('pdf-specs-list-container');
-    let specsHtml = '';
-    let count = 1;
-    Object.keys(quote.specs).forEach(key => {
-      if (nr[key]) return;
-      if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
-      const specInfo = template.specs.find(s => s.id === key);
-      if (specInfo) {
-        let val = quote.specs[key];
-        if (typeof val === 'string' && val.toLowerCase() === 'custom') {
-          const desc = quote.specs[key + '_custom_desc'];
-          if (desc) val += ` - ${desc}`;
-        }
-        specsHtml += `
-          <div class="pdf-specs-item">
-            <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
-            <span>${specInfo.name} = ${val}</span>
-          </div>
-        `;
-      }
-    });
-    if (quote.customItems && quote.customItems.length > 0) {
-      quote.customItems.forEach(item => {
-        specsHtml += `
-          <div class="pdf-specs-item">
-            <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
-            <span>Accessory = ${item.name} (Qty: ${item.qty})</span>
-          </div>
-        `;
-      });
-    }
-    if (specsContainer) specsContainer.innerHTML = specsHtml;
-  } else {
-    // === Fallback: Legacy non-template quotes ===
-    let chassisName = 'EICHER-6035XPT';
-    let capacityName = '25 CBM';
-    let productFamilyText = 'TIPPER BOX BODY';
-
-    if (quote.productName && quote.productName.includes('Flat Bed')) {
-      chassisName = 'HEAVY HAULER';
-      capacityName = '40 Ft';
-      productFamilyText = 'FLAT BED TRAILER';
-    } else if (quote.productName && quote.productName.includes('Tip')) {
-      chassisName = 'TATA PRIMA';
-      capacityName = '36 CBM';
-      productFamilyText = 'TIP TRAILER';
-    } else if (quote.productName && quote.productName.includes('Rock')) {
-      chassisName = 'CAT-777G';
-      capacityName = '16 CBM';
-      productFamilyText = 'ROCK BODY TIPPER';
-    }
-
-    const nr = quote.notRequired || {};
-    const hasSubframeSpec = quote.specs && 'subframe' in quote.specs;
-    const showSubframe = hasSubframeSpec && !nr['subframe'];
-    const showCylinder = !nr['cylinder'];
-
-    const subStr = [];
-    if (showSubframe) subStr.push('sub frame');
-    if (showCylinder) subStr.push('Hydraulic Kit');
-    const extStr = subStr.length > 0 ? ` with ${subStr.join(' & ')}` : '';
-
-    const descSubStr = [];
-    if (showSubframe) descSubStr.push('WITH SUBFRAME');
-    if (showCylinder) descSubStr.push('CYLINDER KIT');
-    const descExtStr = descSubStr.length > 0 ? ` ${descSubStr.join(' & ')}` : '';
-
-    document.getElementById('pdf-subj-text').innerText = `Subject: Quotation for -${chassisName} , ${capacityName} ${productFamilyText}${extStr}`;
-    document.getElementById('pdf-table-desc').innerHTML = `${capacityName} ${productFamilyText}${descExtStr}<br>Regular TAIL DOOR ${chassisName}`;
-
-    const specsContainer = document.getElementById('pdf-specs-list-container');
-    let specsHtml = '';
-    let count = 1;
-    Object.keys(quote.specs).forEach(key => {
-      if (nr[key]) return;
-      if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
-      specsHtml += `
-        <div class="pdf-specs-item">
-          <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
-          <span>${key.toUpperCase()} = ${quote.specs[key]}</span>
-        </div>
-      `;
-    });
-    if (quote.customItems && quote.customItems.length > 0) {
-      quote.customItems.forEach(item => {
-        specsHtml += `
-          <div class="pdf-specs-item">
-            <span style="font-weight:bold; min-width: 26px;">${count++}.</span>
-            <span>Accessory = ${item.name} (Qty: ${item.qty})</span>
-          </div>
-        `;
-      });
-    }
-    if (specsContainer) specsContainer.innerHTML = specsHtml;
-  }
-
-  // Set salesperson name
-  const spEl = document.getElementById('pdf-salesperson');
-  if (spEl) spEl.innerText = quote.salesperson || '';
-
-  // Populate Terms & Conditions from saved quotation
-  const pdfTermsList = document.getElementById('pdf-terms-list');
-  if (pdfTermsList && quote.terms) {
-    pdfTermsList.innerHTML = quote.terms.map(t => `<li>${t}</li>`).join('');
-  }
-
-  // Populate Scope of Work from saved quotation
-  const pdfScopeVal = document.getElementById('pdf-scope-val');
-  if (pdfScopeVal && quote.scopeOfWork) {
-    pdfScopeVal.innerText = quote.scopeOfWork;
-  }
-
-  // Populate Bank Details from saved quotation
-  const bd = quote.bankDetails || {};
-  const bankMap = { 'pdf-bank-company': 'companyName', 'pdf-bank-name': 'bankName', 'pdf-bank-account': 'accountNumber', 'pdf-bank-type': 'accountType', 'pdf-bank-ifsc': 'ifsc' };
-  Object.keys(bankMap).forEach(id => {
-    const el = document.getElementById(id);
-    if (el && bd[bankMap[id]]) el.innerText = bd[bankMap[id]];
-  });
-
-  document.getElementById('pdf-preview-modal').classList.add('active');
+  var q = STATE.quotations ? STATE.quotations.find(function(x) { return x.id === quoteId; }) : null;
+  if (!q) return;
+  var client = STATE.customers ? STATE.customers.find(function(c) { return c.id === q.customerId || (c.company && c.company === q.customerName); }) : null;
+  renderPdfFromQuote(q, client);
 };
