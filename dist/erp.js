@@ -408,6 +408,7 @@ function switchModule(moduleName) {
     if (moduleName === 'customers') renderCustomersDirectory();
     if (moduleName === 'admin') renderAdminSettings();
     if (moduleName === 'quotations') startNewQuotationWizard();
+    if (moduleName === 'allquotations') renderAllQuotations();
     if (moduleName === 'approvals') renderApprovalsList('pending');
   }
 }
@@ -2607,6 +2608,59 @@ function applyModuleFilter(moduleName, items, dateField, productField, searchFie
 }
 // --- End filter helpers ---
 
+window.renderAllQuotations = function() {
+  loadState();
+  const container = document.getElementById('allquotations-cards-container');
+  if (!container) return;
+  if (!STATE.quotations) STATE.quotations = [];
+
+  const filtered = applyModuleFilter('allquotations', STATE.quotations, 'date', 'productName', ['id', 'customerName', 'productName']);
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:60px 20px; color:#94A3B8; font-size:0.9rem; font-weight:600;">No quotations found.</div>';
+    return;
+  }
+
+  container.innerHTML = filtered.map(q => {
+    const wo = STATE.workOrders.find(w => w.quoteId === q.id);
+    const prod = STATE.productionItems ? STATE.productionItems.find(p => p.quoteId === q.id) : null;
+    const pct = prod ? (prod.progressPct || 0) : (wo ? (wo.progress || 0) : 0);
+    const formattedPrice = '₹' + (q.total || 0).toLocaleString('en-IN');
+
+    let statusColor = '#D97706';
+    let statusText = q.status || 'Draft';
+    if (q.status === 'Approved') { statusColor = '#059669'; }
+    else if (q.status === 'Denied') { statusColor = '#DC2626'; }
+    else if (q.status === 'Pending Approval') { statusColor = '#D97706'; }
+
+    return `
+      <div style="background:#ffffff; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#F8FAFC;">
+          <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px;">${q.id}</span>
+            ${wo ? `<span style="background:#1E40AF; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px;">${wo.id}</span>` : ''}
+            <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${q.productName || 'Custom Vehicle'}</span>
+            <span style="font-size:0.7rem; font-weight:600; color:#64748B;">${q.customerName || ''}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="display:inline-flex; align-items:center; gap:6px;">
+              <span style="width:50px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; display:inline-block;">
+                <span style="display:block; width:${Math.min(pct, 100)}%; height:100%; background:${pct >= 100 ? '#10B981' : '#3B82F6'}; border-radius:3px;"></span>
+              </span>
+              <span style="font-size:0.7rem; font-weight:700; color:${pct >= 100 ? '#059669' : '#2563EB'};">${pct}%</span>
+            </span>
+            <span style="font-size:0.7rem; font-weight:700; color:${statusColor};">${statusText}</span>
+            <span style="font-size:0.75rem; font-weight:600; color:#475569;">${formattedPrice}</span>
+            <button class="btn btn-outline btn-xs" onclick="event.stopPropagation(); openPdfPreview('${q.id}')" style="font-weight:700; padding:4px 12px; font-size:0.7rem;">
+              View Quotation
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+};
+
 function renderWorkOrders() {
   loadState();
   const container = document.getElementById('workorders-container');
@@ -2664,10 +2718,6 @@ function renderWorkOrders() {
             ${wo.dueDate ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); clearWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; color:#EF4444; border-color:#FCA5A5; font-weight:700;">Clear</button>` : ''}
           </div>
           <div class="wo-footer" style="display:flex; gap:12px;">
-            <button class="btn btn-outline btn-sm" onclick="event.stopPropagation(); openPdfPreview('${wo.quoteId}')">
-              <svg class="icon-sm" viewBox="0 0 24 24" style="width:14px;height:14px; fill:none; stroke:currentColor;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-              Show Quotation
-            </button>
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openOrderProgressionModal('${wo.quoteId}')" style="background:#0F172A; border:none; color:#fff; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px;">Track Order</button>
             <button class="btn btn-sm" onclick="event.stopPropagation(); toggleWorkOrderUrgent('${wo.id}')" style="background:${wo.urgent ? '#DC2626' : '#F1F5F9'}; border:1.5px solid ${wo.urgent ? '#DC2626' : '#CBD5E1'}; color:${wo.urgent ? '#fff' : '#475569'}; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; cursor:pointer;">${wo.urgent ? '✓ Urgent' : 'Set Urgent'}</button>
           </div>
@@ -3392,10 +3442,7 @@ function renderProductionBoard() {
               <div style="width:${pct}%; height:100%; background:${col.status === 'Finished' ? '#10B981' : '#3B82F6'}; transition:width 0.3s ease;"></div>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #F1F5F9; padding:10px 0;" onclick="event.stopPropagation()">
-              <button type="button" class="btn btn-outline btn-xs" onclick="openPdfPreview('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 8px;">
-                📄 Show Quotation
-              </button>
+            <div style="display:flex; justify-content:flex-end; align-items:center; border-top:1px solid #F1F5F9; padding:10px 0;" onclick="event.stopPropagation()">
               <button type="button" class="btn btn-primary btn-xs" onclick="openOrderProgressionModal('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 10px; background:#0F172A; border:none; color:white;">
                 Track Order &rarr;
               </button>
