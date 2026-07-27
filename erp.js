@@ -2092,13 +2092,30 @@ window.saveBankFromModal = function() {
   closeBankModal();
 };
 
+// Helper: extract initials from customer name (e.g. "Chena Reddy" → "CR")
+function getInitials(name) {
+  if (!name) return 'XX';
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.charAt(0).toUpperCase() || 'X';
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0).toUpperCase() : 'X';
+  return first + last;
+}
+
+// Helper: generate quotation REF number (e.g. "CR/001/2026")
+function generateRefNumber(name, counter) {
+  const initials = getInitials(name);
+  const year = new Date().getFullYear();
+  return `${initials}/${String(counter).padStart(3, '0')}/${year}`;
+}
+
 // Step 5: Final Quotation Mock Preview Populate
 function generateQuotationFinalReview() {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
   if (!template) return;
 
-  const quoteId = `QT-2026-00${STATE.quotations.length + 1}`;
   const c = wizardState.customer;
+  const nextCounter = (STATE.quotationCounter || 0) + 1;
+  const previewRef = generateRefNumber(c.name, nextCounter);
 
   // Pre-calculations
   const grandTotal = wizardState.total;
@@ -2106,7 +2123,7 @@ function generateQuotationFinalReview() {
   const gstAmount = grandTotal - basicAmount;
 
   // Set standard PDF preview tags
-  document.getElementById('w-pdf-ref-no').innerText = `REF:- NEXFRA-QTN/2026/${STATE.quotations.length + 1}`;
+  document.getElementById('w-pdf-ref-no').innerText = `REF:- ${previewRef}`;
   document.getElementById('w-pdf-date-val').innerText = `DATE: ${new Date(c.date).toLocaleDateString('en-GB').replace(/\//g,'.')}`;
   
   document.getElementById('w-pdf-to-company').innerText = `M/s ${c.company.toUpperCase()}`;
@@ -2307,9 +2324,9 @@ window.saveWizardQuotation = function() {
     const subtype = wizardState.subtype || 'flatbed';
     const template = WIZARD_PRODUCT_TEMPLATES[subtype] || WIZARD_PRODUCT_TEMPLATES['flatbed'];
     
-    // Guaranteed unique quotation number
-    const uniqueNum = Math.floor(10000 + Math.random() * 90000);
-    const quoteId = `QTN-2026-${uniqueNum}`;
+    // Generate sequential quotation REF number (e.g. CR/001/2026)
+    STATE.quotationCounter = (STATE.quotationCounter || 0) + 1;
+    const quoteId = generateRefNumber(c.name, STATE.quotationCounter);
 
     // 1. Create/Update Client Profile
     if (!STATE.customers) STATE.customers = [];
@@ -2366,7 +2383,8 @@ window.convertWizardToWorkOrder = function() {
   loadState();
   const c = wizardState.customer;
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
-  const quoteId = `QT-2026-00${STATE.quotations.length}`;
+  STATE.quotationCounter = (STATE.quotationCounter || 0) + 1;
+  const quoteId = generateRefNumber(c ? c.name : '', STATE.quotationCounter);
   const woId = `WO-2026-00${STATE.workOrders.length + 1}`;
 
   // Compile spec dump details so production team never re-enters data
@@ -2425,10 +2443,13 @@ window.convertWizardToWorkOrder = function() {
 
 window.downloadWizardPdf = function() {
   const element = document.getElementById('w-pdf-sheet-render');
-  const quoteId = `QT-2026-00${STATE.quotations.length + 1}`;
+  const c = wizardState.customer;
+  const nextCounter = (STATE.quotationCounter || 0) + 1;
+  const previewRef = generateRefNumber(c ? c.name : '', nextCounter);
+  const safeRef = previewRef.replace(/\//g, '-');
   const opt = {
     margin:       [0, 0, 0, 0],
-    filename:     `NEXFRA_Quotation_${quoteId}.pdf`,
+    filename:     `NEXFRA_Quotation_${safeRef}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
       scale: 2, 
@@ -3809,9 +3830,10 @@ function printPdf() {
 
 function downloadPdf(quoteId) {
   const element = document.getElementById('pdf-content-to-print');
+  const safeRef = quoteId.replace(/\//g, '-');
   const opt = {
     margin:       [0, 0, 0, 0],
-    filename:     `NEXFRA_Quotation_${quoteId}.pdf`,
+    filename:     `NEXFRA_Quotation_${safeRef}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
       scale: 2, 
@@ -3910,7 +3932,7 @@ window.openPdfPreview = function(quoteId) {
   const gstVal = grandTotalVal - basicVal;
 
   // Ref details
-  document.getElementById('pdf-ref-no').innerText = `REF:- NEXFRA-QTN/007.26/${quoteId.replace('QT-2026-','')}`;
+  document.getElementById('pdf-ref-no').innerText = `REF:- ${quote.id}`;
   document.getElementById('pdf-date-val').innerText = `DATE: ${new Date(quote.date).toLocaleDateString('en-GB').replace(/\//g,'.')}`;
   
   document.getElementById('pdf-to-company').innerText = `M/s ${clientCompany.toUpperCase()}`;

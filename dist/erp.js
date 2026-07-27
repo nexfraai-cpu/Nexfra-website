@@ -46,7 +46,14 @@ let wizardState = {
     '6) Payment terms – 50% advance and balance Prior to Delivery',
     '7) Inspection: By Nexfra and share the report along with invoice'
   ],
-  scopeOfWork: 'As Mentioned above'
+  scopeOfWork: 'As Mentioned above',
+  bankDetails: {
+    companyName: 'NEXFRA MANUFACTURING INDIA PVT LTD',
+    bankName: 'ICICI BANK',
+    accountNumber: '060105004477',
+    accountType: 'CURRENT',
+    ifsc: '560229033/ICIC0000156'
+  }
 };
 
 // Master Vehicle Configurator Templates
@@ -566,7 +573,14 @@ function startNewQuotationWizard() {
       '6) Payment terms – 50% advance and balance Prior to Delivery',
       '7) Inspection: By Nexfra and share the report along with invoice'
     ],
-    scopeOfWork: 'As Mentioned above'
+    scopeOfWork: 'As Mentioned above',
+    bankDetails: {
+      companyName: 'NEXFRA MANUFACTURING INDIA PVT LTD',
+      bankName: 'ICICI BANK',
+      accountNumber: '060105004477',
+      accountType: 'CURRENT',
+      ifsc: '560229033/ICIC0000156'
+    }
   };
 
   // Reset inputs
@@ -575,7 +589,7 @@ function startNewQuotationWizard() {
   document.getElementById('w-cust-gst').value = '';
   document.getElementById('w-cust-phone').value = '';
   document.getElementById('w-cust-email').value = '';
-  document.getElementById('w-cust-salesperson').value = 'Prashanth kumar M P';
+  document.getElementById('w-cust-salesperson').value = '';
   document.getElementById('w-cust-model').value = '';
   document.getElementById('w-cust-chassis').value = '';
   document.getElementById('w-cust-qty').value = '1';
@@ -700,7 +714,7 @@ function validateStepInputs(stepNum) {
       phone,
       email,
       address,
-      salesperson: document.getElementById('w-cust-salesperson').value.trim() || 'Prashanth kumar M P',
+      salesperson: document.getElementById('w-cust-salesperson').value.trim() || '',
       model,
       chassis: document.getElementById('w-cust-chassis').value.trim() || 'NA-CHASSIS',
       qty: parseInt(document.getElementById('w-cust-qty').value, 10) || 1,
@@ -855,15 +869,15 @@ function renderConfiguratorFormInputs(template) {
     // Filter specs for this section
     const secSpecs = template.specs.filter(s => s.section === secId);
     
+    // Hide entire section wrapper if no specs exist for this section
+    const secWrapper = document.getElementById(`spec-sec-${secId}`);
+    
     if (secSpecs.length === 0) {
-      const secBadge = document.getElementById(`nr-badge-sec-${secId}`);
-      if (secBadge) {
-        secBadge.classList.remove('active');
-        secBadge.textContent = 'Section Required';
-      }
-      container.innerHTML = '<span class="section-hint col-span-2" style="font-size:0.8rem; color:#64748B; padding:8px 0; display:block;">No extra modifications needed for this module.</span>';
+      if (secWrapper && secId !== 'dimensions') secWrapper.style.display = 'none';
       return;
     }
+    
+    if (secWrapper) secWrapper.style.display = '';
 
     container.innerHTML = secSpecs.map(spec => {
       const isNr = !!wizardState.notRequired[spec.id];
@@ -2054,13 +2068,54 @@ window.saveScopeFromModal = function() {
   closeScopeModal();
 };
 
+window.openBankModal = function() {
+  const bd = wizardState.bankDetails || {};
+  document.getElementById('bank-company').value = bd.companyName || '';
+  document.getElementById('bank-name').value = bd.bankName || '';
+  document.getElementById('bank-account').value = bd.accountNumber || '';
+  document.getElementById('bank-type').value = bd.accountType || 'CURRENT';
+  document.getElementById('bank-ifsc').value = bd.ifsc || '';
+  document.getElementById('bank-modal').style.display = 'flex';
+};
+
+window.closeBankModal = function() {
+  document.getElementById('bank-modal').style.display = 'none';
+};
+
+window.saveBankFromModal = function() {
+  if (!wizardState.bankDetails) wizardState.bankDetails = {};
+  wizardState.bankDetails.companyName = document.getElementById('bank-company').value.trim() || 'NEXFRA MANUFACTURING INDIA PVT LTD';
+  wizardState.bankDetails.bankName = document.getElementById('bank-name').value.trim() || 'ICICI BANK';
+  wizardState.bankDetails.accountNumber = document.getElementById('bank-account').value.trim() || '060105004477';
+  wizardState.bankDetails.accountType = document.getElementById('bank-type').value || 'CURRENT';
+  wizardState.bankDetails.ifsc = document.getElementById('bank-ifsc').value.trim() || '560229033/ICIC0000156';
+  closeBankModal();
+};
+
+// Helper: extract initials from customer name (e.g. "Chena Reddy" → "CR")
+function getInitials(name) {
+  if (!name) return 'XX';
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.charAt(0).toUpperCase() || 'X';
+  const last = parts.length > 1 ? parts[parts.length - 1].charAt(0).toUpperCase() : 'X';
+  return first + last;
+}
+
+// Helper: generate quotation REF number (e.g. "CR/001/2026")
+function generateRefNumber(name, counter) {
+  const initials = getInitials(name);
+  const year = new Date().getFullYear();
+  return `${initials}/${String(counter).padStart(3, '0')}/${year}`;
+}
+
 // Step 5: Final Quotation Mock Preview Populate
 function generateQuotationFinalReview() {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
   if (!template) return;
 
-  const quoteId = `QT-2026-00${STATE.quotations.length + 1}`;
   const c = wizardState.customer;
+  const nextCounter = (STATE.quotationCounter || 0) + 1;
+  const previewRef = generateRefNumber(c.name, nextCounter);
 
   // Pre-calculations
   const grandTotal = wizardState.total;
@@ -2068,7 +2123,7 @@ function generateQuotationFinalReview() {
   const gstAmount = grandTotal - basicAmount;
 
   // Set standard PDF preview tags
-  document.getElementById('w-pdf-ref-no').innerText = `REF:- NEXFRA-QTN/2026/${STATE.quotations.length + 1}`;
+  document.getElementById('w-pdf-ref-no').innerText = `REF:- ${previewRef}`;
   document.getElementById('w-pdf-date-val').innerText = `DATE: ${new Date(c.date).toLocaleDateString('en-GB').replace(/\//g,'.')}`;
   
   document.getElementById('w-pdf-to-company').innerText = `M/s ${c.company.toUpperCase()}`;
@@ -2182,6 +2237,18 @@ function generateQuotationFinalReview() {
     scopeVal.innerText = wizardState.scopeOfWork;
   }
 
+  // Set salesperson name
+  const spEl = document.getElementById('w-pdf-salesperson');
+  if (spEl) spEl.innerText = c.salesperson || '';
+
+  // Populate Bank Details from wizardState
+  const bd = wizardState.bankDetails || {};
+  const bankMap = { 'w-pdf-bank-company': 'companyName', 'w-pdf-bank-name': 'bankName', 'w-pdf-bank-account': 'accountNumber', 'w-pdf-bank-type': 'accountType', 'w-pdf-bank-ifsc': 'ifsc' };
+  Object.keys(bankMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && bd[bankMap[id]]) el.innerText = bd[bankMap[id]];
+  });
+
   // Toggle Work Order conversion block
   updateQuotationStatusState();
 }
@@ -2257,9 +2324,9 @@ window.saveWizardQuotation = function() {
     const subtype = wizardState.subtype || 'flatbed';
     const template = WIZARD_PRODUCT_TEMPLATES[subtype] || WIZARD_PRODUCT_TEMPLATES['flatbed'];
     
-    // Guaranteed unique quotation number
-    const uniqueNum = Math.floor(10000 + Math.random() * 90000);
-    const quoteId = `QTN-2026-${uniqueNum}`;
+    // Generate sequential quotation REF number (e.g. CR/001/2026)
+    STATE.quotationCounter = (STATE.quotationCounter || 0) + 1;
+    const quoteId = generateRefNumber(c.name, STATE.quotationCounter);
 
     // 1. Create/Update Client Profile
     if (!STATE.customers) STATE.customers = [];
@@ -2291,7 +2358,8 @@ window.saveWizardQuotation = function() {
       specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
       notRequired: JSON.parse(JSON.stringify(wizardState.notRequired || {})),
       scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
-      terms: wizardState.terms || []
+      terms: wizardState.terms || [],
+      bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {}))
     };
     
     if (!STATE.quotations) STATE.quotations = [];
@@ -2315,7 +2383,8 @@ window.convertWizardToWorkOrder = function() {
   loadState();
   const c = wizardState.customer;
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
-  const quoteId = `QT-2026-00${STATE.quotations.length}`;
+  STATE.quotationCounter = (STATE.quotationCounter || 0) + 1;
+  const quoteId = generateRefNumber(c ? c.name : '', STATE.quotationCounter);
   const woId = `WO-2026-00${STATE.workOrders.length + 1}`;
 
   // Compile spec dump details so production team never re-enters data
@@ -2374,10 +2443,13 @@ window.convertWizardToWorkOrder = function() {
 
 window.downloadWizardPdf = function() {
   const element = document.getElementById('w-pdf-sheet-render');
-  const quoteId = `QT-2026-00${STATE.quotations.length + 1}`;
+  const c = wizardState.customer;
+  const nextCounter = (STATE.quotationCounter || 0) + 1;
+  const previewRef = generateRefNumber(c ? c.name : '', nextCounter);
+  const safeRef = previewRef.replace(/\//g, '-');
   const opt = {
     margin:       [0, 0, 0, 0],
-    filename:     `NEXFRA_Quotation_${quoteId}.pdf`,
+    filename:     `NEXFRA_Quotation_${safeRef}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
       scale: 2, 
@@ -2494,19 +2566,29 @@ function setModuleFilter(moduleName, field, value) {
 
 function clearModuleFilters(moduleName) {
   delete window._moduleFilters[moduleName];
+  const searchEl = document.getElementById('search-' + moduleName);
+  if (searchEl) searchEl.value = '';
   if (moduleName === 'workorders') renderWorkOrders();
   else if (moduleName === 'production') renderProductionBoard();
   else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
 }
 
-function applyModuleFilter(moduleName, items, dateField, productField) {
+function applyModuleFilter(moduleName, items, dateField, productField, searchFields) {
   const f = window._moduleFilters[moduleName] || {};
-  if (!f.dateFrom && !f.dateTo && (!f.category || f.category === 'All')) return items;
+  const searchTerm = (f.search || '').toLowerCase().trim();
+  if (!f.dateFrom && !f.dateTo && (!f.category || f.category === 'All') && !searchTerm) return items;
   return items.filter(item => {
     const d = item[dateField] || '';
     if (f.dateFrom && d < f.dateFrom) return false;
     if (f.dateTo && d > f.dateTo) return false;
     if (f.category && f.category !== 'All' && getProductCategory(item[productField]) !== f.category) return false;
+    if (searchTerm && searchFields) {
+      const match = searchFields.some(field => {
+        const val = item[field];
+        return val && String(val).toLowerCase().includes(searchTerm);
+      });
+      if (!match) return false;
+    }
     return true;
   });
 }
@@ -2522,7 +2604,7 @@ function renderWorkOrders() {
     return;
   }
 
-  const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product');
+  const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
   const urgentOnly = window._moduleFilters && window._moduleFilters.workorders && window._moduleFilters.workorders.urgent === '1';
   const displayItems = urgentOnly ? filtered.filter(wo => wo.urgent) : filtered;
   container.innerHTML = displayItems.map(wo => {
@@ -2564,7 +2646,7 @@ function renderWorkOrders() {
           </div>
           <div class="wo-due" style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:8px 12px; background:#F8FAFC; border-radius:6px; border:1px solid #E2E8F0;">
             <span style="font-size:0.75rem; font-weight:700; color:#475569;">Due Date:</span>
-            <input type="date" id="due-${wo.id}" value="${wo.dueDate || ''}" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
+            <input type="date" id="due-${wo.id}" value="${wo.dueDate || ''}" min="${new Date().toISOString().split('T')[0]}" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
             <button type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); setWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; font-weight:700;">Save</button>
             ${wo.dueDate ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); clearWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; color:#EF4444; border-color:#FCA5A5; font-weight:700;">Clear</button>` : ''}
           </div>
@@ -2607,6 +2689,11 @@ window.setWorkOrderDueDate = function(id) {
   if (!wo) return;
   const input = document.getElementById('due-' + id);
   if (!input || !input.value) return;
+  const today = new Date().toISOString().split('T')[0];
+  if (input.value < today) {
+    alert('Due date cannot be in the past. Please select today or a future date.');
+    return;
+  }
   wo.dueDate = input.value;
   ensureProductionItem(wo.quoteId, input.value);
   saveState();
@@ -2638,6 +2725,7 @@ function ensureProductionItem(quoteId, dueDate) {
     columnStatus: 'Not Started',
     progressPct: 0,
     progressionMap: {},
+    remarks: {},
     dueDate: dueDate,
     urgent: wo ? !!wo.urgent : false
   });
@@ -3048,7 +3136,7 @@ window.renderApprovalsList = function(filter = 'pending') {
     quotes = pendingQuotes;
   }
 
-  const filtered = applyModuleFilter('approvals', quotes, 'date', 'productName');
+  const filtered = applyModuleFilter('approvals', quotes, 'date', 'productName', ['id', 'customerName', 'productName']);
 
   if (quotes.length === 0) {
     container.innerHTML = `
@@ -3201,7 +3289,7 @@ function renderProductionBoard() {
   const container = document.getElementById('production-board-container');
   if (!container) return;
 
-  const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product');
+  const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
   const urgentOnly = window._moduleFilters && window._moduleFilters.production && window._moduleFilters.production.urgent === '1';
   const displayItems = urgentOnly ? filteredItems.filter(item => item.urgent) : filteredItems;
 
@@ -3291,6 +3379,57 @@ window.openOrderProgressionModal = function(quoteId) {
 window.closeOrderProgressionModal = function() {
   const modal = document.getElementById('order-progression-modal');
   if (modal) modal.classList.remove('active');
+};
+
+let _remarkContext = null;
+
+window.openRemarkModal = function(quoteId, secId) {
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
+  if (!prodItem) return;
+  if (!prodItem.remarks) prodItem.remarks = {};
+
+  _remarkContext = { quoteId, secId };
+
+  const overlay = document.getElementById('remark-modal-overlay');
+  const textarea = document.getElementById('remark-textarea');
+  const title = document.getElementById('remark-modal-title');
+
+  if (title) {
+    const schema = getProgressionSchema();
+    const sec = schema.find(s => s.id === secId);
+    title.innerText = 'Remark' + (sec ? ' for ' + sec.name : '');
+  }
+
+  if (textarea) {
+    textarea.value = prodItem.remarks[secId] || '';
+  }
+
+  if (overlay) {
+    overlay.style.display = 'flex';
+  }
+};
+
+window.closeRemarkModal = function() {
+  const overlay = document.getElementById('remark-modal-overlay');
+  if (overlay) overlay.style.display = 'none';
+  _remarkContext = null;
+};
+
+window.saveRemark = function() {
+  if (!_remarkContext) return;
+  loadState();
+  const prodItem = STATE.productionItems.find(p => p.quoteId === _remarkContext.quoteId || p.id === _remarkContext.quoteId);
+  if (!prodItem) return;
+
+  if (!prodItem.remarks) prodItem.remarks = {};
+  const textarea = document.getElementById('remark-textarea');
+  prodItem.remarks[_remarkContext.secId] = textarea ? textarea.value : '';
+
+  saveState();
+  closeRemarkModal();
+  renderOrderProgressionBody(prodItem);
+  renderProductionBoard();
 };
 
 function renderOrderProgressionBody(prodItem) {
@@ -3393,6 +3532,15 @@ function renderOrderProgressionBody(prodItem) {
                   </div>
                 </div>
               `).join('')}
+              <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
+                <div style="display:flex; align-items:center; justify-content:space-between;">
+                  <strong style="font-size:0.8rem; color:#334155;">Remark:</strong>
+                  <button type="button" onclick="openRemarkModal('${prodItem.quoteId}','${sec.id}')" style="font-size:0.7rem; font-weight:600; padding:2px 10px; border-radius:4px; border:1.5px solid #CBD5E1; background:#fff; color:#0F172A; cursor:pointer;">
+                    ${(prodItem.remarks && prodItem.remarks[sec.id]) ? 'Edit Remark' : '+ Add Remark'}
+                  </button>
+                </div>
+                ${(prodItem.remarks && prodItem.remarks[sec.id]) ? `<p style="margin:6px 0 0 0; font-size:0.75rem; color:#475569; padding:6px 8px; background:#F8FAFC; border:1px solid #E2E8F0; border-radius:4px; white-space:pre-wrap;">${escapeHtml(prodItem.remarks[sec.id])}</p>` : ''}
+              </div>
             </div>
 
           </div>
@@ -3682,9 +3830,10 @@ function printPdf() {
 
 function downloadPdf(quoteId) {
   const element = document.getElementById('pdf-content-to-print');
+  const safeRef = quoteId.replace(/\//g, '-');
   const opt = {
     margin:       [0, 0, 0, 0],
-    filename:     `NEXFRA_Quotation_${quoteId}.pdf`,
+    filename:     `NEXFRA_Quotation_${safeRef}.pdf`,
     image:        { type: 'jpeg', quality: 0.98 },
     html2canvas:  { 
       scale: 2, 
@@ -3783,7 +3932,7 @@ window.openPdfPreview = function(quoteId) {
   const gstVal = grandTotalVal - basicVal;
 
   // Ref details
-  document.getElementById('pdf-ref-no').innerText = `REF:- NEXFRA-QTN/007.26/${quoteId.replace('QT-2026-','')}`;
+  document.getElementById('pdf-ref-no').innerText = `REF:- ${quote.id}`;
   document.getElementById('pdf-date-val').innerText = `DATE: ${new Date(quote.date).toLocaleDateString('en-GB').replace(/\//g,'.')}`;
   
   document.getElementById('pdf-to-company').innerText = `M/s ${clientCompany.toUpperCase()}`;
@@ -3866,6 +4015,10 @@ window.openPdfPreview = function(quoteId) {
     specsContainer.innerHTML = specsHtml;
   }
 
+  // Set salesperson name
+  const spEl = document.getElementById('pdf-salesperson');
+  if (spEl) spEl.innerText = quote.salesperson || '';
+
   // Populate Terms & Conditions from saved quotation
   const pdfTermsList = document.getElementById('pdf-terms-list');
   if (pdfTermsList && quote.terms) {
@@ -3877,6 +4030,14 @@ window.openPdfPreview = function(quoteId) {
   if (pdfScopeVal && quote.scopeOfWork) {
     pdfScopeVal.innerText = quote.scopeOfWork;
   }
+
+  // Populate Bank Details from saved quotation
+  const bd = quote.bankDetails || {};
+  const bankMap = { 'pdf-bank-company': 'companyName', 'pdf-bank-name': 'bankName', 'pdf-bank-account': 'accountNumber', 'pdf-bank-type': 'accountType', 'pdf-bank-ifsc': 'ifsc' };
+  Object.keys(bankMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && bd[bankMap[id]]) el.innerText = bd[bankMap[id]];
+  });
 
   document.getElementById('pdf-preview-modal').classList.add('active');
 };

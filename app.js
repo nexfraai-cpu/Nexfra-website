@@ -118,6 +118,7 @@ const DEFAULT_STATE = {
     }
   },
   quotations: [],
+  quotationCounter: 0,
   workOrders: [],
   productionItems: [],
   sales: [],
