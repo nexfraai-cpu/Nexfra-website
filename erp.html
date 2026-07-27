@@ -321,41 +321,41 @@
               <div class="grid grid-3-col gap-md mb-md">
                 <div class="form-group">
                   <label for="w-cust-name">Customer Name <span style="color:var(--color-danger);font-weight:bold;">* (Required)</span></label>
-                  <input type="text" id="w-cust-name" class="form-control" placeholder="John Doe" required>
+                  <input type="text" id="w-cust-name" class="form-control" placeholder="Enter full name" required oninput="this.value=this.value.replace(/[^A-Za-z ]/g,'')">
                 </div>
                 <div class="form-group">
                   <label for="w-cust-company">Company Name</label>
-                  <input type="text" id="w-cust-company" class="form-control" placeholder="Vijayashree Motor Works Pvt Ltd">
+                  <input type="text" id="w-cust-company" class="form-control" placeholder="Enter company name">
                 </div>
                 <div class="form-group">
                   <label for="w-cust-gst">GST Number</label>
-                  <input type="text" id="w-cust-gst" class="form-control" placeholder="29AAICV1602L1Z4">
+                  <input type="text" id="w-cust-gst" class="form-control" placeholder="Enter GST number">
                 </div>
               </div>
 
               <div class="grid grid-3-col gap-md mb-md">
                 <div class="form-group">
                   <label for="w-cust-phone">Phone Number <span style="color:var(--color-danger);font-weight:bold;">* (Required)</span></label>
-                  <input type="text" id="w-cust-phone" class="form-control" placeholder="+91-9986088632" required>
+                  <input type="text" id="w-cust-phone" class="form-control" placeholder="Enter phone number" required>
                 </div>
                 <div class="form-group">
                   <label for="w-cust-email">Email Address</label>
-                  <input type="email" id="w-cust-email" class="form-control" placeholder="info@vijayashree.com">
+                  <input type="email" id="w-cust-email" class="form-control" placeholder="Enter email address">
                 </div>
                 <div class="form-group">
                   <label for="w-cust-salesperson">Sales Person</label>
-                  <input type="text" id="w-cust-salesperson" class="form-control" placeholder="Enter sales person name">
+                  <input type="text" id="w-cust-salesperson" class="form-control" placeholder="Enter sales person name" oninput="this.value=this.value.replace(/[^A-Za-z ]/g,'')">
                 </div>
               </div>
 
               <div class="grid grid-3-col gap-md mb-md">
                 <div class="form-group">
                   <label for="w-cust-model">Vehicle Target Model</label>
-                  <input type="text" id="w-cust-model" class="form-control" placeholder="EICHER 6035XPT">
+                  <input type="text" id="w-cust-model" class="form-control" placeholder="Enter target model">
                 </div>
                 <div class="form-group">
                   <label for="w-cust-chassis">Chassis Number</label>
-                  <input type="text" id="w-cust-chassis" class="form-control" placeholder="MC289AH7615B9A">
+                  <input type="text" id="w-cust-chassis" class="form-control" placeholder="Enter chassis number">
                 </div>
                 <div class="form-group">
                   <label for="w-cust-qty">Number of Vehicles</label>
@@ -366,7 +366,7 @@
               <div class="grid grid-2-col gap-md mb-md">
                 <div class="form-group">
                   <label for="w-cust-address">Registered Office Address</label>
-                  <textarea id="w-cust-address" class="form-control" rows="2" placeholder="Plot #16 & 17, shankalapur ind area, Pb road, Hospet, KA-583201"></textarea>
+                  <textarea id="w-cust-address" class="form-control" rows="2" placeholder="Enter registered office address"></textarea>
                 </div>
                 <div class="form-group">
                   <label for="w-cust-date">Quotation Date</label>
