@@ -46,7 +46,14 @@ let wizardState = {
     '6) Payment terms – 50% advance and balance Prior to Delivery',
     '7) Inspection: By Nexfra and share the report along with invoice'
   ],
-  scopeOfWork: 'As Mentioned above'
+  scopeOfWork: 'As Mentioned above',
+  bankDetails: {
+    companyName: 'NEXFRA MANUFACTURING INDIA PVT LTD',
+    bankName: 'ICICI BANK',
+    accountNumber: '060105004477',
+    accountType: 'CURRENT',
+    ifsc: '560229033/ICIC0000156'
+  }
 };
 
 // Master Vehicle Configurator Templates
@@ -566,7 +573,14 @@ function startNewQuotationWizard() {
       '6) Payment terms – 50% advance and balance Prior to Delivery',
       '7) Inspection: By Nexfra and share the report along with invoice'
     ],
-    scopeOfWork: 'As Mentioned above'
+    scopeOfWork: 'As Mentioned above',
+    bankDetails: {
+      companyName: 'NEXFRA MANUFACTURING INDIA PVT LTD',
+      bankName: 'ICICI BANK',
+      accountNumber: '060105004477',
+      accountType: 'CURRENT',
+      ifsc: '560229033/ICIC0000156'
+    }
   };
 
   // Reset inputs
@@ -2054,6 +2068,30 @@ window.saveScopeFromModal = function() {
   closeScopeModal();
 };
 
+window.openBankModal = function() {
+  const bd = wizardState.bankDetails || {};
+  document.getElementById('bank-company').value = bd.companyName || '';
+  document.getElementById('bank-name').value = bd.bankName || '';
+  document.getElementById('bank-account').value = bd.accountNumber || '';
+  document.getElementById('bank-type').value = bd.accountType || 'CURRENT';
+  document.getElementById('bank-ifsc').value = bd.ifsc || '';
+  document.getElementById('bank-modal').style.display = 'flex';
+};
+
+window.closeBankModal = function() {
+  document.getElementById('bank-modal').style.display = 'none';
+};
+
+window.saveBankFromModal = function() {
+  if (!wizardState.bankDetails) wizardState.bankDetails = {};
+  wizardState.bankDetails.companyName = document.getElementById('bank-company').value.trim() || 'NEXFRA MANUFACTURING INDIA PVT LTD';
+  wizardState.bankDetails.bankName = document.getElementById('bank-name').value.trim() || 'ICICI BANK';
+  wizardState.bankDetails.accountNumber = document.getElementById('bank-account').value.trim() || '060105004477';
+  wizardState.bankDetails.accountType = document.getElementById('bank-type').value || 'CURRENT';
+  wizardState.bankDetails.ifsc = document.getElementById('bank-ifsc').value.trim() || '560229033/ICIC0000156';
+  closeBankModal();
+};
+
 // Step 5: Final Quotation Mock Preview Populate
 function generateQuotationFinalReview() {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
@@ -2184,7 +2222,15 @@ function generateQuotationFinalReview() {
 
   // Set salesperson name
   const spEl = document.getElementById('w-pdf-salesperson');
-  if (spEl && c.salesperson) spEl.innerText = c.salesperson;
+  if (spEl) spEl.innerText = c.salesperson || '';
+
+  // Populate Bank Details from wizardState
+  const bd = wizardState.bankDetails || {};
+  const bankMap = { 'w-pdf-bank-company': 'companyName', 'w-pdf-bank-name': 'bankName', 'w-pdf-bank-account': 'accountNumber', 'w-pdf-bank-type': 'accountType', 'w-pdf-bank-ifsc': 'ifsc' };
+  Object.keys(bankMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && bd[bankMap[id]]) el.innerText = bd[bankMap[id]];
+  });
 
   // Toggle Work Order conversion block
   updateQuotationStatusState();
@@ -2295,7 +2341,8 @@ window.saveWizardQuotation = function() {
       specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
       notRequired: JSON.parse(JSON.stringify(wizardState.notRequired || {})),
       scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
-      terms: wizardState.terms || []
+      terms: wizardState.terms || [],
+      bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {}))
     };
     
     if (!STATE.quotations) STATE.quotations = [];
@@ -3948,7 +3995,7 @@ window.openPdfPreview = function(quoteId) {
 
   // Set salesperson name
   const spEl = document.getElementById('pdf-salesperson');
-  if (spEl && quote.salesperson) spEl.innerText = quote.salesperson;
+  if (spEl) spEl.innerText = quote.salesperson || '';
 
   // Populate Terms & Conditions from saved quotation
   const pdfTermsList = document.getElementById('pdf-terms-list');
@@ -3961,6 +4008,14 @@ window.openPdfPreview = function(quoteId) {
   if (pdfScopeVal && quote.scopeOfWork) {
     pdfScopeVal.innerText = quote.scopeOfWork;
   }
+
+  // Populate Bank Details from saved quotation
+  const bd = quote.bankDetails || {};
+  const bankMap = { 'pdf-bank-company': 'companyName', 'pdf-bank-name': 'bankName', 'pdf-bank-account': 'accountNumber', 'pdf-bank-type': 'accountType', 'pdf-bank-ifsc': 'ifsc' };
+  Object.keys(bankMap).forEach(id => {
+    const el = document.getElementById(id);
+    if (el && bd[bankMap[id]]) el.innerText = bd[bankMap[id]];
+  });
 
   document.getElementById('pdf-preview-modal').classList.add('active');
 };

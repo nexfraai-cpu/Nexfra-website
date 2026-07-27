@@ -690,6 +690,11 @@
                     <span>📄 Scope of Work</span>
                     <svg class="terms-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
                   </div>
+
+                  <div class="terms-bar" onclick="openBankModal()">
+                    <span>🏦 Bank Details</span>
+                    <svg class="terms-chevron" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
                 </div>
 
                 <div class="preview-footer">
@@ -843,15 +848,15 @@
                   <div class="pdf-section-title">BANK DETAILS :-</div>
                   <div class="pdf-bank-details">
                     <div>COMPANY NAME:</div>
-                    <div>NEXFRA MANUFACTURING INDIA PVT LTD</div>
+                    <div id="w-pdf-bank-company">NEXFRA MANUFACTURING INDIA PVT LTD</div>
                     <div>NAME OF THE BANK:</div>
-                    <div>ICICI BANK</div>
+                    <div id="w-pdf-bank-name">ICICI BANK</div>
                     <div>ACCOUNT NUMBER:</div>
-                    <div>060105004477</div>
+                    <div id="w-pdf-bank-account">060105004477</div>
                     <div>NATURE OF ACCOUNT:</div>
-                    <div>CURRENT</div>
+                    <div id="w-pdf-bank-type">CURRENT</div>
                     <div>MICR CODE/IFSC:</div>
-                    <div>560229033/ICIC0000156</div>
+                    <div id="w-pdf-bank-ifsc">560229033/ICIC0000156</div>
                   </div>
                   
                   <div class="pdf-text-block" style="margin-bottom: 20px;">
@@ -1362,15 +1367,15 @@
             <div class="pdf-section-title">BANK DETAILS :-</div>
             <div class="pdf-bank-details">
               <div>COMPANY NAME:</div>
-              <div>NEXFRA MANUFACTURING INDIA PVT LTD</div>
+              <div id="pdf-bank-company">NEXFRA MANUFACTURING INDIA PVT LTD</div>
               <div>NAME OF THE BANK:</div>
-              <div>ICICI BANK</div>
+              <div id="pdf-bank-name">ICICI BANK</div>
               <div>ACCOUNT NUMBER:</div>
-              <div>060105004477</div>
+              <div id="pdf-bank-account">060105004477</div>
               <div>NATURE OF ACCOUNT:</div>
-              <div>CURRENT</div>
+              <div id="pdf-bank-type">CURRENT</div>
               <div>MICR CODE/IFSC:</div>
-              <div>560229033/ICIC0000156</div>
+              <div id="pdf-bank-ifsc">560229033/ICIC0000156</div>
             </div>
             
             <div class="pdf-text-block" style="margin-bottom: 20px;">
@@ -1465,6 +1470,51 @@
       <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
         <button type="button" class="btn btn-outline btn-sm" onclick="closeScopeModal()">Cancel</button>
         <button type="button" class="btn btn-primary btn-sm" onclick="saveScopeFromModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Scope</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- BANK DETAILS EDITOR MODAL -->
+  <!-- ========================================== -->
+  <div class="pdf-modal" id="bank-modal" style="z-index:9999;">
+    <div class="pdf-modal-container" style="max-width:600px; background:#ffffff; border-radius:12px; overflow:hidden; box-shadow:0 10px 40px rgba(0,0,0,0.3); height:auto; max-height:90vh;">
+      <div class="pdf-modal-toolbar" style="background:#0F172A; color:#ffffff; padding:16px 24px; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0; font-size:1.05rem; font-weight:700; display:flex; align-items:center; gap:8px; color:#ffffff;">
+          🏦 Edit Bank Details
+        </h3>
+        <button type="button" class="btn btn-outline btn-xs" onclick="closeBankModal()" style="color:#ffffff; border-color:rgba(255,255,255,0.4); padding:4px 10px;">✕ Close</button>
+      </div>
+
+      <div style="padding:24px; display:flex; flex-direction:column; gap:12px;">
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Company Name</label>
+          <input type="text" id="bank-company" class="form-control" style="font-size:0.85rem;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Name of the Bank</label>
+          <input type="text" id="bank-name" class="form-control" style="font-size:0.85rem;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Account Number</label>
+          <input type="text" id="bank-account" class="form-control" style="font-size:0.85rem;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">Nature of Account</label>
+          <select id="bank-type" class="form-control" style="font-size:0.85rem; font-weight:600;">
+            <option value="CURRENT">CURRENT</option>
+            <option value="SAVINGS">SAVINGS</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:#334155; display:block; margin-bottom:4px;">MICR Code / IFSC</label>
+          <input type="text" id="bank-ifsc" class="form-control" style="font-size:0.85rem;">
+        </div>
+      </div>
+
+      <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:flex-end; align-items:center; gap:12px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="closeBankModal()">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="saveBankFromModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Bank Details</button>
       </div>
     </div>
   </div>
