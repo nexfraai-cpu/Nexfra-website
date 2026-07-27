@@ -2152,23 +2152,6 @@ function generateQuotationFinalReview() {
   const dimsStr = `${lenVal} L × ${widthVal} W × ${heightVal} H`;
   document.getElementById('w-pdf-subj-text').innerText = `Subject: Quotation for -${c.model.toUpperCase()} , ${capacityLabel}${template.name.toUpperCase()} (${dimsStr})${extrasStr}`;
 
-  // Diagnostics
-  const diagEl = document.getElementById('w-pdf-diagnostics');
-  if (diagEl) {
-    diagEl.innerHTML = `
-      <b>Diagnostics:</b><br>
-      hasCylinderSpec: ${hasCylinderSpec}<br>
-      wizardState.notRequired['cylinder']: ${JSON.stringify(wizardState.notRequired['cylinder'])}<br>
-      stateRequired: ${stateRequired}<br>
-      badgeRequired: ${badgeRequired}<br>
-      cylBadge found: ${!!cylBadge}<br>
-      cylBadge active: ${cylBadge ? cylBadge.classList.contains('active') : 'N/A'}<br>
-      hydraulicRequired: ${hydraulicRequired}<br>
-      extras: [${extras.join(', ')}]<br>
-      extrasStr: ${extrasStr || '(empty)'}
-    `;
-  }
-
   const descExtras = [];
   if (subframeRequired) descExtras.push('WITH SUBFRAME');
   if (hydraulicRequired) descExtras.push('CYLINDER KIT');
