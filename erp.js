@@ -575,7 +575,7 @@ function startNewQuotationWizard() {
   document.getElementById('w-cust-gst').value = '';
   document.getElementById('w-cust-phone').value = '';
   document.getElementById('w-cust-email').value = '';
-  document.getElementById('w-cust-salesperson').value = 'Prashanth kumar M P';
+  document.getElementById('w-cust-salesperson').value = '';
   document.getElementById('w-cust-model').value = '';
   document.getElementById('w-cust-chassis').value = '';
   document.getElementById('w-cust-qty').value = '1';
@@ -700,7 +700,7 @@ function validateStepInputs(stepNum) {
       phone,
       email,
       address,
-      salesperson: document.getElementById('w-cust-salesperson').value.trim() || 'Prashanth kumar M P',
+      salesperson: document.getElementById('w-cust-salesperson').value.trim() || '',
       model,
       chassis: document.getElementById('w-cust-chassis').value.trim() || 'NA-CHASSIS',
       qty: parseInt(document.getElementById('w-cust-qty').value, 10) || 1,
@@ -2181,6 +2181,10 @@ function generateQuotationFinalReview() {
   if (scopeVal && wizardState.scopeOfWork) {
     scopeVal.innerText = wizardState.scopeOfWork;
   }
+
+  // Set salesperson name
+  const spEl = document.getElementById('w-pdf-salesperson');
+  if (spEl && c.salesperson) spEl.innerText = c.salesperson;
 
   // Toggle Work Order conversion block
   updateQuotationStatusState();
@@ -3941,6 +3945,10 @@ window.openPdfPreview = function(quoteId) {
   if (specsContainer) {
     specsContainer.innerHTML = specsHtml;
   }
+
+  // Set salesperson name
+  const spEl = document.getElementById('pdf-salesperson');
+  if (spEl && quote.salesperson) spEl.innerText = quote.salesperson;
 
   // Populate Terms & Conditions from saved quotation
   const pdfTermsList = document.getElementById('pdf-terms-list');
