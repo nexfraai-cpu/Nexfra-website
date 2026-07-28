@@ -725,7 +725,6 @@ function validateStepInputs(stepNum) {
       qty: parseInt(document.getElementById('w-cust-qty').value, 10) || 1,
       date: document.getElementById('w-cust-date').value || new Date().toISOString().split('T')[0]
     };
-    wizardState.orderQty = wizardState.customer.qty;
   }
   return true;
 }
