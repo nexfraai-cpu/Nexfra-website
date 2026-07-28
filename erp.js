@@ -4467,6 +4467,13 @@ window.renderFinanceLedger = function() {
 
     const badgeClass = status === 'Paid' ? 'status-paid' : (status === 'Partial' ? 'status-partial' : 'status-pending');
 
+    var dueDate = q.paymentDueDate || '';
+    var todayStr = new Date().toISOString().split('T')[0];
+    var isOverdue = dueDate && dueDate < todayStr && outstanding > 0;
+    var prodItem = STATE.productionItems ? STATE.productionItems.find(function(p) { return p.quoteId === q.id; }) : null;
+    var prodNearlyDone = prodItem && (prodItem.progressPct || 0) >= 90;
+    var showUrgent = prodNearlyDone && outstanding > 0;
+
     const paymentsListHtml = payments.length > 0 ? payments.map(p => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#F8FAFC;border-radius:4px;font-size:0.75rem;">
         <div>
@@ -4478,13 +4485,16 @@ window.renderFinanceLedger = function() {
     `).join('') : '<div style="color:#94A3B8;font-size:0.75rem;padding:8px 0;">No payments recorded yet.</div>';
 
     html += `
-      <div style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+      <div style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);${showUrgent ? 'border-color:#DC2626;' : ''}">
         <div class="finance-bar" onclick="toggleFinanceDetails('${q.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;user-select:none;transition:background 0.15s;">
-          <div style="display:flex;align-items:center;gap:16px;flex:1;">
+          <div style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">
             <span style="background:#0F172A;color:#fff;font-weight:800;font-size:0.75rem;padding:3px 8px;border-radius:4px;">${q.id}</span>
-            <span style="font-weight:600;font-size:0.85rem;color:#1E293B;min-width:180px;">${company}</span>
+            <span style="font-weight:600;font-size:0.85rem;color:#1E293B;min-width:140px;">${company}</span>
+            ${showUrgent ? '<span style="background:#DC2626;color:#fff;font-size:0.6rem;font-weight:800;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:0.3px;">Urgent Collect Payment</span>' : ''}
+            ${isOverdue ? '<span style="color:#DC2626;font-size:0.65rem;font-weight:700;">Due: ' + dueDate + '</span>' : ''}
+            ${dueDate && !isOverdue && outstanding > 0 ? '<span style="color:#64748B;font-size:0.65rem;">Due: ' + dueDate + '</span>' : ''}
           </div>
-          <div style="display:flex;align-items:center;gap:20px;">
+          <div style="display:flex;align-items:center;gap:16px;">
             <span style="font-size:0.75rem;font-weight:700;color:#475569;">Total: ${totalFmt}</span>
             <span style="font-size:0.75rem;font-weight:700;color:${outstanding > 0 ? '#DC2626' : '#059669'};">Outstanding: ${outstandingFmt}</span>
             <span class="tbl-status-badge ${badgeClass}" style="font-size:0.65rem;padding:3px 8px;">${status.toUpperCase()}</span>
@@ -4533,6 +4543,15 @@ window.renderFinanceLedger = function() {
                   <span style="color:#64748B;">Quotation Reference</span>
                   <span style="font-weight:600;">${q.id}</span>
                 </div>
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-top:1px solid #E2E8F0;margin-top:4px;padding-top:10px;font-size:0.8rem;">
+                  <span style="color:#64748B;">Payment Due Date</span>
+                  <div style="display:flex;gap:6px;align-items:center;">
+                    <input type="date" id="due-date-input-${q.id}" class="form-control form-control-sm" value="${dueDate}" style="font-size:0.7rem;padding:4px 8px;width:140px;">
+                    <button class="btn btn-sm" onclick="setPaymentDueDate('${q.id}')" style="background:#0F172A;color:#fff;border:none;font-size:0.65rem;padding:4px 10px;border-radius:4px;font-weight:700;cursor:pointer;">Set</button>
+                  </div>
+                </div>
+                ${isOverdue ? '<div style="color:#DC2626;font-size:0.7rem;font-weight:600;padding:4px 8px;background:#FEF2F2;border-radius:4px;text-align:center;">⚠ Overdue — payment was due on ' + dueDate + '</div>' : ''}
+                ${showUrgent ? '<div style="color:#DC2626;font-size:0.7rem;font-weight:700;padding:4px 8px;background:#FEF2F2;border-radius:4px;text-align:center;border:1px solid #FCA5A5;">🚨 Production at ' + (prodItem.progressPct || 0) + '% — Collect payment urgently</div>' : ''}
               </div>
             </div>
           </div>
@@ -4647,6 +4666,19 @@ window.logQuotationPayment = function(quoteId) {
   if (detailEl) detailEl.style.display = 'block';
 };
 
+window.setPaymentDueDate = function(quoteId) {
+  loadState();
+  var quote = (STATE.quotations || []).find(function(q) { return q.id === quoteId; });
+  if (!quote) return;
+  var dateVal = document.getElementById('due-date-input-' + quoteId)?.value || '';
+  quote.paymentDueDate = dateVal;
+  saveState();
+  logSystemActivity('Payment due date set to ' + (dateVal || 'none') + ' for ' + quoteId);
+  renderFinanceLedger();
+  var detailEl = document.getElementById('finance-details-' + quoteId);
+  if (detailEl) detailEl.style.display = 'block';
+};
+
 window.showReceiptModal = function(quoteId) {
   loadState();
   const quote = (STATE.quotations || []).find(q => q.id === quoteId);
@@ -4738,6 +4770,25 @@ window.printReceipt = function() {
   win.document.close();
   win.focus();
   win.print();
+};
+
+window.downloadReceiptPdf = function() {
+  var quoteId = document.querySelector('#receipt-content div:nth-child(3) div:last-child div:first-child')?.innerText;
+  var element = document.getElementById('receipt-content');
+  if (!element) return;
+  var safeRef = (quoteId || 'receipt').replace(/\//g, '-');
+  var opt = {
+    margin: [10, 10, 10, 10],
+    filename: 'NEXFRA_Payment_Receipt_' + safeRef + '.pdf',
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, letterRendering: false, scrollY: 0 },
+    jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' }
+  };
+  if (typeof html2pdf !== 'undefined') {
+    html2pdf().set(opt).from(element).save();
+  } else {
+    alert('PDF library loading, please try printing directly.');
+  }
 };
 
 function renderCustomersDirectory() {
