@@ -3842,7 +3842,11 @@ window.renderApprovalsList = function(filter = 'pending') {
               <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
                 ✕ Deny
               </button>
-            ` : ''}
+            ` : `
+              <button onclick="setQuotationPending('${q.id}')" class="btn" style="flex:1; background:#D97706; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.85rem; box-shadow:0 2px 4px rgba(217,119,6,0.2);">
+                ↺ Set Pending
+              </button>
+            `}
             <button onclick="editQuotation('${q.id}')" class="btn" style="flex:0; background:#F59E0B; color:white; font-weight:700; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.85rem; box-shadow:0 2px 4px rgba(245,158,11,0.2);" title="Edit Quotation Details">
               ✏️ Edit
             </button>
@@ -3948,9 +3952,14 @@ window.denyQuotation = function(quoteId) {
 
   q.status = 'Denied';
 
-  // Ensure it is removed from production board if present
+  // Remove from production board if present
   if (STATE.productionItems) {
     STATE.productionItems = STATE.productionItems.filter(p => p.quoteId !== quoteId && p.id !== quoteId);
+  }
+
+  // Remove from work orders list if present
+  if (STATE.workOrders) {
+    STATE.workOrders = STATE.workOrders.filter(w => w.quoteId !== quoteId);
   }
 
   logSystemActivity(`Quotation ${quoteId} was Denied.`);
@@ -3958,6 +3967,36 @@ window.denyQuotation = function(quoteId) {
 
   alert(`Quotation ${quoteId} Denied.`);
   renderApprovalsList('pending');
+};
+
+window.setQuotationPending = function(quoteId) {
+  loadState();
+  const q = STATE.quotations.find(x => x.id === quoteId);
+  if (!q) return;
+
+  q.status = 'Pending Approval';
+
+  if (STATE.workOrders) {
+    STATE.workOrders = STATE.workOrders.filter(w => w.quoteId !== quoteId);
+  }
+
+  if (STATE.productionItems) {
+    STATE.productionItems = STATE.productionItems.filter(p => p.quoteId !== quoteId && p.id !== quoteId);
+  }
+
+  if (STATE.customers) {
+    const client = STATE.customers.find(c => c.id === q.customerId || (c.company && c.company.toLowerCase() === (q.customerName || '').toLowerCase()));
+    if (client) {
+      client.outstanding = Math.max(0, (client.outstanding || 0) - (q.total || 0));
+    }
+  }
+
+  logSystemActivity(`Quotation ${quoteId} reverted to Pending Approval.`);
+  saveState();
+  showToastNotification(`Quotation ${quoteId} moved back to Pending Approval.`);
+  renderApprovalsList(window._approvalsFilter || 'pending');
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
+  if (typeof renderFinanceLedger === 'function') renderFinanceLedger();
 };
 
 window.showQuotationFromBoard = function(quoteId) {
@@ -4412,7 +4451,7 @@ window.renderFinanceLedger = function() {
   var container = document.getElementById('finance-ledger-container');
   if (!container) return;
 
-  var allQuotations = STATE.quotations || [];
+  var allQuotations = (STATE.quotations || []).filter(function(q) { return q.status === 'Approved'; });
   var allPayments = STATE.payments || [];
 
   var totalAmount = 0;
