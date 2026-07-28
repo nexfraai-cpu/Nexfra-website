@@ -379,7 +379,7 @@
                 </div>
                 <div class="form-group">
                   <label for="w-cust-qty">Number of Vehicles</label>
-                  <input type="number" id="w-cust-qty" class="form-control" value="1" min="1">
+                  <input type="number" id="w-cust-qty" class="form-control" value="1" min="1" onchange="onCustQtyChange(this.value)">
                 </div>
               </div>
 
@@ -673,6 +673,22 @@
                 </div>
               </div>
 
+              <!-- SECTION H: ORDER QUANTITY -->
+              <div class="collapsible-section" id="spec-sec-qty" style="border-color:#0F172A;">
+                <div class="collapse-header" onclick="toggleCollapseSection('spec-sec-qty')" style="background:#F8FAFC;">
+                  <span style="font-weight:800; color:#0F172A;">8. Order Quantity</span>
+                  <svg class="collapse-header-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="collapse-content" style="display:block;">
+                  <div style="padding:16px; display:flex; align-items:center; gap:16px;">
+                    <label style="font-size:0.85rem; font-weight:700; color:#1E293B;">Number of Vehicles:</label>
+                    <input type="number" id="w-order-qty" class="form-control" value="1" min="1" step="1" style="width:100px; font-weight:800; font-size:1rem; text-align:center;" oninput="onOrderQtyChange(this.value)">
+                    <button type="button" id="w-qty-save-btn" class="btn btn-sm btn-primary" onclick="saveOrderQty()" style="padding:4px 14px; font-size:0.75rem; font-weight:700;">Save</button>
+                    <span style="font-size:0.8rem; color:#64748B;">vehicles × unit price</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- Right Sticky Price Preview Panel -->
@@ -799,7 +815,7 @@
                         </td>
                         <td class="qty-col">
                           <span id="w-pdf-table-qty">1 No’S</span><br>
-                    <span id="pdf-gst-label" style="font-size:0.7rem;font-weight:normal;color:#374151;">GST 18%</span>
+                    <span id="w-pdf-gst-label" style="font-size:0.7rem;font-weight:normal;color:#374151;">GST 18%</span>
                         </td>
                         <td class="rate-col">
                           <span id="w-pdf-table-basic">6,48,306/-</span><br>

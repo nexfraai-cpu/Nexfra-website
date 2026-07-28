@@ -37,6 +37,7 @@ let wizardState = {
   notRequired: {},
   status: 'Draft',
   total: 0,
+  orderQty: 1,
   terms: [
     '1) Validity – 15 days',
     '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
@@ -565,6 +566,7 @@ function startNewQuotationWizard() {
     notRequired: {},
     status: 'Draft',
     total: 0,
+    orderQty: 1,
     terms: [
       '1) Validity – 15 days',
       '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
@@ -674,6 +676,8 @@ window.jumpToWizardStep = function(stepNum) {
     if (template) {
       renderCustomItemSpecControls();
     }
+    var qtyInput = document.getElementById('w-order-qty');
+    if (qtyInput) qtyInput.value = wizardState.orderQty || 1;
     calculateWizardPricing();
     simulateDraftAutoSave();
   }
@@ -721,6 +725,7 @@ function validateStepInputs(stepNum) {
       qty: parseInt(document.getElementById('w-cust-qty').value, 10) || 1,
       date: document.getElementById('w-cust-date').value || new Date().toISOString().split('T')[0]
     };
+    wizardState.orderQty = wizardState.customer.qty;
   }
   return true;
 }
@@ -1992,7 +1997,9 @@ function calculateWizardPricing() {
     });
   });
 
-  const basicAmount = basePrice + upgradesTotal;
+  const qty = wizardState.orderQty || 1;
+  const unitPrice = basePrice + upgradesTotal;
+  const basicAmount = unitPrice * qty;
   const gstVal = Math.round(basicAmount * 0.18);
   const grandTotal = basicAmount + gstVal;
   
@@ -2013,7 +2020,11 @@ function calculateWizardPricing() {
         ${upgradesHtml}
       ` : ''}
 
-      <div class="preview-row mt-md" style="border-top: 1px dashed rgba(0,0,0,0.15); padding-top:10px;">
+      <div class="preview-row" style="border-top: 1px dashed rgba(0,0,0,0.15); padding-top:10px;">
+        <span>Vehicles × Unit Price</span>
+        <span>${qty} × ₹${Math.round(unitPrice).toLocaleString('en-IN')}</span>
+      </div>
+      <div class="preview-row mt-md">
         <span>Chassis Basic Total</span>
         <span>₹${basicAmount.toLocaleString('en-IN')}</span>
       </div>
@@ -2093,6 +2104,31 @@ window.saveBankFromModal = function() {
   closeBankModal();
 };
 
+window.onOrderQtyChange = function(val) {
+  wizardState.orderQty = parseInt(val, 10) || 1;
+  if (wizardState.currentStep >= 4 && typeof calculateWizardPricing === 'function') calculateWizardPricing();
+};
+
+window.saveOrderQty = function() {
+  var inp = document.getElementById('w-order-qty');
+  if (inp) {
+    wizardState.orderQty = parseInt(inp.value, 10) || 1;
+    if (typeof calculateWizardPricing === 'function') calculateWizardPricing();
+    simulateDraftAutoSave();
+    var btn = document.getElementById('w-qty-save-btn');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Saved ✓';
+      btn.disabled = true;
+      setTimeout(function(){ btn.textContent = orig; btn.disabled = false; }, 1500);
+    }
+  }
+};
+
+window.onCustQtyChange = function(val) {
+  wizardState.orderQty = parseInt(val, 10) || 1;
+};
+
 // Helper: extract initials from customer name (e.g. "Chena Reddy" → "CR")
 function getInitials(name) {
   if (!name) return 'XX';
@@ -2119,9 +2155,14 @@ function generateQuotationFinalReview() {
   const previewRef = generateRefNumber(c.name, nextCounter);
 
   // Pre-calculations
+  const wQty = wizardState.orderQty || 1;
   const grandTotal = wizardState.total;
   const basicAmount = Math.round(grandTotal / 1.18);
+  const unitAmount = Math.round(basicAmount / wQty);
   const gstAmount = grandTotal - basicAmount;
+
+  document.getElementById('w-pdf-table-qty').innerText = wQty + ' No' + (wQty > 1 ? 's' : '');
+  document.getElementById('w-pdf-gst-label').innerText = 'GST 18%';
 
   // Set standard PDF preview tags
   document.getElementById('w-pdf-ref-no').innerText = `REF:- ${previewRef}`;
@@ -2160,7 +2201,7 @@ function generateQuotationFinalReview() {
   document.getElementById('w-pdf-table-desc').innerHTML = `${capacityLabel}${template.name.toUpperCase()}${descExtrasStr}<br>Regular TAIL DOOR ${c.model}`;
 
   // Price columns
-  document.getElementById('w-pdf-table-basic').innerText = formatPdfPrice(basicAmount);
+  document.getElementById('w-pdf-table-basic').innerText = formatPdfPrice(unitAmount);
   document.getElementById('w-pdf-table-gst').innerText = formatPdfPrice(gstAmount);
   document.getElementById('w-pdf-table-total').innerText = formatPdfPrice(basicAmount);
   document.getElementById('w-pdf-table-gst-total').innerText = formatPdfPrice(gstAmount);
@@ -2325,7 +2366,7 @@ window.editQuotation = function(quoteId) {
     dimensions: JSON.parse(JSON.stringify(q.dimensions || template.dimensions || {})),
     scopeOfWork: q.scopeOfWork || 'As Mentioned above',
     terms: q.terms ? q.terms.slice() : [],
-    gstRate: q.gstRate || 18
+    orderQty: q.orderQty || 1
   };
 
   renderInlineEditForm(quoteId, template);
@@ -2409,6 +2450,8 @@ function renderInlineEditForm(quoteId, template) {
     + '<small style="color:#94A3B8;font-size:0.7rem;">Leave empty for auto-calculated price</small></div>'
     + '<div style="min-width:100px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">GST (%)</label>'
     + '<input type="number" id="e-gst-input" class="form-control" value="' + (e.gstRate || 18) + '" oninput="onEditGstChange(this.value)" min="0" max="100" step="0.1" style="font-weight:700;width:90px;"></div>'
+    + '<div style="min-width:80px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Vehicles</label>'
+    + '<input type="number" id="e-qty-input" class="form-control" value="' + (e.orderQty || 1) + '" oninput="onEditQtyChange(this.value)" min="1" step="1" style="font-weight:700;width:80px;"></div>'
     + '<div style="padding:12px 24px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;text-align:center;">'
     + '<span style="font-size:0.7rem;font-weight:600;color:#059669;display:block;">Final Price</span>'
     + '<span id="e-price-display" style="font-size:1.3rem;font-weight:800;color:#059669;">\u20B9' + (e.total || 0).toLocaleString('en-IN') + '</span></div></div></div>'
@@ -2506,6 +2549,11 @@ window.onEditGstChange = function(val) {
   _editState.gstRate = (val !== '' && val !== null) ? parseFloat(val) : 18;
 };
 
+window.onEditQtyChange = function(val) {
+  if (!window._editState) return;
+  _editState.orderQty = (val !== '' && val !== null) ? parseInt(val, 10) || 1 : 1;
+};
+
 window.onEditScopeChange = function(val) {
   if (window._editState) _editState.scopeOfWork = val;
 };
@@ -2540,6 +2588,7 @@ window.saveEditQuotation = function(showPdf) {
   q.scopeOfWork = e.scopeOfWork || q.scopeOfWork;
   q.terms = e.terms || q.terms;
   q.gstRate = e.gstRate || 18;
+  q.orderQty = e.orderQty || 1;
 
   // Sync linked work orders
   if (q.workOrderIds) {
@@ -2599,11 +2648,14 @@ function renderPdfFromQuote(quote, client) {
     : Object.values(WIZARD_PRODUCT_TEMPLATES).find(function(t) { return t.name === quote.productName; });
 
   var gstRate = quote.gstRate || 18;
+  var qty = quote.orderQty || 1;
   var grandTotalVal = quote.total || 0;
   var basicVal = Math.round(grandTotalVal / (1 + gstRate / 100));
+  var unitVal = Math.round(basicVal / qty);
   var gstVal = grandTotalVal - basicVal;
 
   document.getElementById('pdf-gst-label').innerText = 'GST ' + gstRate + '%';
+  document.getElementById('pdf-table-qty').innerText = qty + ' No' + (qty > 1 ? 's' : '');
 
   document.getElementById('pdf-ref-no').innerText = 'REF:- ' + quote.id;
   document.getElementById('pdf-date-val').innerText = 'DATE: ' + new Date(quote.date).toLocaleDateString('en-GB').replace(/\//g,'.');
@@ -2655,7 +2707,7 @@ function renderPdfFromQuote(quote, client) {
     if (specsContainer) specsContainer.innerHTML = sHtml;
   }
 
-  document.getElementById('pdf-table-basic').innerText = formatPdfPrice(basicVal);
+  document.getElementById('pdf-table-basic').innerText = formatPdfPrice(unitVal);
   document.getElementById('pdf-table-gst').innerText = formatPdfPrice(gstVal);
   document.getElementById('pdf-table-total').innerText = formatPdfPrice(basicVal);
   document.getElementById('pdf-table-gst-total').innerText = formatPdfPrice(gstVal);
@@ -2684,8 +2736,8 @@ window.saveWizardQuotation = function() {
   try {
     loadState();
 
-    if (typeof calculateWizardTotals === 'function') {
-      calculateWizardTotals();
+    if (typeof calculateWizardPricing === 'function') {
+      calculateWizardPricing();
     }
     
     // Robust customer data capture from form or state
@@ -2756,6 +2808,7 @@ window.saveWizardQuotation = function() {
       },
       scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
       terms: wizardState.terms || [],
+      orderQty: wizardState.orderQty || 1,
       bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {}))
     };
     
