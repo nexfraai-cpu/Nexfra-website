@@ -4471,7 +4471,7 @@ window.renderFinanceLedger = function() {
     var todayStr = new Date().toISOString().split('T')[0];
     var isOverdue = dueDate && dueDate < todayStr && outstanding > 0;
     var prodItem = STATE.productionItems ? STATE.productionItems.find(function(p) { return p.quoteId === q.id; }) : null;
-    var prodNearlyDone = prodItem && (prodItem.progressPct || 0) >= 90;
+    var prodNearlyDone = prodItem && (prodItem.progressPct || 0) >= 80;
     var showUrgent = prodNearlyDone && outstanding > 0;
 
     const paymentsListHtml = payments.length > 0 ? payments.map(p => `
