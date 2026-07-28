@@ -4486,6 +4486,14 @@ window.logQuotationPayment = function(quoteId) {
     return;
   }
 
+  const alreadyPaid = (STATE.payments || []).filter(p => p.quoteId === quoteId).reduce((s, p) => s + p.amount, 0);
+  const maxAllowed = Math.max(0, (quote.total || 0) - alreadyPaid);
+
+  if (amount > maxAllowed) {
+    alert('Payment amount (₹' + amount.toLocaleString('en-IN') + ') exceeds the outstanding balance of ₹' + maxAllowed.toLocaleString('en-IN') + '.');
+    return;
+  }
+
   const pId = 'TXN-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
   if (!STATE.payments) STATE.payments = [];
   STATE.payments.push({
