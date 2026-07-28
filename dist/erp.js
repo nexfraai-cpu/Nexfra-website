@@ -2449,8 +2449,9 @@ function renderInlineEditForm(quoteId, template) {
     + '<small style="color:#94A3B8;font-size:0.7rem;">Leave empty for auto-calculated price</small></div>'
     + '<div style="min-width:100px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">GST (%)</label>'
     + '<input type="number" id="e-gst-input" class="form-control" value="' + (e.gstRate || 18) + '" oninput="onEditGstChange(this.value)" min="0" max="100" step="0.1" style="font-weight:700;width:90px;"></div>'
-    + '<div style="min-width:80px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Vehicles</label>'
-    + '<input type="number" id="e-qty-input" class="form-control" value="' + (e.orderQty || 1) + '" oninput="onEditQtyChange(this.value)" min="1" step="1" style="font-weight:700;width:80px;"></div>'
+    + '<div style="min-width:100px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Vehicles</label>'
+    + '<div style="display:flex;gap:4px;align-items:center;"><input type="number" id="e-qty-input" class="form-control" value="' + (e.orderQty || 1) + '" oninput="onEditQtyChange(this.value)" min="1" step="1" style="font-weight:700;width:65px;">'
+    + '<button type="button" id="e-qty-save-btn" onclick="saveEditQty()" style="background:#0284C7;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.7rem;font-weight:600;color:white;white-space:nowrap;">Save</button></div></div>'
     + '<div style="padding:12px 24px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;text-align:center;">'
     + '<span style="font-size:0.7rem;font-weight:600;color:#059669;display:block;">Final Price</span>'
     + '<span id="e-price-display" style="font-size:1.3rem;font-weight:800;color:#059669;">\u20B9' + (e.total || 0).toLocaleString('en-IN') + '</span></div></div></div>'
@@ -2551,6 +2552,43 @@ window.onEditGstChange = function(val) {
 window.onEditQtyChange = function(val) {
   if (!window._editState) return;
   _editState.orderQty = (val !== '' && val !== null) ? parseInt(val, 10) || 1 : 1;
+};
+
+window.saveEditQty = function() {
+  if (!window._editState) return;
+  const inp = document.getElementById('e-qty-input');
+  if (!inp) return;
+  const newQty = parseInt(inp.value, 10) || 1;
+
+  const q = STATE.quotations.find(x => x.id === _editState.quoteId);
+  const originalQty = q ? (q.orderQty || 1) : (_editState.orderQty || 1);
+  if (newQty === originalQty) return;
+
+  _editState.orderQty = newQty;
+
+  const oldTotal = _editState.manualTotal !== null ? _editState.manualTotal : (_editState.total || 0);
+  const gstRate = _editState.gstRate || 18;
+  const oldBasic = Math.round(oldTotal / (1 + gstRate / 100));
+  const unitPrice = oldBasic / originalQty;
+  const newBasic = Math.round(unitPrice * newQty);
+  const newGst = Math.round(newBasic * gstRate / 100);
+  const newTotal = newBasic + newGst;
+
+  _editState.total = newTotal;
+  _editState.manualTotal = null;
+
+  const d = document.getElementById('e-price-display');
+  if (d) d.textContent = '\u20B9' + newTotal.toLocaleString('en-IN');
+
+  const btn = document.getElementById('e-qty-save-btn');
+  if (btn) {
+    const orig = btn.textContent;
+    btn.textContent = 'Saved \u2713';
+    btn.disabled = true;
+    setTimeout(function() { btn.textContent = orig; btn.disabled = false; }, 1500);
+  }
+
+  showToastNotification('Qty updated to ' + newQty + ', total recalculated to \u20B9' + newTotal.toLocaleString('en-IN'));
 };
 
 window.onEditScopeChange = function(val) {
