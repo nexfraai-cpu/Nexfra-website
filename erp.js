@@ -4431,7 +4431,15 @@ window.renderFinanceLedger = function() {
       var outstanding = Math.max(0, (q.total || 0) - paid);
       if (outstanding <= 0) return false;
       var prodItem = STATE.productionItems ? STATE.productionItems.find(function(p) { return p.quoteId === q.id; }) : null;
-      return prodItem && (prodItem.progressPct || 0) >= 80;
+      var prodNearlyDone = prodItem && (prodItem.progressPct || 0) >= 80;
+      var dueDate = q.paymentDueDate || '';
+      var dueSoon = false;
+      if (dueDate) {
+        var dueMs = new Date(dueDate).getTime();
+        var nowMs = new Date().getTime();
+        dueSoon = (dueMs - nowMs) / (1000 * 60 * 60 * 24) <= 2;
+      }
+      return prodNearlyDone || dueSoon;
     });
   }
 
@@ -4499,7 +4507,14 @@ window.renderFinanceLedger = function() {
     var isOverdue = dueDate && dueDate < todayStr && outstanding > 0;
     var prodItem = STATE.productionItems ? STATE.productionItems.find(function(p) { return p.quoteId === q.id; }) : null;
     var prodNearlyDone = prodItem && (prodItem.progressPct || 0) >= 80;
-    var showUrgent = prodNearlyDone && outstanding > 0;
+    var dueSoon = false;
+    if (dueDate && outstanding > 0) {
+      var dueMs = new Date(dueDate).getTime();
+      var nowMs = new Date().getTime();
+      var diffDays = (dueMs - nowMs) / (1000 * 60 * 60 * 24);
+      dueSoon = diffDays <= 2;
+    }
+    var showUrgent = ((prodNearlyDone || dueSoon) && outstanding > 0);
 
     const paymentsListHtml = payments.length > 0 ? payments.map(p => `
       <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#F8FAFC;border-radius:4px;font-size:0.75rem;">
