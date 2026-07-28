@@ -4281,37 +4281,165 @@ function initAccountsModule() {
   renderFinanceLedger();
 }
 
+// Finance ledger filter state
+var financeFilters = {};
+
+window.toggleFinanceFilter = function() {
+  var dd = document.getElementById('filter-dd-finance');
+  if (!dd) return;
+  var isVisible = dd.style.display === 'block';
+  document.querySelectorAll('.filter-dd').forEach(function(el) { el.style.display = 'none'; });
+  if (!isVisible) {
+    var f = financeFilters;
+    var fromEl = document.getElementById('filter-finance-from');
+    var toEl = document.getElementById('filter-finance-to');
+    var sortEl = document.getElementById('filter-finance-sort');
+    if (fromEl) fromEl.value = f.dateFrom || '';
+    if (toEl) toEl.value = f.dateTo || '';
+    if (sortEl) sortEl.value = f.sort || 'newest';
+    document.getElementById('ff-pending').checked = f.statusPending === '1';
+    document.getElementById('ff-partial').checked = f.statusPartial === '1';
+    document.getElementById('ff-paid').checked = f.statusPaid === '1';
+    var btn = document.querySelector('[data-filter-btn="finance"]');
+    if (btn) {
+      var r = btn.getBoundingClientRect();
+      dd.style.position = 'fixed';
+      dd.style.top = (r.bottom + 6) + 'px';
+      dd.style.right = (window.innerWidth - r.right) + 'px';
+      dd.style.left = 'auto';
+      dd.style.bottom = 'auto';
+      dd.style.zIndex = 2147483647;
+      if (dd.parentElement !== document.body) {
+        document.body.appendChild(dd);
+      }
+    }
+    dd.style.display = 'block';
+  }
+};
+
+window.setFinanceFilter = function(field, value) {
+  financeFilters[field] = value;
+  renderFinanceLedger();
+};
+
+window.setFinanceDatePreset = function(months) {
+  var now = new Date();
+  var from = new Date(now);
+  from.setMonth(from.getMonth() - months);
+  var fromStr = from.toISOString().slice(0, 10);
+  var toStr = now.toISOString().slice(0, 10);
+  document.getElementById('filter-finance-from').value = fromStr;
+  document.getElementById('filter-finance-to').value = toStr;
+  financeFilters.dateFrom = fromStr;
+  financeFilters.dateTo = toStr;
+  renderFinanceLedger();
+};
+
+window.clearFinanceFilters = function() {
+  financeFilters = {};
+  document.getElementById('filter-finance-from').value = '';
+  document.getElementById('filter-finance-to').value = '';
+  document.getElementById('filter-finance-sort').value = 'newest';
+  document.getElementById('ff-pending').checked = false;
+  document.getElementById('ff-partial').checked = false;
+  document.getElementById('ff-paid').checked = false;
+  renderFinanceLedger();
+};
+
 window.renderFinanceLedger = function() {
   loadState();
-  const container = document.getElementById('finance-ledger-container');
+  var container = document.getElementById('finance-ledger-container');
   if (!container) return;
 
-  const allQuotations = STATE.quotations || [];
-  const allPayments = STATE.payments || [];
+  var allQuotations = STATE.quotations || [];
+  var allPayments = STATE.payments || [];
 
-  const totalAmount = allQuotations.reduce((s, q) => s + (q.total || 0), 0);
-  const totalCollected = allPayments.reduce((s, p) => s + p.amount, 0);
-  const totalOutstanding = allQuotations.reduce((s, q) => {
-    const paid = allPayments.filter(p => p.quoteId === q.id).reduce((ps, p) => ps + p.amount, 0);
-    return s + Math.max(0, (q.total || 0) - paid);
-  }, 0);
+  var totalAmount = 0;
+  var totalCollected = 0;
+  var totalOutstanding = 0;
+  for (var i = 0; i < allQuotations.length; i++) {
+    var q = allQuotations[i];
+    totalAmount += q.total || 0;
+    var paid = 0;
+    for (var j = 0; j < allPayments.length; j++) {
+      if (allPayments[j].quoteId === q.id) paid += allPayments[j].amount;
+    }
+    totalOutstanding += Math.max(0, (q.total || 0) - paid);
+  }
+  for (var k = 0; k < allPayments.length; k++) {
+    totalCollected += allPayments[k].amount;
+  }
 
   document.getElementById('kpi-total-amount').innerText = '₹' + totalAmount.toLocaleString('en-IN');
   document.getElementById('kpi-collected').innerText = '₹' + totalCollected.toLocaleString('en-IN');
   document.getElementById('kpi-outstanding').innerText = '₹' + totalOutstanding.toLocaleString('en-IN');
   document.getElementById('kpi-order-count').innerText = allQuotations.length;
 
-  const searchQ = (document.getElementById('search-finance')?.value || '').toLowerCase();
-  const statusFilter = document.getElementById('filter-finance-status')?.value || 'all';
+  var searchQ = (document.getElementById('search-finance')?.value || '').toLowerCase();
+  var statusFilter = document.getElementById('filter-finance-status')?.value || 'all';
+  var f = financeFilters;
 
-  let quotations = allQuotations;
-  
-  if (searchQ) {
-    quotations = quotations.filter(q => 
-      (q.id || '').toLowerCase().includes(searchQ) ||
-      (q.customerName || '').toLowerCase().includes(searchQ)
-    );
+  var quotations = allQuotations;
+
+  // Apply date filter
+  if (f.dateFrom || f.dateTo) {
+    quotations = quotations.filter(function(q) {
+      var d = q.date || '';
+      if (f.dateFrom && d < f.dateFrom) return false;
+      if (f.dateTo && d > f.dateTo) return false;
+      return true;
+    });
   }
+
+  // Apply search
+  if (searchQ) {
+    quotations = quotations.filter(function(q) {
+      return (q.id || '').toLowerCase().indexOf(searchQ) !== -1 ||
+             (q.customerName || '').toLowerCase().indexOf(searchQ) !== -1;
+    });
+  }
+
+  // Apply status filter (header dropdown + checkbox overrides from filter dropdown)
+  var usePending = f.statusPending === '1';
+  var usePartial = f.statusPartial === '1';
+  var usePaid = f.statusPaid === '1';
+  var checkboxActive = usePending || usePartial || usePaid;
+  quotations = quotations.filter(function(q) {
+    var paid = 0;
+    for (var pi = 0; pi < allPayments.length; pi++) {
+      if (allPayments[pi].quoteId === q.id) paid += allPayments[pi].amount;
+    }
+    var outstanding = Math.max(0, (q.total || 0) - paid);
+    var status = outstanding <= 0 ? 'paid' : (paid > 0 ? 'partial' : 'pending');
+    if (checkboxActive) {
+      if (status === 'pending' && !usePending) return false;
+      if (status === 'partial' && !usePartial) return false;
+      if (status === 'paid' && !usePaid) return false;
+      return true;
+    }
+    if (statusFilter !== 'all' && status !== statusFilter) return false;
+    return true;
+  });
+
+  // Apply sort
+  var sortKey = f.sort || 'newest';
+  quotations.sort(function(a, b) {
+    if (sortKey === 'oldest') return (a.date || '') < (b.date || '') ? -1 : 1;
+    if (sortKey === 'amount-high') return (b.total || 0) - (a.total || 0);
+    if (sortKey === 'amount-low') return (a.total || 0) - (b.total || 0);
+    if (sortKey === 'outstanding-high' || sortKey === 'outstanding-low') {
+      var aPaid = 0, bPaid = 0;
+      for (var pi = 0; pi < allPayments.length; pi++) {
+        if (allPayments[pi].quoteId === a.id) aPaid += allPayments[pi].amount;
+        if (allPayments[pi].quoteId === b.id) bPaid += allPayments[pi].amount;
+      }
+      var aOut = Math.max(0, (a.total || 0) - aPaid);
+      var bOut = Math.max(0, (b.total || 0) - bPaid);
+      return sortKey === 'outstanding-high' ? bOut - aOut : aOut - bOut;
+    }
+    // newest first (default)
+    return (a.date || '') > (b.date || '') ? -1 : 1;
+  });
 
   if (quotations.length === 0) {
     container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#94A3B8;font-size:0.9rem;font-weight:600;">No quotations found.</div>';
