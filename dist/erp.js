@@ -37,6 +37,7 @@ let wizardState = {
   notRequired: {},
   status: 'Draft',
   total: 0,
+  orderQty: 1,
   terms: [
     '1) Validity – 15 days',
     '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
@@ -404,7 +405,7 @@ function switchModule(moduleName) {
     if (moduleName === 'sales') renderSalesHistoryTable();
     if (moduleName === 'workorders') renderWorkOrders();
     if (moduleName === 'status') renderProductionBoard();
-    if (moduleName === 'accounts') renderAccountsLedger();
+    if (moduleName === 'accounts') renderFinanceLedger();
     if (moduleName === 'customers') renderCustomersDirectory();
     if (moduleName === 'admin') renderAdminSettings();
     if (moduleName === 'quotations') startNewQuotationWizard();
@@ -565,6 +566,7 @@ function startNewQuotationWizard() {
     notRequired: {},
     status: 'Draft',
     total: 0,
+    orderQty: 1,
     terms: [
       '1) Validity – 15 days',
       '2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment',
@@ -674,6 +676,8 @@ window.jumpToWizardStep = function(stepNum) {
     if (template) {
       renderCustomItemSpecControls();
     }
+    var qtyInput = document.getElementById('w-order-qty');
+    if (qtyInput) qtyInput.value = wizardState.orderQty || 1;
     calculateWizardPricing();
     simulateDraftAutoSave();
   }
@@ -721,6 +725,7 @@ function validateStepInputs(stepNum) {
       qty: parseInt(document.getElementById('w-cust-qty').value, 10) || 1,
       date: document.getElementById('w-cust-date').value || new Date().toISOString().split('T')[0]
     };
+    wizardState.orderQty = wizardState.customer.qty;
   }
   return true;
 }
@@ -1992,7 +1997,9 @@ function calculateWizardPricing() {
     });
   });
 
-  const basicAmount = basePrice + upgradesTotal;
+  const qty = wizardState.orderQty || 1;
+  const unitPrice = basePrice + upgradesTotal;
+  const basicAmount = unitPrice * qty;
   const gstVal = Math.round(basicAmount * 0.18);
   const grandTotal = basicAmount + gstVal;
   
@@ -2013,7 +2020,11 @@ function calculateWizardPricing() {
         ${upgradesHtml}
       ` : ''}
 
-      <div class="preview-row mt-md" style="border-top: 1px dashed rgba(0,0,0,0.15); padding-top:10px;">
+      <div class="preview-row" style="border-top: 1px dashed rgba(0,0,0,0.15); padding-top:10px;">
+        <span>Vehicles × Unit Price</span>
+        <span>${qty} × ₹${Math.round(unitPrice).toLocaleString('en-IN')}</span>
+      </div>
+      <div class="preview-row mt-md">
         <span>Chassis Basic Total</span>
         <span>₹${basicAmount.toLocaleString('en-IN')}</span>
       </div>
@@ -2093,6 +2104,31 @@ window.saveBankFromModal = function() {
   closeBankModal();
 };
 
+window.onOrderQtyChange = function(val) {
+  wizardState.orderQty = parseInt(val, 10) || 1;
+  if (wizardState.currentStep >= 4 && typeof calculateWizardPricing === 'function') calculateWizardPricing();
+};
+
+window.saveOrderQty = function() {
+  var inp = document.getElementById('w-order-qty');
+  if (inp) {
+    wizardState.orderQty = parseInt(inp.value, 10) || 1;
+    if (typeof calculateWizardPricing === 'function') calculateWizardPricing();
+    simulateDraftAutoSave();
+    var btn = document.getElementById('w-qty-save-btn');
+    if (btn) {
+      var orig = btn.textContent;
+      btn.textContent = 'Saved ✓';
+      btn.disabled = true;
+      setTimeout(function(){ btn.textContent = orig; btn.disabled = false; }, 1500);
+    }
+  }
+};
+
+window.onCustQtyChange = function(val) {
+  wizardState.orderQty = parseInt(val, 10) || 1;
+};
+
 // Helper: extract initials from customer name (e.g. "Chena Reddy" → "CR")
 function getInitials(name) {
   if (!name) return 'XX';
@@ -2119,9 +2155,14 @@ function generateQuotationFinalReview() {
   const previewRef = generateRefNumber(c.name, nextCounter);
 
   // Pre-calculations
+  const wQty = wizardState.orderQty || 1;
   const grandTotal = wizardState.total;
   const basicAmount = Math.round(grandTotal / 1.18);
+  const unitAmount = Math.round(basicAmount / wQty);
   const gstAmount = grandTotal - basicAmount;
+
+  document.getElementById('w-pdf-table-qty').innerText = wQty + ' No' + (wQty > 1 ? 's' : '');
+  document.getElementById('w-pdf-gst-label').innerText = 'GST 18%';
 
   // Set standard PDF preview tags
   document.getElementById('w-pdf-ref-no').innerText = `REF:- ${previewRef}`;
@@ -2160,7 +2201,7 @@ function generateQuotationFinalReview() {
   document.getElementById('w-pdf-table-desc').innerHTML = `${capacityLabel}${template.name.toUpperCase()}${descExtrasStr}<br>Regular TAIL DOOR ${c.model}`;
 
   // Price columns
-  document.getElementById('w-pdf-table-basic').innerText = formatPdfPrice(basicAmount);
+  document.getElementById('w-pdf-table-basic').innerText = formatPdfPrice(unitAmount);
   document.getElementById('w-pdf-table-gst').innerText = formatPdfPrice(gstAmount);
   document.getElementById('w-pdf-table-total').innerText = formatPdfPrice(basicAmount);
   document.getElementById('w-pdf-table-gst-total').innerText = formatPdfPrice(gstAmount);
@@ -2324,7 +2365,8 @@ window.editQuotation = function(quoteId) {
     manualTotal: null,
     dimensions: JSON.parse(JSON.stringify(q.dimensions || template.dimensions || {})),
     scopeOfWork: q.scopeOfWork || 'As Mentioned above',
-    terms: q.terms ? q.terms.slice() : []
+    terms: q.terms ? q.terms.slice() : [],
+    orderQty: q.orderQty || 1
   };
 
   renderInlineEditForm(quoteId, template);
@@ -2406,6 +2448,10 @@ function renderInlineEditForm(quoteId, template) {
     + '<div style="display:flex;gap:6px;align-items:center;"><input type="number" id="e-price-input" class="form-control" placeholder="Use calculated" value="' + (e.total || '') + '" oninput="onEditPriceChange(this.value)" style="flex:1;font-weight:700;">'
     + '<button type="button" onclick="document.getElementById(\'e-price-input\').value=\'\';onEditPriceChange(\'\')" style="background:none;border:1px solid #CBD5E1;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.75rem;font-weight:600;color:#64748B;">\u2715 Reset</button></div>'
     + '<small style="color:#94A3B8;font-size:0.7rem;">Leave empty for auto-calculated price</small></div>'
+    + '<div style="min-width:100px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">GST (%)</label>'
+    + '<input type="number" id="e-gst-input" class="form-control" value="' + (e.gstRate || 18) + '" oninput="onEditGstChange(this.value)" min="0" max="100" step="0.1" style="font-weight:700;width:90px;"></div>'
+    + '<div style="min-width:80px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Vehicles</label>'
+    + '<input type="number" id="e-qty-input" class="form-control" value="' + (e.orderQty || 1) + '" oninput="onEditQtyChange(this.value)" min="1" step="1" style="font-weight:700;width:80px;"></div>'
     + '<div style="padding:12px 24px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;text-align:center;">'
     + '<span style="font-size:0.7rem;font-weight:600;color:#059669;display:block;">Final Price</span>'
     + '<span id="e-price-display" style="font-size:1.3rem;font-weight:800;color:#059669;">\u20B9' + (e.total || 0).toLocaleString('en-IN') + '</span></div></div></div>'
@@ -2498,6 +2544,16 @@ window.onEditPriceChange = function(val) {
   }
 };
 
+window.onEditGstChange = function(val) {
+  if (!window._editState) return;
+  _editState.gstRate = (val !== '' && val !== null) ? parseFloat(val) : 18;
+};
+
+window.onEditQtyChange = function(val) {
+  if (!window._editState) return;
+  _editState.orderQty = (val !== '' && val !== null) ? parseInt(val, 10) || 1 : 1;
+};
+
 window.onEditScopeChange = function(val) {
   if (window._editState) _editState.scopeOfWork = val;
 };
@@ -2531,6 +2587,8 @@ window.saveEditQuotation = function(showPdf) {
   q.dimensions = JSON.parse(JSON.stringify(e.dimensions || q.dimensions));
   q.scopeOfWork = e.scopeOfWork || q.scopeOfWork;
   q.terms = e.terms || q.terms;
+  q.gstRate = e.gstRate || 18;
+  q.orderQty = e.orderQty || 1;
 
   // Sync linked work orders
   if (q.workOrderIds) {
@@ -2589,9 +2647,15 @@ function renderPdfFromQuote(quote, client) {
     ? WIZARD_PRODUCT_TEMPLATES[quote.subtype]
     : Object.values(WIZARD_PRODUCT_TEMPLATES).find(function(t) { return t.name === quote.productName; });
 
+  var gstRate = quote.gstRate || 18;
+  var qty = quote.orderQty || 1;
   var grandTotalVal = quote.total || 0;
-  var basicVal = Math.round(grandTotalVal / 1.18);
+  var basicVal = Math.round(grandTotalVal / (1 + gstRate / 100));
+  var unitVal = Math.round(basicVal / qty);
   var gstVal = grandTotalVal - basicVal;
+
+  document.getElementById('pdf-gst-label').innerText = 'GST ' + gstRate + '%';
+  document.getElementById('pdf-table-qty').innerText = qty + ' No' + (qty > 1 ? 's' : '');
 
   document.getElementById('pdf-ref-no').innerText = 'REF:- ' + quote.id;
   document.getElementById('pdf-date-val').innerText = 'DATE: ' + new Date(quote.date).toLocaleDateString('en-GB').replace(/\//g,'.');
@@ -2643,7 +2707,7 @@ function renderPdfFromQuote(quote, client) {
     if (specsContainer) specsContainer.innerHTML = sHtml;
   }
 
-  document.getElementById('pdf-table-basic').innerText = formatPdfPrice(basicVal);
+  document.getElementById('pdf-table-basic').innerText = formatPdfPrice(unitVal);
   document.getElementById('pdf-table-gst').innerText = formatPdfPrice(gstVal);
   document.getElementById('pdf-table-total').innerText = formatPdfPrice(basicVal);
   document.getElementById('pdf-table-gst-total').innerText = formatPdfPrice(gstVal);
@@ -2672,8 +2736,8 @@ window.saveWizardQuotation = function() {
   try {
     loadState();
 
-    if (typeof calculateWizardTotals === 'function') {
-      calculateWizardTotals();
+    if (typeof calculateWizardPricing === 'function') {
+      calculateWizardPricing();
     }
     
     // Robust customer data capture from form or state
@@ -2744,6 +2808,7 @@ window.saveWizardQuotation = function() {
       },
       scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
       terms: wizardState.terms || [],
+      orderQty: wizardState.orderQty || 1,
       bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {}))
     };
     
@@ -3056,6 +3121,36 @@ function renderWorkOrders() {
       daysUntil = Math.ceil((new Date(wo.dueDate) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
       dueStatus = daysUntil <= 3 ? 'URGENT' : 'ON SCHEDULE';
     }
+    var woProdHtml = '';
+    (function(){
+      var pi = STATE.productionItems ? STATE.productionItems.find(function(p){ return p.quoteId === wo.quoteId; }) : null;
+      if (!pi) return;
+      var schema = getProgressionSchema();
+      var map = pi.progressionMap || {};
+      var stages = schema.map(function(sec){
+        var allDone = true;
+        sec.subsections.forEach(function(sub){
+          sub.items.forEach(function(item){
+            var key = sec.id + '_' + sub.id + '_' + item.id;
+            if (!map[key]) allDone = false;
+          });
+        });
+        return { name: sec.name.replace(/^\d+\.\s*/,''), done: allDone };
+      });
+      if (stages.length === 0) return;
+      var lineHtml = '';
+      stages.forEach(function(s, i){
+        lineHtml += '<div style="display:flex;align-items:center;flex-shrink:0;">';
+        lineHtml += '<span style="padding:4px 10px;border-radius:4px;font-size:0.7rem;font-weight:700;white-space:nowrap;background:' + (s.done ? '#10B981' : '#E2E8F0') + ';color:' + (s.done ? '#fff' : '#64748B') + ';">' + s.name + '</span>';
+        if (i < stages.length - 1) {
+          lineHtml += '<div style="width:16px;height:3px;background:' + (s.done ? '#10B981' : '#E2E8F0') + ';margin:0 3px;flex-shrink:0;"></div>';
+        }
+        lineHtml += '</div>';
+      });
+      woProdHtml = '<div class="wo-prod-box" style="background:#F1F5F9;padding:12px;border-radius:6px;margin-bottom:12px;">'
+        + '<h4 style="margin:0 0 8px 0;font-size:0.8rem;font-weight:800;color:#1E293B;">PRODUCTION</h4>'
+        + '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0;">' + lineHtml + '</div></div>';
+    })();
     return `
       <div class="wo-card" style="margin-bottom:10px; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
         <div class="wo-header" onclick="toggleWorkOrder('${wo.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#F8FAFC; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #E2E8F0'}; transition:background 0.15s;">
@@ -3079,6 +3174,7 @@ function renderWorkOrders() {
               ${wo.specs.map(spec => `<li style="font-size:0.78rem; color:#475569; min-width:180px;"><span>${spec}</span></li>`).join('')}
             </ul>
           </div>
+          ${woProdHtml}
           <div class="wo-notes" style="font-size:0.8rem; color:#475569; margin-bottom:12px;">
             <strong>Factory Notes:</strong> ${wo.notes}
           </div>
@@ -3373,6 +3469,24 @@ function getDefaultProgressionSchema() {
   ];
 }
 
+function getDefaultDispatchFields() {
+  return [
+    { id: 'vehicleNo', label: 'Vehicle Number', placeholder: 'e.g. TN 01 AB 1234', type: 'text' },
+    { id: 'chassisNo', label: 'Chassis Number', placeholder: 'e.g. 1234567890', type: 'text' },
+    { id: 'driverName', label: 'Driver Name', placeholder: 'e.g. Rajesh Kumar', type: 'text' },
+    { id: 'driverNo', label: 'Driver Number', placeholder: 'e.g. 9876543210', type: 'text' },
+    { id: 'dispatchedAt', label: 'Date & Time of Dispatch', placeholder: '', type: 'datetime-local' }
+  ];
+}
+
+function getDispatchFields() {
+  if (!STATE.dispatchFields || !Array.isArray(STATE.dispatchFields) || STATE.dispatchFields.length === 0) {
+    STATE.dispatchFields = getDefaultDispatchFields();
+    saveState();
+  }
+  return STATE.dispatchFields;
+}
+
 function getProgressionSchema() {
   if (!STATE.progressionSchema || STATE.progressionSchema.length === 0) {
     STATE.progressionSchema = getDefaultProgressionSchema();
@@ -3382,10 +3496,12 @@ function getProgressionSchema() {
 }
 
 let tempProgressionSchema = null;
+let tempDispatchFields = null;
 
 window.openProgressionSettingsModal = function() {
   loadState();
   tempProgressionSchema = JSON.parse(JSON.stringify(getProgressionSchema()));
+  tempDispatchFields = JSON.parse(JSON.stringify(getDispatchFields()));
   renderPipelineSettingsEditor();
   document.getElementById('progression-pipeline-settings-modal').classList.add('active');
 };
@@ -3398,6 +3514,7 @@ window.closeProgressionSettingsModal = function() {
 window.resetDefaultProgressionSchema = function() {
   if (confirm("Reset progression pipeline to default 10 manufacturing sections? Custom edits will be restored.")) {
     tempProgressionSchema = getDefaultProgressionSchema();
+    tempDispatchFields = getDefaultDispatchFields();
     renderPipelineSettingsEditor();
   }
 };
@@ -3469,7 +3586,31 @@ function renderPipelineSettingsEditor() {
       </div>
 
     </div>
-  `).join('');
+  `).join('') + `
+    <!-- Dispatch Fields Customizer -->
+    <div class="card" style="margin-bottom:16px; padding:16px; background:#ffffff; border:2px solid #0F172A; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
+        <h4 style="margin:0; font-size:0.9rem; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:8px;">
+          🚛 11. Dispatched — Custom Fields
+        </h4>
+        <span style="font-size:0.7rem; color:#64748B;">Rename, add, or remove dispatch sub-fields</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${tempDispatchFields.map((f, fi) => `
+          <div style="display:flex; align-items:center; gap:8px; background:#F8FAFC; padding:8px 12px; border-radius:6px; border:1px solid #E2E8F0;">
+            <input type="text" value="${escapeHtml(f.label)}" class="form-control form-control-sm" style="flex:2; font-weight:700; font-size:0.8rem; height:32px;" onchange="tempDispatchFields[${fi}].label = this.value">
+            <select class="form-control form-control-sm" style="width:140px; height:32px; font-size:0.75rem; font-weight:600;" onchange="tempDispatchFields[${fi}].type = this.value">
+              <option value="text" ${f.type === 'text' ? 'selected' : ''}>Text</option>
+              <option value="datetime-local" ${f.type === 'datetime-local' ? 'selected' : ''}>Date & Time</option>
+            </select>
+            <input type="text" value="${escapeHtml(f.placeholder || '')}" placeholder="Placeholder" class="form-control form-control-sm" style="flex:2; font-size:0.75rem; height:32px;" onchange="tempDispatchFields[${fi}].placeholder = this.value">
+            <button type="button" onclick="deleteTempDispatchField(${fi})" style="background:none; border:none; color:#EF4444; font-weight:700; cursor:pointer; font-size:0.85rem; padding:4px 8px;">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button type="button" class="btn btn-outline btn-xs" onclick="addTempDispatchField()" style="margin-top:10px; font-weight:700; border-color:#0F172A; color:#0F172A;">+ Add Dispatch Field</button>
+    </div>
+  `;
 }
 
 window.addNewPipelineSection = function() {
@@ -3538,12 +3679,31 @@ window.deletePipelineItem = function(secIdx, subIdx, itemIdx) {
   renderPipelineSettingsEditor();
 };
 
+window.addTempDispatchField = function() {
+  if (!tempDispatchFields) return;
+  tempDispatchFields.push({
+    id: 'custom_' + Date.now(),
+    label: 'New Field',
+    placeholder: '',
+    type: 'text'
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deleteTempDispatchField = function(fi) {
+  if (!tempDispatchFields) return;
+  tempDispatchFields.splice(fi, 1);
+  renderPipelineSettingsEditor();
+};
+
 window.saveProgressionSchemaSettings = function() {
   if (!tempProgressionSchema) return;
   STATE.progressionSchema = JSON.parse(JSON.stringify(tempProgressionSchema));
+  STATE.dispatchFields = JSON.parse(JSON.stringify(tempDispatchFields));
   saveState();
   closeProgressionSettingsModal();
   renderProductionBoard();
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
   alert("Progression Pipeline structure updated successfully!");
 };
 
@@ -4045,30 +4205,22 @@ function renderOrderProgressionBody(prodItem) {
       }).join('')}
     </div>
 
-    <!-- 11. Dispatched Section (permanent, text-input based) -->
+    <!-- 11. Dispatched Section (from config) -->
     <div class="card" style="padding:16px; background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px;">
       <h4 style="margin:0 0 12px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">11. Dispatched</h4>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Vehicle Number</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.vehicleNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'vehicleNo', this.value)" placeholder="e.g. TN 01 AB 1234" style="font-size:0.8rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Chassis Number</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.chassisNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'chassisNo', this.value)" placeholder="e.g. 1234567890" style="font-size:0.8rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Driver Name</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.driverName) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'driverName', this.value)" placeholder="e.g. Rajesh Kumar" style="font-size:0.8rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Driver Number</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.driverNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'driverNo', this.value)" placeholder="e.g. 9876543210" style="font-size:0.8rem;">
-        </div>
-        <div style="grid-column:span 2;">
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Date & Time of Dispatch</label>
-          <input type="datetime-local" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.dispatchedAt) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'dispatchedAt', this.value)" style="font-size:0.8rem;">
-        </div>
+        ${(function(){
+          var df = getDispatchFields();
+          return df.map(function(f){
+            var val = (prodItem.dispatchedData && prodItem.dispatchedData[f.id]) || '';
+            var ph = f.placeholder ? 'placeholder="' + escapeHtml(f.placeholder) + '"' : '';
+            var colspan = (f.type === 'datetime-local') ? ' style="grid-column:span 2;"' : '';
+            return '<div' + colspan + '>'
+              + '<label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">' + escapeHtml(f.label) + '</label>'
+              + '<input type="' + f.type + '" class="form-control" value="' + escapeHtml(val) + '" ' + ph + ' onchange="updateDispatchedData(\'' + prodItem.quoteId + '\', \'' + f.id + '\', this.value)" style="font-size:0.8rem;">'
+              + '</div>';
+          }).join('');
+        })()}
       </div>
     </div>
   `;
@@ -4126,108 +4278,315 @@ window.updateDispatchedData = function(quoteId, field, value) {
 // ------------------------------------------
 
 function initAccountsModule() {
-  const payForm = document.getElementById('payment-log-form');
-  if (payForm) {
-    payForm.onsubmit = (e) => {
-      e.preventDefault();
-      
-      const invoiceId = document.getElementById('pay-order-select').value;
-      const amount = parseFloat(document.getElementById('pay-amount').value);
-      const mode = document.getElementById('pay-mode').value;
-      const ref = document.getElementById('pay-reference').value;
-
-      const sale = STATE.sales.find(s => s.invoiceId === invoiceId);
-      if (!sale) return;
-
-      const pId = `TXN-${Math.floor(902104 + Math.random()*1000)}`;
-      STATE.payments.push({
-        id: pId,
-        invoiceId,
-        date: new Date().toISOString().split('T')[0],
-        amount,
-        mode,
-        ref
-      });
-
-      logSystemActivity(`Logged payment ₹${amount.toLocaleString('en-IN')} for invoice ${invoiceId} via ${mode}.`);
-      saveState();
-      alert(`Payment logged successfully. Txn Ref: ${pId}.`);
-      
-      payForm.reset();
-      renderAccountsLedger();
-    };
-  }
+  renderFinanceLedger();
 }
 
-function renderAccountsLedger() {
+window.renderFinanceLedger = function() {
   loadState();
-  const tbody = document.querySelector('#accounts-ledger-table tbody');
-  const paySelect = document.getElementById('pay-order-select');
-  const txnHistoryList = document.getElementById('payment-history-list');
+  const container = document.getElementById('finance-ledger-container');
+  if (!container) return;
+
+  const searchQ = (document.getElementById('search-finance')?.value || '').toLowerCase();
+  const statusFilter = document.getElementById('filter-finance-status')?.value || 'all';
+
+  let quotations = STATE.quotations || [];
   
-  if (!tbody) return;
+  if (searchQ) {
+    quotations = quotations.filter(q => 
+      (q.id || '').toLowerCase().includes(searchQ) ||
+      (q.customerName || '').toLowerCase().includes(searchQ)
+    );
+  }
 
-  tbody.innerHTML = STATE.sales.map(sale => {
-    const totalPaid = STATE.payments
-      .filter(p => p.invoiceId === sale.invoiceId)
-      .reduce((sum, p) => sum + p.amount, 0);
-    const balance = Math.max(0, sale.amount - totalPaid);
-    const status = balance <= 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Pending');
+  if (quotations.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#94A3B8;font-size:0.9rem;font-weight:600;">No quotations found.</div>';
+    return;
+  }
+
+  let html = '';
+  quotations.forEach(q => {
+    const totalWithGst = q.total || 0;
+    const principal = Math.round(totalWithGst / 1.18);
+    const payments = (STATE.payments || []).filter(p => p.quoteId === q.id);
+    const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+    const outstanding = Math.max(0, totalWithGst - totalPaid);
+    const status = outstanding <= 0 ? 'Paid' : (totalPaid > 0 ? 'Partial' : 'Pending');
+
+    if (statusFilter !== 'all' && status.toLowerCase() !== statusFilter) return;
+
+    const customer = (STATE.customers || []).find(c => c.id === q.customerId);
+    const phone = customer ? (customer.phone || '—') : '—';
+    const company = customer ? (customer.company || q.customerName) : q.customerName;
+    const totalPaidFmt = '₹' + totalPaid.toLocaleString('en-IN');
+    const outstandingFmt = '₹' + outstanding.toLocaleString('en-IN');
+    const totalFmt = '₹' + totalWithGst.toLocaleString('en-IN');
+    const principalFmt = '₹' + principal.toLocaleString('en-IN');
+
     const badgeClass = status === 'Paid' ? 'status-paid' : (status === 'Partial' ? 'status-partial' : 'status-pending');
-    
-    return `
-      <tr>
-        <td style="font-family:var(--font-headings);font-weight:700">${sale.invoiceId}</td>
-        <td>${sale.customerName}</td>
-        <td style="font-weight:600">₹${sale.amount.toLocaleString('en-IN')}</td>
-        <td style="color:var(--color-success);font-weight:600">₹${totalPaid.toLocaleString('en-IN')}</td>
-        <td style="color:${balance > 0 ? 'var(--color-danger)' : 'var(--color-text-dark)'};font-weight:600">₹${balance.toLocaleString('en-IN')}</td>
-        <td>
-          <span class="tbl-status-badge ${badgeClass}">${status.toUpperCase()}</span>
-        </td>
-        <td>
-          ${balance > 0 
-            ? `<button class="btn btn-outline btn-xs" onclick="populatePaymentDetails('${sale.invoiceId}')">Log Pay</button>`
-            : `<span class="tbl-status-badge status-paid" style="font-size:0.7rem;padding:4px 8px;">COMPLETED</span>`
-          }
-        </td>
-      </tr>
-    `;
-  }).join('');
 
-  const unpaidSales = STATE.sales.filter(s => {
-    const paid = STATE.payments.filter(p => p.invoiceId === s.invoiceId).reduce((sum, p) => sum + p.amount, 0);
-    return (s.amount - paid) > 0;
+    const paymentsListHtml = payments.length > 0 ? payments.map(p => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#F8FAFC;border-radius:4px;font-size:0.75rem;">
+        <div>
+          <strong>${p.date}</strong> ${p.time ? 'at ' + p.time : ''}
+          <span style="color:#64748B;margin-left:8px;">${p.mode || ''} ${p.ref ? '· ' + p.ref : ''}</span>
+        </div>
+        <span style="font-weight:700;color:var(--color-success);">₹${p.amount.toLocaleString('en-IN')}</span>
+      </div>
+    `).join('') : '<div style="color:#94A3B8;font-size:0.75rem;padding:8px 0;">No payments recorded yet.</div>';
+
+    html += `
+      <div style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);">
+        <div class="finance-bar" onclick="toggleFinanceDetails('${q.id}')" style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;user-select:none;transition:background 0.15s;">
+          <div style="display:flex;align-items:center;gap:16px;flex:1;">
+            <span style="background:#0F172A;color:#fff;font-weight:800;font-size:0.75rem;padding:3px 8px;border-radius:4px;">${q.id}</span>
+            <span style="font-weight:600;font-size:0.85rem;color:#1E293B;min-width:180px;">${company}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:20px;">
+            <span style="font-size:0.75rem;font-weight:700;color:#475569;">Total: ${totalFmt}</span>
+            <span style="font-size:0.75rem;font-weight:700;color:${outstanding > 0 ? '#DC2626' : '#059669'};">Outstanding: ${outstandingFmt}</span>
+            <span class="tbl-status-badge ${badgeClass}" style="font-size:0.65rem;padding:3px 8px;">${status.toUpperCase()}</span>
+            <svg style="width:16px;height:16px;color:#94A3B8;transition:transform 0.2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </div>
+        <div class="finance-details" id="finance-details-${q.id}" style="display:none;border-top:1px solid #E2E8F0;padding:20px 24px;background:#FAFBFC;">
+          <div class="grid grid-2-col gap-lg" style="margin-bottom:20px;">
+            <div>
+              <h4 style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:#64748B;margin-bottom:12px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Financial Summary</h4>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:0.8rem;">
+                  <span style="color:#64748B;">Principal Amount (excl. GST)</span>
+                  <span style="font-weight:700;">${principalFmt}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:0.8rem;">
+                  <span style="color:#64748B;">GST (18%)</span>
+                  <span style="font-weight:700;">₹${(totalWithGst - principal).toLocaleString('en-IN')}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:0.8rem;">
+                  <span style="color:#64748B;">Total Amount (incl. GST)</span>
+                  <span style="font-weight:700;">${totalFmt}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:0.8rem;">
+                  <span style="color:#64748B;">Amount Paid</span>
+                  <span style="font-weight:700;color:var(--color-success);">${totalPaidFmt}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:0.8rem;background:${outstanding > 0 ? '#FEF2F2' : '#F0FDF4'};padding:8px 10px;border-radius:4px;margin-top:4px;">
+                  <span style="font-weight:700;">Outstanding Balance</span>
+                  <span style="font-weight:700;color:${outstanding > 0 ? '#DC2626' : '#059669'};">${outstandingFmt}</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h4 style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:#64748B;margin-bottom:12px;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Customer Details</h4>
+              <div style="display:flex;flex-direction:column;gap:8px;">
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:0.8rem;">
+                  <span style="color:#64748B;">Name / Company</span>
+                  <span style="font-weight:600;">${company}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #F1F5F9;font-size:0.8rem;">
+                  <span style="color:#64748B;">Contact Number</span>
+                  <span style="font-weight:600;">${phone}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:0.8rem;">
+                  <span style="color:#64748B;">Quotation Reference</span>
+                  <span style="font-weight:600;">${q.id}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid #E2E8F0;padding-top:16px;margin-top:8px;">
+            <h4 style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px;color:#64748B;margin-bottom:12px;">Payment History</h4>
+            <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;" id="payments-list-${q.id}">
+              ${paymentsListHtml}
+            </div>
+
+            <div style="background:#F1F5F9;border-radius:8px;padding:16px;margin-top:12px;">
+              <h5 style="font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;margin-bottom:10px;">Log Payment</h5>
+              <div style="display:flex;gap:10px;align-items:end;flex-wrap:wrap;">
+                <div style="flex:1;min-width:140px;">
+                  <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Date</label>
+                  <input type="date" id="pay-date-${q.id}" class="form-control form-control-sm" value="${new Date().toISOString().split('T')[0]}" style="font-size:0.75rem;padding:6px 10px;">
+                </div>
+                <div style="flex:0 0 100px;">
+                  <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Time</label>
+                  <input type="time" id="pay-time-${q.id}" class="form-control form-control-sm" value="${new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})}" style="font-size:0.75rem;padding:6px 10px;">
+                </div>
+                <div style="flex:1;min-width:140px;">
+                  <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Amount (₹)</label>
+                  <input type="number" id="pay-amount-${q.id}" class="form-control form-control-sm" placeholder="Enter amount" min="1" style="font-size:0.75rem;padding:6px 10px;">
+                </div>
+                <div style="flex:1;min-width:120px;">
+                  <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Mode</label>
+                  <select id="pay-mode-${q.id}" class="form-control form-control-sm" style="font-size:0.75rem;padding:6px 10px;">
+                    <option value="RTGS">RTGS</option>
+                    <option value="NEFT">NEFT</option>
+                    <option value="Cheque">Cheque</option>
+                    <option value="Cash">Cash</option>
+                  </select>
+                </div>
+                <div style="flex:1;min-width:140px;">
+                  <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Reference / UTR</label>
+                  <input type="text" id="pay-ref-${q.id}" class="form-control form-control-sm" placeholder="Optional" style="font-size:0.75rem;padding:6px 10px;">
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="logQuotationPayment('${q.id}')" style="padding:6px 18px;font-size:0.75rem;white-space:nowrap;margin-bottom:1px;">+ Log Payment</button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid #E2E8F0;">
+              <button class="btn btn-sm" style="background:#0F172A;color:#fff;border:none;font-size:0.7rem;padding:6px 14px;border-radius:6px;font-weight:700;cursor:pointer;" onclick="showReceiptModal('${q.id}')">Print Receipt</button>
+              <button class="btn btn-outline btn-sm" onclick="openPdfPreview('${q.id}')" style="font-size:0.7rem;padding:6px 14px;">View Quotation</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   });
 
-  if (unpaidSales.length === 0) {
-    paySelect.innerHTML = '<option value="">All Invoices Fully Paid</option>';
-  } else {
-    paySelect.innerHTML = unpaidSales.map(s => {
-      const paid = STATE.payments.filter(p => p.invoiceId === s.invoiceId).reduce((sum, p) => sum + p.amount, 0);
-      const due = s.amount - paid;
-      return `<option value="${s.invoiceId}">${s.invoiceId} - ${s.customerName} (Due: ₹${due.toLocaleString('en-IN')})</option>`;
-    }).join('');
-  }
-
-  txnHistoryList.innerHTML = STATE.payments.slice(0, 5).map(txn => {
-    const sale = STATE.sales.find(s => s.invoiceId === txn.invoiceId);
-    return `
-      <li>
-        <div class="tx-details">
-          <strong>${sale ? sale.customerName : 'Client Account'}</strong>
-          <span class="tx-ref">Ref: ${txn.ref} | Mode: ${txn.mode}</span>
-        </div>
-        <span class="tx-amount">+ ₹${txn.amount.toLocaleString('en-IN')}</span>
-      </li>
-    `;
-  }).join('');
+  container.innerHTML = html;
 }
 
-window.populatePaymentDetails = function(invoiceId) {
-  const select = document.getElementById('pay-order-select');
-  select.value = invoiceId;
-  document.getElementById('pay-amount').focus();
+window.toggleFinanceDetails = function(quoteId) {
+  const el = document.getElementById('finance-details-' + quoteId);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  el.style.display = isOpen ? 'none' : 'block';
+};
+
+window.logQuotationPayment = function(quoteId) {
+  loadState();
+  const date = document.getElementById('pay-date-' + quoteId)?.value;
+  const time = document.getElementById('pay-time-' + quoteId)?.value;
+  const amount = parseFloat(document.getElementById('pay-amount-' + quoteId)?.value);
+  const mode = document.getElementById('pay-mode-' + quoteId)?.value;
+  const ref = document.getElementById('pay-ref-' + quoteId)?.value || '';
+
+  if (!amount || amount <= 0) {
+    alert('Please enter a valid payment amount.');
+    return;
+  }
+
+  const quote = (STATE.quotations || []).find(q => q.id === quoteId);
+  if (!quote) {
+    alert('Quotation not found.');
+    return;
+  }
+
+  const pId = 'TXN-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+  if (!STATE.payments) STATE.payments = [];
+  STATE.payments.push({
+    id: pId,
+    quoteId: quoteId,
+    invoiceId: quoteId,
+    date: date || new Date().toISOString().split('T')[0],
+    time: time || '',
+    amount: amount,
+    mode: mode || 'RTGS',
+    ref: ref
+  });
+
+  logSystemActivity('Payment ₹' + amount.toLocaleString('en-IN') + ' logged for quotation ' + quoteId + ' via ' + (mode || 'RTGS') + '.');
+  saveState();
+
+  document.getElementById('pay-amount-' + quoteId).value = '';
+  document.getElementById('pay-ref-' + quoteId).value = '';
+
+  renderFinanceLedger();
+
+  const detailEl = document.getElementById('finance-details-' + quoteId);
+  if (detailEl) detailEl.style.display = 'block';
+};
+
+window.showReceiptModal = function(quoteId) {
+  loadState();
+  const quote = (STATE.quotations || []).find(q => q.id === quoteId);
+  if (!quote) return;
+
+  const payments = (STATE.payments || []).filter(p => p.quoteId === quoteId).sort((a, b) => new Date(b.date) - new Date(a.date));
+  const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
+  const outstanding = Math.max(0, (quote.total || 0) - totalPaid);
+  const customer = (STATE.customers || []).find(c => c.id === quote.customerId);
+  const company = customer ? (customer.company || quote.customerName) : quote.customerName;
+  const phone = customer ? (customer.phone || '—') : '—';
+
+  const paymentsHtml = payments.length > 0 ? payments.map((p, i) => `
+    <tr>
+      <td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:0.75rem;">${i + 1}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:0.75rem;">${p.date}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:0.75rem;">${p.time || '—'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:0.75rem;font-weight:700;">₹${p.amount.toLocaleString('en-IN')}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:0.75rem;">${p.mode || '—'}</td>
+      <td style="padding:6px 8px;border-bottom:1px solid #E5E7EB;font-size:0.75rem;color:#64748B;">${p.ref || '—'}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="6" style="padding:20px;text-align:center;color:#94A3B8;font-size:0.8rem;">No payments recorded.</td></tr>';
+
+  const content = document.getElementById('receipt-content');
+  content.innerHTML = `
+    <div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #E5E7EB;">
+      <div style="font-weight:800;font-size:1rem;color:#1E7D32;">NEXFRA HEAVY ENGINEERING</div>
+      <div style="font-size:0.7rem;color:#64748B;">Payment Receipt</div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:0.75rem;margin-bottom:12px;">
+      <div>
+        <div style="font-weight:700;">${company}</div>
+        <div style="color:#64748B;">${phone}</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-weight:700;">${quote.id}</div>
+        <div style="color:#64748B;">${quote.productName || ''}</div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px dashed #CBD5E1;border-bottom:1px dashed #CBD5E1;margin-bottom:12px;font-size:0.8rem;">
+      <span>Total Quotation Value: <strong>₹${(quote.total || 0).toLocaleString('en-IN')}</strong></span>
+      <span>Total Paid: <strong style="color:var(--color-success);">₹${totalPaid.toLocaleString('en-IN')}</strong></span>
+      <span>Outstanding: <strong style="color:${outstanding > 0 ? '#DC2626' : '#059669'};">₹${outstanding.toLocaleString('en-IN')}</strong></span>
+    </div>
+    <table style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr style="background:#F1F5F9;">
+          <th style="padding:6px 8px;text-align:left;font-size:0.65rem;text-transform:uppercase;color:#64748B;">#</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.65rem;text-transform:uppercase;color:#64748B;">Date</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.65rem;text-transform:uppercase;color:#64748B;">Time</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.65rem;text-transform:uppercase;color:#64748B;">Amount</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.65rem;text-transform:uppercase;color:#64748B;">Mode</th>
+          <th style="padding:6px 8px;text-align:left;font-size:0.65rem;text-transform:uppercase;color:#64748B;">Ref</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${paymentsHtml}
+      </tbody>
+    </table>
+    <div style="margin-top:12px;padding-top:8px;border-top:1px solid #E5E7EB;font-size:0.65rem;color:#94A3B8;text-align:center;">
+      Generated on ${new Date().toLocaleDateString('en-GB')} at ${new Date().toLocaleTimeString('en-GB')}
+    </div>
+  `;
+
+  document.getElementById('receipt-modal').style.display = 'flex';
+};
+
+window.closeReceiptModal = function() {
+  document.getElementById('receipt-modal').style.display = 'none';
+};
+
+window.printReceipt = function() {
+  const content = document.getElementById('receipt-content').innerHTML;
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html>
+    <head><title>Payment Receipt</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 40px; color: #1a1a1a; }
+      table { width: 100%; border-collapse: collapse; }
+      th { background: #F1F5F9; padding: 8px; text-align: left; font-size: 11px; text-transform: uppercase; color: #64748B; }
+      td { padding: 8px; border-bottom: 1px solid #E5E7EB; font-size: 12px; }
+      @media print { body { padding: 20px; } }
+    </style>
+    </head>
+    <body>${content}</body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
 };
 
 function renderCustomersDirectory() {

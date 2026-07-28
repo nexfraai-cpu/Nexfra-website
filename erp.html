@@ -1083,81 +1083,42 @@
         </div>
       </div>
 
-      <!-- MODULE: ACCOUNTS & PAYMENTS -->
+      <!-- MODULE: FINANCE LEDGER -->
       <div class="module-view" id="view-accounts">
         <div class="module-header">
           <div>
-            <h1>Accounts Receivable & Payments Ledger</h1>
-            <p>Log intermediate bank transfers and track outstanding client balances.</p>
+            <h1>Finance Ledger</h1>
+            <p>Track quotations, payments, and outstanding balances.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="search-finance" placeholder="Search by quotation, customer..." class="form-control form-control-sm" style="width:220px;font-size:0.75rem;padding:4px 12px;" oninput="renderFinanceLedger()">
+            <select id="filter-finance-status" class="form-control form-control-sm" onchange="renderFinanceLedger()" style="font-size:0.75rem;padding:4px 8px;">
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+              <option value="paid">Paid</option>
+            </select>
           </div>
         </div>
 
-        <div class="grid grid-3-2-col gap-lg">
-          <!-- Ledger Table -->
-          <div class="card">
-            <div class="card-header">
-              <h3>Outstanding Receivables</h3>
-            </div>
-            <div class="table-container">
-              <table class="data-table" id="accounts-ledger-table">
-                <thead>
-                  <tr>
-                    <th>Invoice ID</th>
-                    <th>Customer</th>
-                    <th>Total Amount</th>
-                    <th>Total Paid</th>
-                    <th>Outstanding Balance</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <!-- Injected by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
+        <div id="finance-ledger-container" style="display:flex;flex-direction:column;gap:12px;">
+          <!-- Injected by JS -->
+        </div>
+      </div>
 
-          <!-- Payment Form -->
-          <div class="card">
-            <div class="card-header">
-              <h3>Record Client Bank Payment</h3>
-            </div>
-            <form id="payment-log-form">
-              <div class="form-group">
-                <label for="pay-order-select">Select Pending Invoice</label>
-                <select id="pay-order-select" class="form-control" required>
-                  <!-- Injected by JS -->
-                </select>
-              </div>
-              <div class="grid grid-2-col gap-md">
-                <div class="form-group">
-                  <label for="pay-amount">Amount Logged (₹)</label>
-                  <input type="number" id="pay-amount" class="form-control" placeholder="250000" required min="1">
-                </div>
-                <div class="form-group">
-                  <label for="pay-mode">Transaction Type</label>
-                  <select id="pay-mode" class="form-control" required>
-                    <option value="RTGS">RTGS Transfer</option>
-                    <option value="NEFT">NEFT Transfer</option>
-                    <option value="Cheque">Cheque Deposit</option>
-                    <option value="Cash">Cash Receipt</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="pay-reference">Bank Transaction Reference / UTR</label>
-                <input type="text" id="pay-reference" class="form-control" placeholder="UTR-UTIB52827182" required>
-              </div>
-              <button type="submit" class="btn btn-primary w-full">Submit Payment Entry</button>
-            </form>
-            
-            <div class="payment-history-panel mt-lg">
-              <h4>Recent Receipts Ledger</h4>
-              <ul class="transaction-log-list" id="payment-history-list">
-                <!-- Injected by JS -->
-              </ul>
-            </div>
+      <!-- RECEIPT PRINT MODAL -->
+      <div id="receipt-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;justify-content:center;align-items:center;" onclick="if(event.target===this)closeReceiptModal()">
+        <div style="background:#fff;padding:30px;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:2px solid #1E7D32;padding-bottom:12px;">
+            <h2 style="font-size:1.2rem;margin:0;">Payment Receipt</h2>
+            <button onclick="closeReceiptModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#666;">✕</button>
+          </div>
+          <div id="receipt-content">
+            <!-- Injected by JS -->
+          </div>
+          <div style="display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #E5E7EB;">
+            <button class="btn btn-primary" onclick="printReceipt()" style="flex:1;">Print Receipt</button>
+            <button class="btn btn-outline" onclick="closeReceiptModal()" style="flex:1;">Close</button>
           </div>
         </div>
       </div>

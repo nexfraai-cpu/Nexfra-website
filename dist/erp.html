@@ -11,13 +11,13 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
   
   <!-- Stylesheets -->
-  <link rel="stylesheet" href="styles.css">
   
   <!-- GSAP for Smooth Staging Transitions -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   
   <!-- html2pdf.js for High-Fidelity Client-side PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/styles-yUOeEVp0.css">
 </head>
 <body style="background-color: var(--color-bg); overflow: hidden; height: 100vh; display: flex; flex-direction: column;">
 
@@ -379,7 +379,7 @@
                 </div>
                 <div class="form-group">
                   <label for="w-cust-qty">Number of Vehicles</label>
-                  <input type="number" id="w-cust-qty" class="form-control" value="1" min="1">
+                  <input type="number" id="w-cust-qty" class="form-control" value="1" min="1" onchange="onCustQtyChange(this.value)">
                 </div>
               </div>
 
@@ -410,7 +410,7 @@
             <!-- Trailer Card -->
             <div class="category-card" id="cat-card-trailer" onclick="selectProductCategory('trailer')">
               <div class="card-img-wrap">
-                <img src="assets/flatbed_trailer.jpg" alt="Commercial Trailer">
+                <img src="/assets/flatbed_trailer-BaiHwITw.jpg" alt="Commercial Trailer">
               </div>
               <div class="card-details">
                 <h3>
@@ -424,7 +424,7 @@
             <!-- Tipper Card -->
             <div class="category-card" id="cat-card-tipper" onclick="selectProductCategory('tipper')">
               <div class="card-img-wrap">
-                <img src="assets/box_body_tipper.jpg" alt="Dumper Body">
+                <img src="/assets/box_body_tipper-CgRqPuY4.jpg" alt="Dumper Body">
               </div>
               <div class="card-details">
                 <h3>
@@ -438,7 +438,7 @@
             <!-- Rigid Load Body Card -->
             <div class="category-card" id="cat-card-rigid" onclick="selectProductCategory('rigid')">
               <div class="card-img-wrap">
-                <img src="assets/nexfra_hero.jpg" alt="Rigid Load Body">
+                <img src="/assets/nexfra_hero-NqD3WG3k.jpg" alt="Rigid Load Body">
               </div>
               <div class="card-details">
                 <h3>
@@ -463,21 +463,21 @@
           <!-- Trailer Subtypes Grid -->
           <div class="selection-cards-grid subtype-grid-group" id="subtypes-trailer-container" style="display: none;">
             <div class="subtype-card" id="sub-card-flatbed" onclick="selectProductSubtype('flatbed')">
-              <div class="card-img-wrap"><img src="assets/flatbed_trailer.jpg" alt="Flatbed"></div>
+              <div class="card-img-wrap"><img src="/assets/flatbed_trailer-BaiHwITw.jpg" alt="Flatbed"></div>
               <div class="card-details">
                 <h3>Flat Bed Trailer</h3>
                 <p>Standard 40ft triple-axle flat container flatbed for standard dry cargo.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-sidewall" onclick="selectProductSubtype('sidewall')">
-              <div class="card-img-wrap"><img src="assets/tip_trailer.jpg" alt="Sidewall"></div>
+              <div class="card-img-wrap"><img src="/assets/tip_trailer-CNI1GP_o.jpg" alt="Sidewall"></div>
               <div class="card-details">
                 <h3>Side Wall Trailer</h3>
                 <p>Standard payload side gate trailer for bag cargo and local freight.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-tiptrailer" onclick="selectProductSubtype('tiptrailer')">
-              <div class="card-img-wrap"><img src="assets/tip_trailer.jpg" alt="Tip Trailer"></div>
+              <div class="card-img-wrap"><img src="/assets/tip_trailer-CNI1GP_o.jpg" alt="Tip Trailer"></div>
               <div class="card-details">
                 <h3>Tip Trailer</h3>
                 <p>Semi-trailer dump chassis for massive sand/aggregate transport.</p>
@@ -488,14 +488,14 @@
           <!-- Tipper Subtypes Grid -->
           <div class="selection-cards-grid subtype-grid-group" id="subtypes-tipper-container" style="display: none;">
             <div class="subtype-card" id="sub-card-boxbody" onclick="selectProductSubtype('boxbody')">
-              <div class="card-img-wrap"><img src="assets/box_body_tipper.jpg" alt="Box Body"></div>
+              <div class="card-img-wrap"><img src="/assets/box_body_tipper-CgRqPuY4.jpg" alt="Box Body"></div>
               <div class="card-details">
                 <h3>Box Body Tipper</h3>
                 <p>Standard square box dumper for coal, sand, and aggregate haulage.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-rockbody" onclick="selectProductSubtype('rockbody')">
-              <div class="card-img-wrap"><img src="assets/rock_body_tipper.jpg" alt="Rock Body"></div>
+              <div class="card-img-wrap"><img src="/assets/rock_body_tipper-sd4I-u8-.jpg" alt="Rock Body"></div>
               <div class="card-details">
                 <h3>Rock Body Tipper</h3>
                 <p>Deep-V shape rock body with thick wear-resistant lining for hard mining.</p>
@@ -506,14 +506,14 @@
           <!-- Rigid Subtypes Grid -->
           <div class="selection-cards-grid subtype-grid-group" id="subtypes-rigid-container" style="display: none;">
             <div class="subtype-card" id="sub-card-rigid28" onclick="selectProductSubtype('rigid28')">
-              <div class="card-img-wrap"><img src="assets/nexfra_hero.jpg" alt="28 Ft"></div>
+              <div class="card-img-wrap"><img src="/assets/nexfra_hero-NqD3WG3k.jpg" alt="28 Ft"></div>
               <div class="card-details">
                 <h3>28 Feet Load Body</h3>
                 <p>Standard rigid frame tray for multi-axle freight carrier trucks.</p>
               </div>
             </div>
             <div class="subtype-card" id="sub-card-rigid30" onclick="selectProductSubtype('rigid30')">
-              <div class="card-img-wrap"><img src="assets/nexfra_hero.jpg" alt="30 Ft"></div>
+              <div class="card-img-wrap"><img src="/assets/nexfra_hero-NqD3WG3k.jpg" alt="30 Ft"></div>
               <div class="card-details">
                 <h3>30 Feet Load Body</h3>
                 <p>Extended frame rigid body for express payload cargo shipping.</p>
@@ -673,6 +673,22 @@
                 </div>
               </div>
 
+              <!-- SECTION H: ORDER QUANTITY -->
+              <div class="collapsible-section" id="spec-sec-qty" style="border-color:#0F172A;">
+                <div class="collapse-header" onclick="toggleCollapseSection('spec-sec-qty')" style="background:#F8FAFC;">
+                  <span style="font-weight:800; color:#0F172A;">8. Order Quantity</span>
+                  <svg class="collapse-header-chevron" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+                </div>
+                <div class="collapse-content" style="display:block;">
+                  <div style="padding:16px; display:flex; align-items:center; gap:16px;">
+                    <label style="font-size:0.85rem; font-weight:700; color:#1E293B;">Number of Vehicles:</label>
+                    <input type="number" id="w-order-qty" class="form-control" value="1" min="1" step="1" style="width:100px; font-weight:800; font-size:1rem; text-align:center;" oninput="onOrderQtyChange(this.value)">
+                    <button type="button" id="w-qty-save-btn" class="btn btn-sm btn-primary" onclick="saveOrderQty()" style="padding:4px 14px; font-size:0.75rem; font-weight:700;">Save</button>
+                    <span style="font-size:0.8rem; color:#64748B;">vehicles × unit price</span>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- Right Sticky Price Preview Panel -->
@@ -743,7 +759,7 @@
                 <div class="pdf-page" style="box-shadow: none;">
                   <div class="pdf-header">
                     <div class="pdf-header-logo">
-                      <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                     <div class="pdf-header-text">
                       <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -753,7 +769,7 @@
                       <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
                     </div>
                     <div class="pdf-header-iso">
-                      <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                   </div>
                   <div class="pdf-header-line"></div>
@@ -799,7 +815,7 @@
                         </td>
                         <td class="qty-col">
                           <span id="w-pdf-table-qty">1 No’S</span><br>
-                          <span style="font-size:0.7rem;font-weight:normal;color:#374151;">GST 18%</span>
+                    <span id="w-pdf-gst-label" style="font-size:0.7rem;font-weight:normal;color:#374151;">GST 18%</span>
                         </td>
                         <td class="rate-col">
                           <span id="w-pdf-table-basic">6,48,306/-</span><br>
@@ -838,7 +854,7 @@
                 <div class="pdf-page" style="box-shadow: none;">
                   <div class="pdf-header">
                     <div class="pdf-header-logo">
-                      <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                     <div class="pdf-header-text">
                       <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -848,7 +864,7 @@
                       <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
                     </div>
                     <div class="pdf-header-iso">
-                      <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                      <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
                     </div>
                   </div>
                   <div class="pdf-header-line"></div>
@@ -1067,81 +1083,42 @@
         </div>
       </div>
 
-      <!-- MODULE: ACCOUNTS & PAYMENTS -->
+      <!-- MODULE: FINANCE LEDGER -->
       <div class="module-view" id="view-accounts">
         <div class="module-header">
           <div>
-            <h1>Accounts Receivable & Payments Ledger</h1>
-            <p>Log intermediate bank transfers and track outstanding client balances.</p>
+            <h1>Finance Ledger</h1>
+            <p>Track quotations, payments, and outstanding balances.</p>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="text" id="search-finance" placeholder="Search by quotation, customer..." class="form-control form-control-sm" style="width:220px;font-size:0.75rem;padding:4px 12px;" oninput="renderFinanceLedger()">
+            <select id="filter-finance-status" class="form-control form-control-sm" onchange="renderFinanceLedger()" style="font-size:0.75rem;padding:4px 8px;">
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+              <option value="paid">Paid</option>
+            </select>
           </div>
         </div>
 
-        <div class="grid grid-3-2-col gap-lg">
-          <!-- Ledger Table -->
-          <div class="card">
-            <div class="card-header">
-              <h3>Outstanding Receivables</h3>
-            </div>
-            <div class="table-container">
-              <table class="data-table" id="accounts-ledger-table">
-                <thead>
-                  <tr>
-                    <th>Invoice ID</th>
-                    <th>Customer</th>
-                    <th>Total Amount</th>
-                    <th>Total Paid</th>
-                    <th>Outstanding Balance</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <!-- Injected by JS -->
-                </tbody>
-              </table>
-            </div>
-          </div>
+        <div id="finance-ledger-container" style="display:flex;flex-direction:column;gap:12px;">
+          <!-- Injected by JS -->
+        </div>
+      </div>
 
-          <!-- Payment Form -->
-          <div class="card">
-            <div class="card-header">
-              <h3>Record Client Bank Payment</h3>
-            </div>
-            <form id="payment-log-form">
-              <div class="form-group">
-                <label for="pay-order-select">Select Pending Invoice</label>
-                <select id="pay-order-select" class="form-control" required>
-                  <!-- Injected by JS -->
-                </select>
-              </div>
-              <div class="grid grid-2-col gap-md">
-                <div class="form-group">
-                  <label for="pay-amount">Amount Logged (₹)</label>
-                  <input type="number" id="pay-amount" class="form-control" placeholder="250000" required min="1">
-                </div>
-                <div class="form-group">
-                  <label for="pay-mode">Transaction Type</label>
-                  <select id="pay-mode" class="form-control" required>
-                    <option value="RTGS">RTGS Transfer</option>
-                    <option value="NEFT">NEFT Transfer</option>
-                    <option value="Cheque">Cheque Deposit</option>
-                    <option value="Cash">Cash Receipt</option>
-                  </select>
-                </div>
-              </div>
-              <div class="form-group">
-                <label for="pay-reference">Bank Transaction Reference / UTR</label>
-                <input type="text" id="pay-reference" class="form-control" placeholder="UTR-UTIB52827182" required>
-              </div>
-              <button type="submit" class="btn btn-primary w-full">Submit Payment Entry</button>
-            </form>
-            
-            <div class="payment-history-panel mt-lg">
-              <h4>Recent Receipts Ledger</h4>
-              <ul class="transaction-log-list" id="payment-history-list">
-                <!-- Injected by JS -->
-              </ul>
-            </div>
+      <!-- RECEIPT PRINT MODAL -->
+      <div id="receipt-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;justify-content:center;align-items:center;" onclick="if(event.target===this)closeReceiptModal()">
+        <div style="background:#fff;padding:30px;border-radius:12px;max-width:500px;width:90%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:2px solid #1E7D32;padding-bottom:12px;">
+            <h2 style="font-size:1.2rem;margin:0;">Payment Receipt</h2>
+            <button onclick="closeReceiptModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#666;">✕</button>
+          </div>
+          <div id="receipt-content">
+            <!-- Injected by JS -->
+          </div>
+          <div style="display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #E5E7EB;">
+            <button class="btn btn-primary" onclick="printReceipt()" style="flex:1;">Print Receipt</button>
+            <button class="btn btn-outline" onclick="closeReceiptModal()" style="flex:1;">Close</button>
           </div>
         </div>
       </div>
@@ -1264,7 +1241,7 @@
           <div class="pdf-page" id="pdf-page-1">
             <div class="pdf-header">
               <div class="pdf-header-logo">
-                <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
               <div class="pdf-header-text">
                 <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -1274,7 +1251,7 @@
                 <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
               </div>
               <div class="pdf-header-iso">
-                <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
             </div>
             <div class="pdf-header-line"></div>
@@ -1357,7 +1334,7 @@
           <div class="pdf-page" id="pdf-page-2">
             <div class="pdf-header">
               <div class="pdf-header-logo">
-                <img src="assets/logo.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="/assets/logo-11XDDg1h.png" alt="Nexfra Logo" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
               <div class="pdf-header-text">
                 <h2>NEXFRA MANUFACTURING INDIA PVT.LTD.</h2>
@@ -1367,7 +1344,7 @@
                 <p>Email: nexfra.india@gmail.com Web: www.nexfra.in</p>
               </div>
               <div class="pdf-header-iso">
-                <img src="assets/iso_seal.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
+                <img src="/assets/iso_seal-BjWpo8Xb.png" alt="Nexfra Quality Seal" style="height: 105px; width: auto; object-fit: contain; display: block;">
               </div>
             </div>
             <div class="pdf-header-line"></div>

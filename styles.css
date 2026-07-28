@@ -1758,9 +1758,18 @@ textarea.form-control {
   color: #92400E;
 }
 
+.status-pending {
+  background-color: #FEF3C7;
+  color: #D97706;
+}
+
 .status-unpaid {
   background-color: #FEE2E2;
   color: #991B1B;
+}
+
+.finance-bar:hover {
+  background: #F1F5F9;
 }
 
 /* Quotation Builder Layout */
