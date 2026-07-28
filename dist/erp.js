@@ -4286,10 +4286,25 @@ window.renderFinanceLedger = function() {
   const container = document.getElementById('finance-ledger-container');
   if (!container) return;
 
+  const allQuotations = STATE.quotations || [];
+  const allPayments = STATE.payments || [];
+
+  const totalAmount = allQuotations.reduce((s, q) => s + (q.total || 0), 0);
+  const totalCollected = allPayments.reduce((s, p) => s + p.amount, 0);
+  const totalOutstanding = allQuotations.reduce((s, q) => {
+    const paid = allPayments.filter(p => p.quoteId === q.id).reduce((ps, p) => ps + p.amount, 0);
+    return s + Math.max(0, (q.total || 0) - paid);
+  }, 0);
+
+  document.getElementById('kpi-total-amount').innerText = '₹' + totalAmount.toLocaleString('en-IN');
+  document.getElementById('kpi-collected').innerText = '₹' + totalCollected.toLocaleString('en-IN');
+  document.getElementById('kpi-outstanding').innerText = '₹' + totalOutstanding.toLocaleString('en-IN');
+  document.getElementById('kpi-order-count').innerText = allQuotations.length;
+
   const searchQ = (document.getElementById('search-finance')?.value || '').toLowerCase();
   const statusFilter = document.getElementById('filter-finance-status')?.value || 'all';
 
-  let quotations = STATE.quotations || [];
+  let quotations = allQuotations;
   
   if (searchQ) {
     quotations = quotations.filter(q => 
