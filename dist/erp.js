@@ -4297,9 +4297,6 @@ window.toggleFinanceFilter = function() {
     if (fromEl) fromEl.value = f.dateFrom || '';
     if (toEl) toEl.value = f.dateTo || '';
     if (sortEl) sortEl.value = f.sort || 'newest';
-    document.getElementById('ff-pending').checked = f.statusPending === '1';
-    document.getElementById('ff-partial').checked = f.statusPartial === '1';
-    document.getElementById('ff-paid').checked = f.statusPaid === '1';
     var btn = document.querySelector('[data-filter-btn="finance"]');
     if (btn) {
       var r = btn.getBoundingClientRect();
@@ -4335,14 +4332,39 @@ window.setFinanceDatePreset = function(months) {
   renderFinanceLedger();
 };
 
+window.toggleFinanceUrgentFilter = function() {
+  var isActive = financeFilters.urgent === '1';
+  if (isActive) {
+    delete financeFilters.urgent;
+    var urgBtn = document.getElementById('btn-urgent-filter');
+    if (urgBtn) {
+      urgBtn.style.background = '#FEF2F2';
+      urgBtn.style.color = '#DC2626';
+      urgBtn.style.borderColor = '#FCA5A5';
+    }
+  } else {
+    financeFilters.urgent = '1';
+    var urgBtn = document.getElementById('btn-urgent-filter');
+    if (urgBtn) {
+      urgBtn.style.background = '#DC2626';
+      urgBtn.style.color = '#fff';
+      urgBtn.style.borderColor = '#DC2626';
+    }
+  }
+  renderFinanceLedger();
+};
+
 window.clearFinanceFilters = function() {
   financeFilters = {};
   document.getElementById('filter-finance-from').value = '';
   document.getElementById('filter-finance-to').value = '';
   document.getElementById('filter-finance-sort').value = 'newest';
-  document.getElementById('ff-pending').checked = false;
-  document.getElementById('ff-partial').checked = false;
-  document.getElementById('ff-paid').checked = false;
+  var urgBtn = document.getElementById('btn-urgent-filter');
+  if (urgBtn) {
+    urgBtn.style.background = '#FEF2F2';
+    urgBtn.style.color = '#DC2626';
+    urgBtn.style.borderColor = '#FCA5A5';
+  }
   renderFinanceLedger();
 };
 
@@ -4399,27 +4421,32 @@ window.renderFinanceLedger = function() {
     });
   }
 
-  // Apply status filter (header dropdown + checkbox overrides from filter dropdown)
-  var usePending = f.statusPending === '1';
-  var usePartial = f.statusPartial === '1';
-  var usePaid = f.statusPaid === '1';
-  var checkboxActive = usePending || usePartial || usePaid;
-  quotations = quotations.filter(function(q) {
-    var paid = 0;
-    for (var pi = 0; pi < allPayments.length; pi++) {
-      if (allPayments[pi].quoteId === q.id) paid += allPayments[pi].amount;
-    }
-    var outstanding = Math.max(0, (q.total || 0) - paid);
-    var status = outstanding <= 0 ? 'paid' : (paid > 0 ? 'partial' : 'pending');
-    if (checkboxActive) {
-      if (status === 'pending' && !usePending) return false;
-      if (status === 'partial' && !usePartial) return false;
-      if (status === 'paid' && !usePaid) return false;
-      return true;
-    }
-    if (statusFilter !== 'all' && status !== statusFilter) return false;
-    return true;
-  });
+  // Apply urgent filter
+  if (f.urgent === '1') {
+    quotations = quotations.filter(function(q) {
+      var paid = 0;
+      for (var pi = 0; pi < allPayments.length; pi++) {
+        if (allPayments[pi].quoteId === q.id) paid += allPayments[pi].amount;
+      }
+      var outstanding = Math.max(0, (q.total || 0) - paid);
+      if (outstanding <= 0) return false;
+      var prodItem = STATE.productionItems ? STATE.productionItems.find(function(p) { return p.quoteId === q.id; }) : null;
+      return prodItem && (prodItem.progressPct || 0) >= 80;
+    });
+  }
+
+  // Apply status filter (header dropdown)
+  if (statusFilter !== 'all') {
+    quotations = quotations.filter(function(q) {
+      var paid = 0;
+      for (var pi = 0; pi < allPayments.length; pi++) {
+        if (allPayments[pi].quoteId === q.id) paid += allPayments[pi].amount;
+      }
+      var outstanding = Math.max(0, (q.total || 0) - paid);
+      var status = outstanding <= 0 ? 'paid' : (paid > 0 ? 'partial' : 'pending');
+      return status === statusFilter;
+    });
+  }
 
   // Apply sort
   var sortKey = f.sort || 'newest';

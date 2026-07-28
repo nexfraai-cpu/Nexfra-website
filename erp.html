@@ -1092,7 +1092,7 @@
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <input type="text" id="search-finance" placeholder="Search customer, ID..." class="form-control form-control-sm" style="width:170px;font-size:0.75rem;padding:4px 12px;" oninput="renderFinanceLedger()">
-            <select id="filter-finance-status" class="form-control form-control-sm" onchange="renderFinanceLedger()" style="font-size:0.75rem;padding:4px 8px;">
+            <select id="filter-finance-status" class="form-control form-control-sm" onchange="renderFinanceLedger()" style="font-size:0.75rem;padding:4px 14px;width:150px;">
               <option value="all">All Status</option>
               <option value="pending">Pending</option>
               <option value="partial">Partial</option>
@@ -1118,18 +1118,9 @@
                     <button type="button" class="btn btn-outline btn-xs" onclick="setFinanceDatePreset(12)" style="font-size:0.65rem;padding:2px 6px;font-weight:600;">1Y</button>
                   </div>
                   <div>
-                    <label style="font-size:0.7rem;font-weight:700;color:#475569;display:block;margin-bottom:6px;">Payment Status</label>
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                      <label style="font-size:0.75rem;display:flex;align-items:center;gap:4px;cursor:pointer;padding:3px 8px;border-radius:4px;background:#FEF3C7;border:1px solid #FDE68A;">
-                        <input type="checkbox" id="ff-pending" onchange="setFinanceFilter('statusPending',this.checked ? '1' : '')" style="accent-color:#D97706;"> Pending
-                      </label>
-                      <label style="font-size:0.75rem;display:flex;align-items:center;gap:4px;cursor:pointer;padding:3px 8px;border-radius:4px;background:#FEF3C7;border:1px solid #FDE68A;">
-                        <input type="checkbox" id="ff-partial" onchange="setFinanceFilter('statusPartial',this.checked ? '1' : '')" style="accent-color:#D97706;"> Partial
-                      </label>
-                      <label style="font-size:0.75rem;display:flex;align-items:center;gap:4px;cursor:pointer;padding:3px 8px;border-radius:4px;background:#E8F5E9;border:1px solid #A5D6A7;">
-                        <input type="checkbox" id="ff-paid" onchange="setFinanceFilter('statusPaid',this.checked ? '1' : '')" style="accent-color:#15803D;"> Paid
-                      </label>
-                    </div>
+                    <button type="button" id="btn-urgent-filter" class="btn btn-xs" onclick="toggleFinanceUrgentFilter()" style="width:100%;padding:8px 12px;font-size:0.75rem;font-weight:700;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;background:#FEF2F2;color:#DC2626;border:1.5px solid #FCA5A5;">
+                      <span id="urgent-filter-icon">⬤</span> Urgent Payment Collection
+                    </button>
                   </div>
                   <div style="display:flex;gap:8px;align-items:center;">
                     <label style="font-size:0.7rem;font-weight:700;color:#475569;white-space:nowrap;">Sort:</label>
