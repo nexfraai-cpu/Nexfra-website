@@ -2324,7 +2324,8 @@ window.editQuotation = function(quoteId) {
     manualTotal: null,
     dimensions: JSON.parse(JSON.stringify(q.dimensions || template.dimensions || {})),
     scopeOfWork: q.scopeOfWork || 'As Mentioned above',
-    terms: q.terms ? q.terms.slice() : []
+    terms: q.terms ? q.terms.slice() : [],
+    gstRate: q.gstRate || 18
   };
 
   renderInlineEditForm(quoteId, template);
@@ -2406,6 +2407,8 @@ function renderInlineEditForm(quoteId, template) {
     + '<div style="display:flex;gap:6px;align-items:center;"><input type="number" id="e-price-input" class="form-control" placeholder="Use calculated" value="' + (e.total || '') + '" oninput="onEditPriceChange(this.value)" style="flex:1;font-weight:700;">'
     + '<button type="button" onclick="document.getElementById(\'e-price-input\').value=\'\';onEditPriceChange(\'\')" style="background:none;border:1px solid #CBD5E1;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.75rem;font-weight:600;color:#64748B;">\u2715 Reset</button></div>'
     + '<small style="color:#94A3B8;font-size:0.7rem;">Leave empty for auto-calculated price</small></div>'
+    + '<div style="min-width:100px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">GST (%)</label>'
+    + '<input type="number" id="e-gst-input" class="form-control" value="' + (e.gstRate || 18) + '" oninput="onEditGstChange(this.value)" min="0" max="100" step="0.1" style="font-weight:700;width:90px;"></div>'
     + '<div style="padding:12px 24px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;text-align:center;">'
     + '<span style="font-size:0.7rem;font-weight:600;color:#059669;display:block;">Final Price</span>'
     + '<span id="e-price-display" style="font-size:1.3rem;font-weight:800;color:#059669;">\u20B9' + (e.total || 0).toLocaleString('en-IN') + '</span></div></div></div>'
@@ -2498,6 +2501,11 @@ window.onEditPriceChange = function(val) {
   }
 };
 
+window.onEditGstChange = function(val) {
+  if (!window._editState) return;
+  _editState.gstRate = (val !== '' && val !== null) ? parseFloat(val) : 18;
+};
+
 window.onEditScopeChange = function(val) {
   if (window._editState) _editState.scopeOfWork = val;
 };
@@ -2531,6 +2539,7 @@ window.saveEditQuotation = function(showPdf) {
   q.dimensions = JSON.parse(JSON.stringify(e.dimensions || q.dimensions));
   q.scopeOfWork = e.scopeOfWork || q.scopeOfWork;
   q.terms = e.terms || q.terms;
+  q.gstRate = e.gstRate || 18;
 
   // Sync linked work orders
   if (q.workOrderIds) {
@@ -2589,9 +2598,12 @@ function renderPdfFromQuote(quote, client) {
     ? WIZARD_PRODUCT_TEMPLATES[quote.subtype]
     : Object.values(WIZARD_PRODUCT_TEMPLATES).find(function(t) { return t.name === quote.productName; });
 
+  var gstRate = quote.gstRate || 18;
   var grandTotalVal = quote.total || 0;
-  var basicVal = Math.round(grandTotalVal / 1.18);
+  var basicVal = Math.round(grandTotalVal / (1 + gstRate / 100));
   var gstVal = grandTotalVal - basicVal;
+
+  document.getElementById('pdf-gst-label').innerText = 'GST ' + gstRate + '%';
 
   document.getElementById('pdf-ref-no').innerText = 'REF:- ' + quote.id;
   document.getElementById('pdf-date-val').innerText = 'DATE: ' + new Date(quote.date).toLocaleDateString('en-GB').replace(/\//g,'.');
@@ -3404,6 +3416,24 @@ function getDefaultProgressionSchema() {
   ];
 }
 
+function getDefaultDispatchFields() {
+  return [
+    { id: 'vehicleNo', label: 'Vehicle Number', placeholder: 'e.g. TN 01 AB 1234', type: 'text' },
+    { id: 'chassisNo', label: 'Chassis Number', placeholder: 'e.g. 1234567890', type: 'text' },
+    { id: 'driverName', label: 'Driver Name', placeholder: 'e.g. Rajesh Kumar', type: 'text' },
+    { id: 'driverNo', label: 'Driver Number', placeholder: 'e.g. 9876543210', type: 'text' },
+    { id: 'dispatchedAt', label: 'Date & Time of Dispatch', placeholder: '', type: 'datetime-local' }
+  ];
+}
+
+function getDispatchFields() {
+  if (!STATE.dispatchFields || !Array.isArray(STATE.dispatchFields) || STATE.dispatchFields.length === 0) {
+    STATE.dispatchFields = getDefaultDispatchFields();
+    saveState();
+  }
+  return STATE.dispatchFields;
+}
+
 function getProgressionSchema() {
   if (!STATE.progressionSchema || STATE.progressionSchema.length === 0) {
     STATE.progressionSchema = getDefaultProgressionSchema();
@@ -3413,10 +3443,12 @@ function getProgressionSchema() {
 }
 
 let tempProgressionSchema = null;
+let tempDispatchFields = null;
 
 window.openProgressionSettingsModal = function() {
   loadState();
   tempProgressionSchema = JSON.parse(JSON.stringify(getProgressionSchema()));
+  tempDispatchFields = JSON.parse(JSON.stringify(getDispatchFields()));
   renderPipelineSettingsEditor();
   document.getElementById('progression-pipeline-settings-modal').classList.add('active');
 };
@@ -3429,6 +3461,7 @@ window.closeProgressionSettingsModal = function() {
 window.resetDefaultProgressionSchema = function() {
   if (confirm("Reset progression pipeline to default 10 manufacturing sections? Custom edits will be restored.")) {
     tempProgressionSchema = getDefaultProgressionSchema();
+    tempDispatchFields = getDefaultDispatchFields();
     renderPipelineSettingsEditor();
   }
 };
@@ -3500,7 +3533,31 @@ function renderPipelineSettingsEditor() {
       </div>
 
     </div>
-  `).join('');
+  `).join('') + `
+    <!-- Dispatch Fields Customizer -->
+    <div class="card" style="margin-bottom:16px; padding:16px; background:#ffffff; border:2px solid #0F172A; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
+        <h4 style="margin:0; font-size:0.9rem; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:8px;">
+          🚛 11. Dispatched — Custom Fields
+        </h4>
+        <span style="font-size:0.7rem; color:#64748B;">Rename, add, or remove dispatch sub-fields</span>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        ${tempDispatchFields.map((f, fi) => `
+          <div style="display:flex; align-items:center; gap:8px; background:#F8FAFC; padding:8px 12px; border-radius:6px; border:1px solid #E2E8F0;">
+            <input type="text" value="${escapeHtml(f.label)}" class="form-control form-control-sm" style="flex:2; font-weight:700; font-size:0.8rem; height:32px;" onchange="tempDispatchFields[${fi}].label = this.value">
+            <select class="form-control form-control-sm" style="width:140px; height:32px; font-size:0.75rem; font-weight:600;" onchange="tempDispatchFields[${fi}].type = this.value">
+              <option value="text" ${f.type === 'text' ? 'selected' : ''}>Text</option>
+              <option value="datetime-local" ${f.type === 'datetime-local' ? 'selected' : ''}>Date & Time</option>
+            </select>
+            <input type="text" value="${escapeHtml(f.placeholder || '')}" placeholder="Placeholder" class="form-control form-control-sm" style="flex:2; font-size:0.75rem; height:32px;" onchange="tempDispatchFields[${fi}].placeholder = this.value">
+            <button type="button" onclick="deleteTempDispatchField(${fi})" style="background:none; border:none; color:#EF4444; font-weight:700; cursor:pointer; font-size:0.85rem; padding:4px 8px;">✕</button>
+          </div>
+        `).join('')}
+      </div>
+      <button type="button" class="btn btn-outline btn-xs" onclick="addTempDispatchField()" style="margin-top:10px; font-weight:700; border-color:#0F172A; color:#0F172A;">+ Add Dispatch Field</button>
+    </div>
+  `;
 }
 
 window.addNewPipelineSection = function() {
@@ -3569,12 +3626,31 @@ window.deletePipelineItem = function(secIdx, subIdx, itemIdx) {
   renderPipelineSettingsEditor();
 };
 
+window.addTempDispatchField = function() {
+  if (!tempDispatchFields) return;
+  tempDispatchFields.push({
+    id: 'custom_' + Date.now(),
+    label: 'New Field',
+    placeholder: '',
+    type: 'text'
+  });
+  renderPipelineSettingsEditor();
+};
+
+window.deleteTempDispatchField = function(fi) {
+  if (!tempDispatchFields) return;
+  tempDispatchFields.splice(fi, 1);
+  renderPipelineSettingsEditor();
+};
+
 window.saveProgressionSchemaSettings = function() {
   if (!tempProgressionSchema) return;
   STATE.progressionSchema = JSON.parse(JSON.stringify(tempProgressionSchema));
+  STATE.dispatchFields = JSON.parse(JSON.stringify(tempDispatchFields));
   saveState();
   closeProgressionSettingsModal();
   renderProductionBoard();
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
   alert("Progression Pipeline structure updated successfully!");
 };
 
@@ -4076,30 +4152,22 @@ function renderOrderProgressionBody(prodItem) {
       }).join('')}
     </div>
 
-    <!-- 11. Dispatched Section (permanent, text-input based) -->
+    <!-- 11. Dispatched Section (from config) -->
     <div class="card" style="padding:16px; background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px;">
       <h4 style="margin:0 0 12px 0; font-size:0.85rem; font-weight:800; color:#1E293B; text-transform:uppercase; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">11. Dispatched</h4>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Vehicle Number</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.vehicleNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'vehicleNo', this.value)" placeholder="e.g. TN 01 AB 1234" style="font-size:0.8rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Chassis Number</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.chassisNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'chassisNo', this.value)" placeholder="e.g. 1234567890" style="font-size:0.8rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Driver Name</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.driverName) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'driverName', this.value)" placeholder="e.g. Rajesh Kumar" style="font-size:0.8rem;">
-        </div>
-        <div>
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Driver Number</label>
-          <input type="text" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.driverNo) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'driverNo', this.value)" placeholder="e.g. 9876543210" style="font-size:0.8rem;">
-        </div>
-        <div style="grid-column:span 2;">
-          <label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">Date & Time of Dispatch</label>
-          <input type="datetime-local" class="form-control" value="${(prodItem.dispatchedData && prodItem.dispatchedData.dispatchedAt) || ''}" onchange="updateDispatchedData('${prodItem.quoteId}', 'dispatchedAt', this.value)" style="font-size:0.8rem;">
-        </div>
+        ${(function(){
+          var df = getDispatchFields();
+          return df.map(function(f){
+            var val = (prodItem.dispatchedData && prodItem.dispatchedData[f.id]) || '';
+            var ph = f.placeholder ? 'placeholder="' + escapeHtml(f.placeholder) + '"' : '';
+            var colspan = (f.type === 'datetime-local') ? ' style="grid-column:span 2;"' : '';
+            return '<div' + colspan + '>'
+              + '<label style="font-size:0.75rem; font-weight:700; color:#475569; display:block; margin-bottom:4px;">' + escapeHtml(f.label) + '</label>'
+              + '<input type="' + f.type + '" class="form-control" value="' + escapeHtml(val) + '" ' + ph + ' onchange="updateDispatchedData(\'' + prodItem.quoteId + '\', \'' + f.id + '\', this.value)" style="font-size:0.8rem;">'
+              + '</div>';
+          }).join('');
+        })()}
       </div>
     </div>
   `;
