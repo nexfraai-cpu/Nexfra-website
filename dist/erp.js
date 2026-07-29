@@ -402,7 +402,7 @@ function switchModule(moduleName) {
 
     // Refresh modules
     if (moduleName === 'dashboard') renderDashboardOverview();
-    if (moduleName === 'sales') renderSalesHistoryTable();
+    if (moduleName === 'sales') renderChassisTable();
     if (moduleName === 'workorders') renderWorkOrders();
     if (moduleName === 'status') renderProductionBoard();
     if (moduleName === 'accounts') renderFinanceLedger();
@@ -485,53 +485,153 @@ function renderDashboardOverview() {
   }
 }
 
-function renderSalesHistoryTable() {
+var _editingChassisId = null;
+
+function renderChassisTable() {
   loadState();
-  const tbody = document.querySelector('#sales-table tbody');
-  const searchInput = document.getElementById('sales-search-input');
-  const filterProduct = document.getElementById('sales-filter-product');
-
-  const render = () => {
-    const query = searchInput.value.toLowerCase();
-    const prodFilter = filterProduct.value;
-
-    const filteredSales = STATE.sales.filter(sale => {
-      const matchQuery = sale.invoiceId.toLowerCase().includes(query) || 
-                         sale.customerName.toLowerCase().includes(query) ||
-                         sale.product.toLowerCase().includes(query);
-      const matchProd = prodFilter === 'all' || sale.product.includes(prodFilter);
-      return matchQuery && matchProd;
-    });
-
-    tbody.innerHTML = filteredSales.map(sale => {
-      const matchingQuote = STATE.quotations.find(q => {
-        const cust = STATE.customers.find(c => c.id === q.customerId);
-        return cust && cust.company === sale.customerName && sale.product.includes(q.productName);
-      });
-      const quoteIdParam = matchingQuote ? matchingQuote.id : 'QT-2026-001';
-
-      return `
-        <tr>
-          <td style="font-family:var(--font-headings);font-weight:700">${sale.invoiceId}</td>
-          <td>${sale.customerName}</td>
-          <td>${sale.product}</td>
-          <td>${sale.date}</td>
-          <td style="font-family:var(--font-headings);font-weight:600">₹${sale.amount.toLocaleString('en-IN')}</td>
-          <td>
-            <span class="tbl-status-badge status-${sale.status.toLowerCase()}">${sale.status}</span>
-          </td>
-          <td>
-            <button class="btn btn-outline btn-xs" onclick="openPdfPreview('${quoteIdParam}')">Invoice PDF</button>
-          </td>
-        </tr>
-      `;
-    }).join('');
-  };
-
-  searchInput.oninput = render;
-  filterProduct.onchange = render;
-  render();
+  if (!STATE.chassisRecords) STATE.chassisRecords = [];
+  var tbody = document.getElementById('chassis-tbody');
+  if (!tbody) return;
+  var fieldSelect = document.getElementById('ch-filter-field');
+  if (fieldSelect) {
+    var distinct = {}, currentVal = fieldSelect.value;
+    STATE.chassisRecords.forEach(function(r) { distinct[r.field] = true; });
+    var keys = Object.keys(distinct).sort();
+    fieldSelect.innerHTML = '<option value="all">All Fields</option>' + keys.map(function(k) { return '<option value="' + k + '"' + (k === currentVal ? ' selected' : '') + '>' + k + '</option>'; }).join('');
+  }
+  var searchQ = (document.getElementById('ch-search-input')?.value || '').toLowerCase();
+  var fieldFilter = fieldSelect ? fieldSelect.value : 'all';
+  var filtered = STATE.chassisRecords.filter(function(r) {
+    if (fieldFilter !== 'all' && r.field !== fieldFilter) return false;
+    if (searchQ && !r.field.toLowerCase().includes(searchQ) && !r.brandModel.toLowerCase().includes(searchQ) && !r.chassisNumber.toLowerCase().includes(searchQ) && !r.workOrderId.toLowerCase().includes(searchQ)) return false;
+    return true;
+  });
+  tbody.innerHTML = filtered.length === 0 ? '<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:40px;font-size:0.85rem;">No chassis records found.</td></tr>' : filtered.map(function(r, i) {
+    var rowId = r.id;
+    var isEditing = window._editingChassisId === rowId;
+    if (isEditing) {
+      return '<tr id="ch-row-' + rowId + '">'
+        + '<td style="font-weight:700;">' + (i + 1) + '</td>'
+        + '<td><input type="text" id="edit-ch-field-' + rowId + '" value="' + r.field + '" style="font-size:0.75rem;padding:4px 6px;width:120px;"></td>'
+        + '<td><input type="text" id="edit-ch-brand-' + rowId + '" value="' + r.brandModel + '" style="font-size:0.75rem;padding:4px 6px;width:140px;"></td>'
+        + '<td><input type="text" id="edit-ch-wo-' + rowId + '" value="' + r.workOrderId + '" style="font-size:0.75rem;padding:4px 6px;width:140px;"></td>'
+        + '<td><input type="text" id="edit-ch-chassis-' + rowId + '" value="' + r.chassisNumber + '" style="font-size:0.75rem;padding:4px 6px;width:140px;"></td>'
+        + '<td><input type="date" id="edit-ch-date-' + rowId + '" value="' + (r.arrivalDate || '') + '" style="font-size:0.75rem;padding:4px 6px;width:130px;"></td>'
+        + '<td style="display:flex;gap:4px;">'
+        + '<button class="btn btn-primary btn-xs" onclick="saveEditChassis(\'' + rowId + '\')" style="font-size:0.65rem;padding:3px 10px;font-weight:700;">Save</button>'
+        + '<button class="btn btn-outline btn-xs" onclick="cancelEditChassis()" style="font-size:0.65rem;padding:3px 10px;">Cancel</button>'
+        + '</td></tr>';
+    }
+    return '<tr>'
+      + '<td style="font-weight:700;">' + (i + 1) + '</td>'
+      + '<td>' + r.field + '</td>'
+      + '<td>' + r.brandModel + '</td>'
+      + '<td><a href="#" onclick="event.preventDefault();scrollToWo(\'' + r.workOrderId + '\')" style="color:#3B82F6;font-weight:700;text-decoration:none;">' + r.workOrderId + '</a></td>'
+      + '<td style="font-family:monospace;">' + r.chassisNumber + '</td>'
+      + '<td>' + (r.arrivalDate || '—') + '</td>'
+      + '<td style="display:flex;gap:4px;">'
+      + '<button class="btn btn-outline btn-xs" onclick="editChassisRecord(\'' + rowId + '\')" style="font-size:0.65rem;padding:3px 8px;">✏️</button>'
+      + '<button class="btn btn-outline btn-xs" onclick="deleteChassisRecord(\'' + rowId + '\')" style="font-size:0.65rem;padding:3px 8px;color:#DC2626;">🗑</button>'
+      + '</td></tr>';
+  }).join('');
 }
+
+window.addChassisRecord = function() {
+  loadState();
+  var field = document.getElementById('ch-field-input')?.value.trim();
+  var brand = document.getElementById('ch-brand-input')?.value.trim();
+  var wo = document.getElementById('ch-wo-input')?.value.trim();
+  var chassis = document.getElementById('ch-chassis-input')?.value.trim();
+  var date = document.getElementById('ch-date-input')?.value || new Date().toISOString().split('T')[0];
+  if (!field || !brand || !wo || !chassis) {
+    alert('Please fill in all required fields (Field, Brand/Model, Work Order, Chassis Number).');
+    return;
+  }
+  if (!STATE.chassisRecords) STATE.chassisRecords = [];
+  var id = 'CH-' + Date.now();
+  STATE.chassisRecords.push({ id: id, field: field, brandModel: brand, workOrderId: wo, chassisNumber: chassis, arrivalDate: date });
+  saveState();
+  logSystemActivity('Chassis ' + chassis + ' registered under WO ' + wo + '.');
+  document.getElementById('ch-field-input').value = '';
+  document.getElementById('ch-brand-input').value = '';
+  document.getElementById('ch-wo-input').value = '';
+  document.getElementById('ch-chassis-input').value = '';
+  document.getElementById('ch-date-input').value = '';
+  document.getElementById('ch-wo-suggestions').style.display = 'none';
+  renderChassisTable();
+};
+
+window.onChassisWoInput = function(val) {
+  loadState();
+  var container = document.getElementById('ch-wo-suggestions');
+  if (!container) return;
+  if (!val || val.length < 1) { container.style.display = 'none'; return; }
+  var matches = (STATE.workOrders || []).filter(function(wo) {
+    return wo.id.toLowerCase().indexOf(val.toLowerCase()) !== -1 || (wo.customerName || '').toLowerCase().indexOf(val.toLowerCase()) !== -1;
+  }).slice(0, 8);
+  if (matches.length === 0) { container.style.display = 'none'; return; }
+  container.innerHTML = matches.map(function(wo) {
+    return '<div onclick="selectChassisWo(\'' + wo.id + '\',\'' + (wo.customerName || '').replace(/'/g, "\\'") + '\',\'' + (wo.product || '').replace(/'/g, "\\'") + '\')" style="padding:8px 12px;cursor:pointer;font-size:0.75rem;border-bottom:1px solid #F1F5F9;display:flex;justify-content:space-between;">'
+      + '<span style="font-weight:700;color:#1E293B;">' + wo.id + '</span>'
+      + '<span style="color:#64748B;">' + (wo.customerName || '') + ' — ' + (wo.product || '') + '</span>'
+      + '</div>';
+  }).join('');
+  container.style.display = 'block';
+};
+
+window.selectChassisWo = function(woId, customer, product) {
+  document.getElementById('ch-wo-input').value = woId;
+  if (!document.getElementById('ch-field-input').value) {
+    document.getElementById('ch-field-input').value = customer || '';
+  }
+  if (!document.getElementById('ch-brand-input').value) {
+    document.getElementById('ch-brand-input').value = product || '';
+  }
+  document.getElementById('ch-wo-suggestions').style.display = 'none';
+};
+
+window.editChassisRecord = function(id) {
+  _editingChassisId = id;
+  renderChassisTable();
+};
+
+window.saveEditChassis = function(id) {
+  loadState();
+  var r = (STATE.chassisRecords || []).find(function(c) { return c.id === id; });
+  if (!r) return;
+  r.field = document.getElementById('edit-ch-field-' + id)?.value || r.field;
+  r.brandModel = document.getElementById('edit-ch-brand-' + id)?.value || r.brandModel;
+  r.workOrderId = document.getElementById('edit-ch-wo-' + id)?.value || r.workOrderId;
+  r.chassisNumber = document.getElementById('edit-ch-chassis-' + id)?.value || r.chassisNumber;
+  r.arrivalDate = document.getElementById('edit-ch-date-' + id)?.value || r.arrivalDate;
+  _editingChassisId = null;
+  saveState();
+  logSystemActivity('Chassis ' + r.chassisNumber + ' record updated.');
+  renderChassisTable();
+};
+
+window.cancelEditChassis = function() {
+  _editingChassisId = null;
+  renderChassisTable();
+};
+
+window.deleteChassisRecord = function(id) {
+  if (!confirm('Delete this chassis record?')) return;
+  loadState();
+  STATE.chassisRecords = (STATE.chassisRecords || []).filter(function(c) { return c.id !== id; });
+  saveState();
+  logSystemActivity('Chassis record ' + id + ' deleted.');
+  renderChassisTable();
+};
+
+window.scrollToWo = function(woId) {
+  var moduleBtn = document.querySelector('[data-module="workorders"]');
+  if (moduleBtn) moduleBtn.click();
+  setTimeout(function() {
+    var woCard = document.querySelector('.wo-card');
+    if (woCard) woCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
+};
 
 // ------------------------------------------
 // 4. DYNAMIC CONFIGURATOR WIZARD ENGINE
@@ -1451,6 +1551,21 @@ function getCustomItemSpecs() {
   loadState();
   ensureCustomItemDefinitions();
   return STATE.customItemDefinitions || [];
+}
+
+function resolveSpecName(k, template) {
+  if (template) {
+    var si = template.specs.find(function(s) { return s.id === k; });
+    if (si) return si.name;
+  }
+  var customSections = getCustomItemSpecs();
+  for (var ci = 0; ci < customSections.length; ci++) {
+    var fields = customSections[ci].fields || [];
+    for (var fi = 0; fi < fields.length; fi++) {
+      if (fields[fi].id === k) return fields[fi].name;
+    }
+  }
+  return k;
 }
 
 // -------------------------------------------------------
@@ -2638,8 +2753,7 @@ window.saveEditQuotation = function(showPdf) {
         wo.product = q.productName;
         wo.total = q.total;
         wo.specs = Object.entries(q.specs || {}).filter(([k]) => !q.notRequired[k] && !k.endsWith('_custom_desc') && !k.endsWith('_custom_price')).map(([k, v]) => {
-          const si = template ? template.specs.find(s => s.id === k) : null;
-          return (si ? si.name : k) + ': ' + v;
+          return resolveSpecName(k, template) + ': ' + v;
         });
       }
     });
@@ -2876,7 +2990,7 @@ window.convertWizardToWorkOrder = function() {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
   STATE.quotationCounter = (STATE.quotationCounter || 0) + 1;
   const quoteId = generateRefNumber(c ? c.name : '', STATE.quotationCounter);
-  const woId = `WO-2026-00${STATE.workOrders.length + 1}`;
+  const woId = `WO-2026-${String(STATE.quotationCounter).padStart(3, '0')}`;
 
   // Compile spec dump details so production team never re-enters data
   const specDetails = [];
@@ -3910,7 +4024,8 @@ window.approveQuotation = function(quoteId) {
   if (!STATE.workOrders) STATE.workOrders = [];
   let wo = STATE.workOrders.find(w => w.quoteId === quoteId);
   if (!wo) {
-    const woId = `WO-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+    var qCounter = (q.id || '').split('/')[1] || '001';
+    const woId = `WO-2026-${qCounter}`;
     STATE.workOrders.push({
       id: woId,
       quoteId: quoteId,
@@ -3924,8 +4039,7 @@ window.approveQuotation = function(quoteId) {
         const nr = q.notRequired || {};
         const t = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : Object.values(WIZARD_PRODUCT_TEMPLATES).find(t => t.name === q.productName);
         return Object.entries(raw).filter(([k]) => !nr[k] && !k.endsWith('_custom_desc') && !k.endsWith('_custom_price')).map(([k, v]) => {
-          const specInfo = t ? t.specs.find(s => s.id === k) : null;
-          return `${specInfo ? specInfo.name : k}: ${v}`;
+          return resolveSpecName(k, t) + ': ' + v;
         });
       })(),
       notes: `Approved quotation ${quoteId} dispatched to production shop floor.`,
