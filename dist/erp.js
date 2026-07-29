@@ -503,20 +503,22 @@ function renderChassisTable() {
   var fieldFilter = fieldSelect ? fieldSelect.value : 'all';
   var filtered = STATE.chassisRecords.filter(function(r) {
     if (fieldFilter !== 'all' && r.field !== fieldFilter) return false;
-    if (searchQ && !r.field.toLowerCase().includes(searchQ) && !r.brandModel.toLowerCase().includes(searchQ) && !r.chassisNumber.toLowerCase().includes(searchQ) && !r.workOrderId.toLowerCase().includes(searchQ)) return false;
+    if (searchQ && !r.field.toLowerCase().includes(searchQ) && !r.brand.toLowerCase().includes(searchQ) && !(r.model || '').toLowerCase().includes(searchQ) && !r.chassisNumber.toLowerCase().includes(searchQ) && !r.workOrderId.toLowerCase().includes(searchQ)) return false;
     return true;
   });
-  tbody.innerHTML = filtered.length === 0 ? '<tr><td colspan="7" style="text-align:center;color:#94A3B8;padding:40px;font-size:0.85rem;">No chassis records found.</td></tr>' : filtered.map(function(r, i) {
+  tbody.innerHTML = filtered.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#94A3B8;padding:40px;font-size:0.85rem;">No chassis records found.</td></tr>' : filtered.map(function(r, i) {
     var rowId = r.id;
     var isEditing = window._editingChassisId === rowId;
     if (isEditing) {
       return '<tr id="ch-row-' + rowId + '">'
         + '<td style="font-weight:700;">' + (i + 1) + '</td>'
-        + '<td><input type="text" id="edit-ch-field-' + rowId + '" value="' + r.field + '" style="font-size:0.75rem;padding:4px 6px;width:120px;"></td>'
-        + '<td><input type="text" id="edit-ch-brand-' + rowId + '" value="' + r.brandModel + '" style="font-size:0.75rem;padding:4px 6px;width:140px;"></td>'
-        + '<td><input type="text" id="edit-ch-wo-' + rowId + '" value="' + r.workOrderId + '" style="font-size:0.75rem;padding:4px 6px;width:140px;"></td>'
-        + '<td><input type="text" id="edit-ch-chassis-' + rowId + '" value="' + r.chassisNumber + '" style="font-size:0.75rem;padding:4px 6px;width:140px;"></td>'
-        + '<td><input type="date" id="edit-ch-date-' + rowId + '" value="' + (r.arrivalDate || '') + '" style="font-size:0.75rem;padding:4px 6px;width:130px;"></td>'
+        + '<td><input type="text" id="edit-ch-field-' + rowId + '" value="' + r.field + '" style="font-size:0.75rem;padding:4px 6px;width:110px;"></td>'
+        + '<td><input type="text" id="edit-ch-brand-' + rowId + '" value="' + (r.brand || (r.brandModel || '')) + '" style="font-size:0.75rem;padding:4px 6px;width:120px;"></td>'
+        + '<td><input type="text" id="edit-ch-model-' + rowId + '" value="' + (r.model || '') + '" style="font-size:0.75rem;padding:4px 6px;width:120px;"></td>'
+        + '<td><input type="text" id="edit-ch-wo-' + rowId + '" value="' + r.workOrderId + '" style="font-size:0.75rem;padding:4px 6px;width:130px;"></td>'
+        + '<td><input type="text" id="edit-ch-chassis-' + rowId + '" value="' + r.chassisNumber + '" style="font-size:0.75rem;padding:4px 6px;width:130px;"></td>'
+        + '<td><input type="date" id="edit-ch-date-' + rowId + '" value="' + (r.arrivalDate || '') + '" style="font-size:0.75rem;padding:4px 6px;width:110px;"></td>'
+        + '<td><input type="date" id="edit-ch-outdate-' + rowId + '" value="' + (r.outDate || '') + '" style="font-size:0.75rem;padding:4px 6px;width:110px;"></td>'
         + '<td style="display:flex;gap:4px;">'
         + '<button class="btn btn-primary btn-xs" onclick="saveEditChassis(\'' + rowId + '\')" style="font-size:0.65rem;padding:3px 10px;font-weight:700;">Save</button>'
         + '<button class="btn btn-outline btn-xs" onclick="cancelEditChassis()" style="font-size:0.65rem;padding:3px 10px;">Cancel</button>'
@@ -525,10 +527,12 @@ function renderChassisTable() {
     return '<tr>'
       + '<td style="font-weight:700;">' + (i + 1) + '</td>'
       + '<td>' + r.field + '</td>'
-      + '<td>' + r.brandModel + '</td>'
+      + '<td>' + (r.brand || r.brandModel || '—') + '</td>'
+      + '<td>' + (r.model || '—') + '</td>'
       + '<td><a href="#" onclick="event.preventDefault();scrollToWo(\'' + r.workOrderId + '\')" style="color:#3B82F6;font-weight:700;text-decoration:none;">' + r.workOrderId + '</a></td>'
       + '<td style="font-family:monospace;">' + r.chassisNumber + '</td>'
       + '<td>' + (r.arrivalDate || '—') + '</td>'
+      + '<td>' + (r.outDate || '—') + '</td>'
       + '<td style="display:flex;gap:4px;">'
       + '<button class="btn btn-outline btn-xs" onclick="editChassisRecord(\'' + rowId + '\')" style="font-size:0.65rem;padding:3px 8px;">✏️</button>'
       + '<button class="btn btn-outline btn-xs" onclick="deleteChassisRecord(\'' + rowId + '\')" style="font-size:0.65rem;padding:3px 8px;color:#DC2626;">🗑</button>'
@@ -540,23 +544,27 @@ window.addChassisRecord = function() {
   loadState();
   var field = document.getElementById('ch-field-input')?.value.trim();
   var brand = document.getElementById('ch-brand-input')?.value.trim();
+  var model = document.getElementById('ch-model-input')?.value.trim();
   var wo = document.getElementById('ch-wo-input')?.value.trim();
   var chassis = document.getElementById('ch-chassis-input')?.value.trim();
   var date = document.getElementById('ch-date-input')?.value || new Date().toISOString().split('T')[0];
+  var outDate = document.getElementById('ch-outdate-input')?.value || '';
   if (!field || !brand || !wo || !chassis) {
-    alert('Please fill in all required fields (Field, Brand/Model, Work Order, Chassis Number).');
+    alert('Please fill in all required fields (Field, Brand, Work Order, Chassis Number).');
     return;
   }
   if (!STATE.chassisRecords) STATE.chassisRecords = [];
   var id = 'CH-' + Date.now();
-  STATE.chassisRecords.push({ id: id, field: field, brandModel: brand, workOrderId: wo, chassisNumber: chassis, arrivalDate: date });
+  STATE.chassisRecords.push({ id: id, field: field, brand: brand, model: model || '', brandModel: (brand + (model ? ' / ' + model : '')), workOrderId: wo, chassisNumber: chassis, arrivalDate: date, outDate: outDate });
   saveState();
   logSystemActivity('Chassis ' + chassis + ' registered under WO ' + wo + '.');
   document.getElementById('ch-field-input').value = '';
   document.getElementById('ch-brand-input').value = '';
+  document.getElementById('ch-model-input').value = '';
   document.getElementById('ch-wo-input').value = '';
   document.getElementById('ch-chassis-input').value = '';
   document.getElementById('ch-date-input').value = '';
+  document.getElementById('ch-outdate-input').value = '';
   document.getElementById('ch-wo-suggestions').style.display = 'none';
   renderChassisTable();
 };
@@ -600,10 +608,13 @@ window.saveEditChassis = function(id) {
   var r = (STATE.chassisRecords || []).find(function(c) { return c.id === id; });
   if (!r) return;
   r.field = document.getElementById('edit-ch-field-' + id)?.value || r.field;
-  r.brandModel = document.getElementById('edit-ch-brand-' + id)?.value || r.brandModel;
+  r.brand = document.getElementById('edit-ch-brand-' + id)?.value || r.brand || '';
+  r.model = document.getElementById('edit-ch-model-' + id)?.value || '';
+  r.brandModel = r.brand + (r.model ? ' / ' + r.model : '');
   r.workOrderId = document.getElementById('edit-ch-wo-' + id)?.value || r.workOrderId;
   r.chassisNumber = document.getElementById('edit-ch-chassis-' + id)?.value || r.chassisNumber;
   r.arrivalDate = document.getElementById('edit-ch-date-' + id)?.value || r.arrivalDate;
+  r.outDate = document.getElementById('edit-ch-outdate-' + id)?.value || '';
   _editingChassisId = null;
   saveState();
   logSystemActivity('Chassis ' + r.chassisNumber + ' record updated.');
@@ -3332,7 +3343,7 @@ function renderWorkOrders() {
               ${wo.specs.map(spec => `<li style="font-size:0.78rem; color:#475569; min-width:180px;"><span>${spec}</span></li>`).join('')}
             </ul>
           </div>
-          ${(function(){ var chRecords = (STATE.chassisRecords || []).filter(function(cr) { return cr.workOrderId === wo.id; }); if (chRecords.length === 0) return ''; return '<div class="wo-chassis-box" style="background:#F0F9FF;padding:12px;border-radius:6px;margin-bottom:12px;border:1px solid #BAE6FD;"><h4 style="margin:0 0 8px 0;font-size:0.8rem;font-weight:800;color:#0369A1;">ALLOCATED CHASSIS</h4>' + chRecords.map(function(cr) { return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.78rem;"><span style="font-weight:600;color:#1E293B;">' + cr.chassisNumber + '</span><span style="color:#64748B;">' + cr.brandModel + ' — ' + cr.field + '</span></div>'; }).join('') + '</div>'; })()}
+          ${(function(){ var chRecords = (STATE.chassisRecords || []).filter(function(cr) { return cr.workOrderId === wo.id; }); if (chRecords.length === 0) return ''; return '<div class="wo-chassis-box" style="background:#F0F9FF;padding:12px;border-radius:6px;margin-bottom:12px;border:1px solid #BAE6FD;"><h4 style="margin:0 0 8px 0;font-size:0.8rem;font-weight:800;color:#0369A1;">ALLOCATED CHASSIS</h4>' + chRecords.map(function(cr) { return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.78rem;"><span style="font-weight:600;color:#1E293B;">' + cr.chassisNumber + '</span><span style="color:#64748B;">' + (cr.brand || cr.brandModel || '') + (cr.model ? ' / ' + cr.model : '') + ' — ' + cr.field + (cr.outDate ? ' — Out: ' + cr.outDate : '') + '</span></div>'; }).join('') + '</div>'; })()}
           ${woProdHtml}
           <div class="wo-notes" style="font-size:0.8rem; color:#475569; margin-bottom:12px;">
             <strong>Factory Notes:</strong> ${wo.notes}
@@ -3403,7 +3414,7 @@ window.printWorkOrder = function(woId) {
     + '</table></div>'
     + '<div class="section" style="margin-bottom:16px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Technical Specifications</h3>'
     + '<ul style="list-style:none;padding:0;margin:0;">' + (wo.specs || []).map(function(s) { return '<li style="padding:4px 0;font-size:0.8rem;color:#475569;border-bottom:1px solid #F1F5F9;">' + s + '</li>'; }).join('') + '</ul></div>'
-    + (chassisRecords.length > 0 ? '<div class="section" style="margin-bottom:16px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Allocated Chassis</h3>' + chassisRecords.map(function(cr) { return '<div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px;padding:10px;margin-bottom:6px;font-size:0.8rem;"><strong>' + cr.chassisNumber + '</strong> — ' + cr.brandModel + ' (' + cr.field + ')</div>'; }).join('') + '</div>' : '')
+    + (chassisRecords.length > 0 ? '<div class="section" style="margin-bottom:16px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Allocated Chassis</h3>' + chassisRecords.map(function(cr) { return '<div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px;padding:10px;margin-bottom:6px;font-size:0.8rem;"><strong>' + cr.chassisNumber + '</strong> — ' + (cr.brand || cr.brandModel || '') + (cr.model ? ' / ' + cr.model : '') + ' (' + cr.field + ')' + (cr.outDate ? ' — Out: ' + cr.outDate : '') + '</div>'; }).join('') + '</div>' : '')
     + '<div class="section" style="margin-bottom:8px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Factory Notes</h3><p style="font-size:0.82rem;color:#475569;margin:0;">' + (wo.notes || '—') + '</p></div>'
     + '<div style="margin-top:12px;padding-top:8px;border-top:1px solid #E5E7EB;font-size:0.65rem;color:#94A3B8;text-align:center;">Generated on ' + new Date().toLocaleDateString('en-GB') + ' at ' + new Date().toLocaleTimeString('en-GB') + '</div>';
   document.getElementById('wo-print-modal').style.display = 'flex';

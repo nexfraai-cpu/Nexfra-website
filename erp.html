@@ -190,9 +190,13 @@
               <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Field</label>
               <input type="text" id="ch-field-input" class="form-control form-control-sm" placeholder="e.g. Main Yard" style="font-size:0.75rem;padding:6px 10px;">
             </div>
-            <div style="flex:1;min-width:140px;">
-              <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Brand / Model</label>
-              <input type="text" id="ch-brand-input" class="form-control form-control-sm" placeholder="e.g. Tata LPT 3118" style="font-size:0.75rem;padding:6px 10px;">
+            <div style="flex:1;min-width:120px;">
+              <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Brand</label>
+              <input type="text" id="ch-brand-input" class="form-control form-control-sm" placeholder="e.g. Tata" style="font-size:0.75rem;padding:6px 10px;">
+            </div>
+            <div style="flex:1;min-width:120px;">
+              <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Model</label>
+              <input type="text" id="ch-model-input" class="form-control form-control-sm" placeholder="e.g. LPT 3118" style="font-size:0.75rem;padding:6px 10px;">
             </div>
             <div style="flex:1;min-width:180px;position:relative;">
               <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Work Order Number</label>
@@ -206,6 +210,10 @@
             <div style="flex:0 0 150px;">
               <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Arrival Date</label>
               <input type="date" id="ch-date-input" class="form-control form-control-sm" value="" style="font-size:0.75rem;padding:6px 10px;">
+            </div>
+            <div style="flex:0 0 150px;">
+              <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Out Date</label>
+              <input type="date" id="ch-outdate-input" class="form-control form-control-sm" value="" style="font-size:0.75rem;padding:6px 10px;">
             </div>
             <button class="btn btn-primary btn-sm" onclick="addChassisRecord()" style="padding:6px 18px;font-size:0.75rem;font-weight:700;white-space:nowrap;margin-bottom:1px;">+ Add Chassis</button>
           </div>
@@ -228,10 +236,12 @@
               <tr>
                 <th>#</th>
                 <th>Field</th>
-                <th>Brand / Model</th>
+                <th>Brand</th>
+                <th>Model</th>
                 <th>Work Order</th>
                 <th>Chassis Number</th>
                 <th>Arrival Date</th>
+                <th>Out Date</th>
                 <th>Action</th>
               </tr>
             </thead>
