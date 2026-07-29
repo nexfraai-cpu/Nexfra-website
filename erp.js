@@ -542,33 +542,58 @@ function renderChassisTable() {
   }).join('');
 }
 
+window.addChassisInput = function() {
+  var container = document.getElementById('ch-chassis-container');
+  var row = document.createElement('div');
+  row.style.display = 'flex';
+  row.style.gap = '6px';
+  row.style.marginBottom = '4px';
+  row.innerHTML = '<input type="text" class="form-control form-control-sm ch-chassis-input" placeholder="VIN / Chassis #" style="font-size:0.75rem;padding:6px 10px;flex:1;max-width:320px;">'
+    + '<button type="button" class="btn btn-outline btn-xs" onclick="this.parentElement.remove()" style="font-size:0.65rem;padding:3px 8px;color:#DC2626;font-weight:700;">✕</button>';
+  container.appendChild(row);
+};
+
 window.addChassisRecord = function() {
   loadState();
   var field = document.getElementById('ch-field-input')?.value.trim();
   var brand = document.getElementById('ch-brand-input')?.value.trim();
   var model = document.getElementById('ch-model-input')?.value.trim();
   var wo = document.getElementById('ch-wo-input')?.value.trim();
-  var chassis = document.getElementById('ch-chassis-input')?.value.trim();
+  var chassisInputs = document.querySelectorAll('.ch-chassis-input');
+  var chassisList = [];
+  chassisInputs.forEach(function(inp) {
+    var v = inp.value.trim();
+    if (v) chassisList.push(v);
+  });
   var date = document.getElementById('ch-date-input')?.value || new Date().toISOString().split('T')[0];
   var outDate = document.getElementById('ch-outdate-input')?.value || '';
-  if (!field || !brand || !wo || !chassis) {
-    alert('Please fill in all required fields (Field, Brand, Work Order, Chassis Number).');
+  if (!field || !brand || !wo || chassisList.length === 0) {
+    alert('Please fill in all required fields (Field, Brand, Work Order, at least one Chassis Number).');
     return;
   }
   if (!STATE.chassisRecords) STATE.chassisRecords = [];
-  var id = 'CH-' + Date.now();
-  STATE.chassisRecords.push({ id: id, field: field, brand: brand, model: model || '', brandModel: (brand + (model ? ' / ' + model : '')), workOrderId: wo, chassisNumber: chassis, arrivalDate: date, outDate: outDate });
+  var baseId = 'CH-' + Date.now();
+  var created = [];
+  chassisList.forEach(function(cn, i) {
+    var id = baseId + '-' + (i + 1);
+    STATE.chassisRecords.push({ id: id, field: field, brand: brand, model: model || '', brandModel: (brand + (model ? ' / ' + model : '')), workOrderId: wo, chassisNumber: cn, arrivalDate: date, outDate: outDate });
+    created.push(cn);
+  });
   saveState();
-  logSystemActivity('Chassis ' + chassis + ' registered under WO ' + wo + '.');
+  logSystemActivity('Chassis ' + created.join(', ') + ' registered under WO ' + wo + '.');
   document.getElementById('ch-field-input').value = '';
   document.getElementById('ch-brand-input').value = '';
   document.getElementById('ch-model-input').value = '';
   document.getElementById('ch-wo-input').value = '';
-  document.getElementById('ch-chassis-input').value = '';
+  document.getElementById('ch-chassis-container').innerHTML = ''
+    + '<div style="display:flex;gap:6px;margin-bottom:4px;">'
+    + '<input type="text" class="form-control form-control-sm ch-chassis-input" placeholder="VIN / Chassis #" style="font-size:0.75rem;padding:6px 10px;flex:1;max-width:320px;">'
+    + '<button type="button" class="btn btn-outline btn-xs" onclick="addChassisInput()" style="font-size:0.65rem;padding:3px 8px;font-weight:700;white-space:nowrap;">+ More</button>'
+    + '</div>';
   document.getElementById('ch-date-input').value = '';
   document.getElementById('ch-outdate-input').value = '';
-  document.getElementById('ch-wo-suggestions').style.display = 'none';
   renderChassisTable();
+  showToastNotification(created.length + ' chassis record(s) registered successfully.');
 };
 
 window.onChassisWoInput = function(val) {
