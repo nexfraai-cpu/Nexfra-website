@@ -1210,6 +1210,23 @@
         </div>
       </div>
 
+      <!-- MODULE: WORK ORDER PRINT MODAL -->
+      <div id="wo-print-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:10000;justify-content:center;align-items:center;" onclick="if(event.target===this)closeWorkOrderPrintModal()">
+        <div style="background:#fff;padding:30px;border-radius:12px;max-width:640px;width:92%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);" onclick="event.stopPropagation()">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:2px solid #0F172A;padding-bottom:12px;">
+            <h2 style="font-size:1.2rem;margin:0;">Work Order</h2>
+            <button onclick="closeWorkOrderPrintModal()" style="background:none;border:none;font-size:1.2rem;cursor:pointer;color:#666;">✕</button>
+          </div>
+          <div id="wo-print-content">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:20px;padding-top:16px;border-top:1px solid #E5E7EB;">
+            <button class="btn btn-primary" onclick="printWorkOrderContent()" style="flex:1;">Print</button>
+            <button class="btn" onclick="downloadWorkOrderPdf()" style="flex:1;background:#0F172A;color:#fff;border:none;font-weight:700;">Download PDF</button>
+            <button class="btn btn-outline" onclick="closeWorkOrderPrintModal()" style="flex:1;">Close</button>
+          </div>
+        </div>
+      </div>
+
       <!-- MODULE: CUSTOMER DIRECTORY -->
       <div class="module-view" id="view-customers">
         <div class="module-header">

@@ -3345,6 +3345,7 @@ function renderWorkOrders() {
           </div>
           <div class="wo-footer" style="display:flex; gap:12px;">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation(); openOrderProgressionModal('${wo.quoteId}')" style="background:#0F172A; border:none; color:#fff; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px;">Track Order</button>
+            <button class="btn btn-sm" onclick="event.stopPropagation(); printWorkOrder('${wo.id}')" style="background:#F8FAFC; border:1.5px solid #CBD5E1; color:#1E293B; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; cursor:pointer;">🖨 Print</button>
             <button class="btn btn-sm" onclick="event.stopPropagation(); toggleWorkOrderUrgent('${wo.id}')" style="background:${wo.urgent ? '#DC2626' : '#F1F5F9'}; border:1.5px solid ${wo.urgent ? '#DC2626' : '#CBD5E1'}; color:${wo.urgent ? '#fff' : '#475569'}; padding:6px 14px; font-size:0.75rem; font-weight:700; border-radius:6px; cursor:pointer;">${wo.urgent ? '✓ Urgent' : 'Set Urgent'}</button>
           </div>
         </div>
@@ -3371,6 +3372,79 @@ window.toggleWorkOrderUrgent = function(id) {
   if (prod) prod.urgent = wo.urgent;
   saveState();
   renderWorkOrders();
+};
+
+window.printWorkOrder = function(woId) {
+  loadState();
+  var wo = STATE.workOrders.find(function(w) { return w.id === woId; });
+  if (!wo) return;
+  var q = STATE.quotations ? STATE.quotations.find(function(qt) { return qt.id === wo.quoteId; }) : null;
+  var chassisRecords = (STATE.chassisRecords || []).filter(function(cr) { return cr.workOrderId === woId; });
+  var content = document.getElementById('wo-print-content');
+  content.innerHTML = ''
+    + '<div style="text-align:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #E5E7EB;">'
+    + '<div style="font-weight:800;font-size:1rem;color:#0F172A;">NEXFRA HEAVY ENGINEERING</div>'
+    + '<div style="font-size:0.7rem;color:#64748B;">Work Order Print</div>'
+    + '</div>'
+    + '<div style="font-size:0.75rem;color:#64748B;text-align:center;margin-bottom:12px;">Status: ' + (wo.stage || 'Pending') + ' | Progress: ' + (wo.progress || 0) + '%</div>'
+    + '<div class="section" style="margin-bottom:16px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Order Information</h3>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;width:130px;">Work Order</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + woId + '</td></tr>'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Order Date</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.date || '—') + '</td></tr>'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Due Date</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.dueDate || 'Not set') + '</td></tr>'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Customer</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.customerName || '—') + '</td></tr>'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Quotation Ref</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + wo.quoteId + '</td></tr>'
+    + '</table></div>'
+    + '<div class="section" style="margin-bottom:16px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Vehicle</h3>'
+    + '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;width:130px;">Product</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.product || '—') + '</td></tr>'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Model</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (q ? (q.model || '—') : '—') + '</td></tr>'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Quantity</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (q ? (q.orderQty || 1) : 1) + '</td></tr>'
+    + '</table></div>'
+    + '<div class="section" style="margin-bottom:16px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Technical Specifications</h3>'
+    + '<ul style="list-style:none;padding:0;margin:0;">' + (wo.specs || []).map(function(s) { return '<li style="padding:4px 0;font-size:0.8rem;color:#475569;border-bottom:1px solid #F1F5F9;">' + s + '</li>'; }).join('') + '</ul></div>'
+    + (chassisRecords.length > 0 ? '<div class="section" style="margin-bottom:16px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Allocated Chassis</h3>' + chassisRecords.map(function(cr) { return '<div style="background:#F0F9FF;border:1px solid #BAE6FD;border-radius:6px;padding:10px;margin-bottom:6px;font-size:0.8rem;"><strong>' + cr.chassisNumber + '</strong> — ' + cr.brandModel + ' (' + cr.field + ')</div>'; }).join('') + '</div>' : '')
+    + '<div class="section" style="margin-bottom:8px;"><h3 style="margin:0 0 8px 0;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;">Factory Notes</h3><p style="font-size:0.82rem;color:#475569;margin:0;">' + (wo.notes || '—') + '</p></div>'
+    + '<div style="margin-top:12px;padding-top:8px;border-top:1px solid #E5E7EB;font-size:0.65rem;color:#94A3B8;text-align:center;">Generated on ' + new Date().toLocaleDateString('en-GB') + ' at ' + new Date().toLocaleTimeString('en-GB') + '</div>';
+  document.getElementById('wo-print-modal').style.display = 'flex';
+};
+
+window.closeWorkOrderPrintModal = function() {
+  document.getElementById('wo-print-modal').style.display = 'none';
+};
+
+window.printWorkOrderContent = function() {
+  var content = document.getElementById('wo-print-content').innerHTML;
+  var win = window.open('', '_blank');
+  win.document.write('<html><head><title>Work Order</title><style>'
+    + 'body{font-family:Arial,sans-serif;padding:40px;color:#1E293B;}'
+    + 'table{width:100%;border-collapse:collapse;}'
+    + 'td{padding:5px 8px;border-bottom:1px solid #F1F5F9;}'
+    + 'ul{list-style:none;padding:0;margin:0;}'
+    + 'li{padding:4px 0;font-size:0.8rem;color:#475569;border-bottom:1px solid #F1F5F9;}'
+    + '.section{margin-bottom:16px;}'
+    + '.section h3{font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;}'
+    + '@media print{body{padding:20px;}}</style></head><body>' + content + '</body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 300);
+};
+
+window.downloadWorkOrderPdf = function() {
+  var content = document.getElementById('wo-print-content').innerHTML;
+  var win = window.open('', '_blank');
+  win.document.write('<html><head><title>Work Order</title><style>'
+    + 'body{font-family:Arial,sans-serif;padding:40px;color:#1E293B;}'
+    + 'table{width:100%;border-collapse:collapse;}'
+    + 'td{padding:5px 8px;border-bottom:1px solid #F1F5F9;}'
+    + 'ul{list-style:none;padding:0;margin:0;}'
+    + 'li{padding:4px 0;font-size:0.8rem;color:#475569;border-bottom:1px solid #F1F5F9;}'
+    + '.section{margin-bottom:16px;}'
+    + '.section h3{font-size:0.8rem;text-transform:uppercase;letter-spacing:0.5px;color:#475569;border-bottom:1px solid #E2E8F0;padding-bottom:6px;}'
+    + '@media print{body{padding:20px;}}</style></head><body>' + content + '</body></html>');
+  win.document.close();
+  win.focus();
+  setTimeout(function() { win.print(); }, 300);
 };
 
 window.setWorkOrderDueDate = function(id) {
