@@ -3334,6 +3334,7 @@ function renderWorkOrders() {
               ${wo.specs.map(spec => `<li style="font-size:0.78rem; color:#475569; min-width:180px;"><span>${spec}</span></li>`).join('')}
             </ul>
           </div>
+          ${(function(){ var chRecords = (STATE.chassisRecords || []).filter(function(cr) { return cr.workOrderId === wo.id; }); if (chRecords.length === 0) return ''; return '<div class="wo-chassis-box" style="background:#F0F9FF;padding:12px;border-radius:6px;margin-bottom:12px;border:1px solid #BAE6FD;"><h4 style="margin:0 0 8px 0;font-size:0.8rem;font-weight:800;color:#0369A1;">ALLOCATED CHASSIS</h4>' + chRecords.map(function(cr) { return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.78rem;"><span style="font-weight:600;color:#1E293B;">' + cr.chassisNumber + '</span><span style="color:#64748B;">' + cr.brandModel + ' — ' + cr.field + '</span></div>'; }).join('') + '</div>'; })()}
           ${woProdHtml}
           <div class="wo-notes" style="font-size:0.8rem; color:#475569; margin-bottom:12px;">
             <strong>Factory Notes:</strong> ${wo.notes}
