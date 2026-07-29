@@ -2161,6 +2161,8 @@ function generateQuotationFinalReview() {
   const basicAmount = Math.round(grandTotal / 1.18);
   const unitAmount = Math.round(basicAmount / wQty);
   const gstAmount = grandTotal - basicAmount;
+  const unitGst = Math.round(unitAmount * 0.18);
+  const unitTotal = unitAmount + unitGst;
 
   document.getElementById('w-pdf-table-qty').innerText = wQty + ' No' + (wQty > 1 ? 's' : '');
   document.getElementById('w-pdf-gst-label').innerText = 'GST 18%';
@@ -2203,11 +2205,11 @@ function generateQuotationFinalReview() {
 
   // Price columns
   document.getElementById('w-pdf-table-basic').innerText = formatPdfPrice(unitAmount);
-  document.getElementById('w-pdf-table-gst').innerText = formatPdfPrice(gstAmount);
+  document.getElementById('w-pdf-table-gst').innerText = formatPdfPrice(unitGst);
   document.getElementById('w-pdf-table-total').innerText = formatPdfPrice(basicAmount);
   document.getElementById('w-pdf-table-gst-total').innerText = formatPdfPrice(gstAmount);
 
-  document.getElementById('w-pdf-grand-total-label').innerText = formatPdfPrice(grandTotal);
+  document.getElementById('w-pdf-grand-total-label').innerText = formatPdfPrice(unitTotal);
   document.getElementById('w-pdf-grand-total-val').innerText = formatPdfPrice(grandTotal);
 
   document.getElementById('w-pdf-words-val').innerText = priceToIndianWords(grandTotal);
@@ -2692,6 +2694,8 @@ function renderPdfFromQuote(quote, client) {
   var basicVal = Math.round(grandTotalVal / (1 + gstRate / 100));
   var unitVal = Math.round(basicVal / qty);
   var gstVal = grandTotalVal - basicVal;
+  var unitGst = Math.round(unitVal * gstRate / 100);
+  var unitTotal = unitVal + unitGst;
 
   document.getElementById('pdf-gst-label').innerText = 'GST ' + gstRate + '%';
   document.getElementById('pdf-table-qty').innerText = qty + ' No' + (qty > 1 ? 's' : '');
@@ -2747,10 +2751,10 @@ function renderPdfFromQuote(quote, client) {
   }
 
   document.getElementById('pdf-table-basic').innerText = formatPdfPrice(unitVal);
-  document.getElementById('pdf-table-gst').innerText = formatPdfPrice(gstVal);
+  document.getElementById('pdf-table-gst').innerText = formatPdfPrice(unitGst);
   document.getElementById('pdf-table-total').innerText = formatPdfPrice(basicVal);
   document.getElementById('pdf-table-gst-total').innerText = formatPdfPrice(gstVal);
-  document.getElementById('pdf-grand-total-label').innerText = formatPdfPrice(grandTotalVal);
+  document.getElementById('pdf-grand-total-label').innerText = formatPdfPrice(unitTotal);
   document.getElementById('pdf-grand-total-val').innerText = formatPdfPrice(grandTotalVal);
   document.getElementById('pdf-words-val').innerText = priceToIndianWords(grandTotalVal);
 
