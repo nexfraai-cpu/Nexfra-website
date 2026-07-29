@@ -3192,6 +3192,8 @@ function renderWorkOrders() {
         + '<h4 style="margin:0 0 8px 0;font-size:0.8rem;font-weight:800;color:#1E293B;">PRODUCTION</h4>'
         + '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0;">' + lineHtml + '</div></div>';
     })();
+    var woQuote = (STATE.quotations || []).find(function(q) { return q.id === wo.quoteId; });
+    var woQty = woQuote ? (woQuote.orderQty || 1) : 1;
     return `
       <div class="wo-card" style="margin-bottom:10px; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
         <div class="wo-header" onclick="toggleWorkOrder('${wo.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#F8FAFC; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #E2E8F0'}; transition:background 0.15s;">
@@ -3199,6 +3201,7 @@ function renderWorkOrders() {
             <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px;">${wo.id}</span>
             <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${wo.quoteId}</span>
             <span style="font-size:0.75rem; font-weight:600; color:var(--color-primary);">${wo.product}</span>
+            <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Qty: ${woQty}</span>
             <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Stage: ${wo.stage}</span>
             <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:60px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; display:inline-block;"><span style="display:block; width:${Math.min(parseInt(wo.progress) || 0, 100)}%; height:100%; background:${parseInt(wo.progress) >= 100 ? '#10B981' : '#3B82F6'}; border-radius:3px; transition:width 0.3s;"></span></span><span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span></span>
           </div>
