@@ -3331,6 +3331,7 @@ function renderWorkOrders() {
             <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:60px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; display:inline-block;"><span style="display:block; width:${Math.min(parseInt(wo.progress) || 0, 100)}%; height:100%; background:${parseInt(wo.progress) >= 100 ? '#10B981' : '#3B82F6'}; border-radius:3px; transition:width 0.3s;"></span></span><span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span></span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
+            ${wo.approvedDate ? `<span style="font-size:0.7rem; font-weight:600; color:#475569;">Approved: ${wo.approvedDate}</span>` : ''}
             ${wo.dueDate ? `<span style="font-size:0.7rem; font-weight:700; color:#475569;">Due: ${wo.dueDate}</span>` : `<span style="font-size:0.7rem; color:#94A3B8;">${wo.date}</span>`}
             ${dueStatus ? `<span style="font-size:0.65rem; font-weight:800; padding:2px 8px; border-radius:4px; ${dueStatus === 'URGENT' ? 'background:#FEE2E2; color:#DC2626;' : 'background:#D1FAE5; color:#059669;'}">${dueStatus}</span>` : ''}
             <span style="font-size:0.75rem; color:#64748B; transition:transform 0.2s; ${collapsed ? '' : 'transform:rotate(180deg);'}">▼</span>
@@ -3402,6 +3403,7 @@ window.printWorkOrder = function(woId) {
     + '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">'
     + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;width:130px;">Work Order</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + woId + '</td></tr>'
     + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Order Date</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.date || '—') + '</td></tr>'
+    + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Approved Date</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.approvedDate || '—') + '</td></tr>'
     + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Due Date</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.dueDate || 'Not set') + '</td></tr>'
     + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Customer</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + (wo.customerName || '—') + '</td></tr>'
     + '<tr><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:600;color:#64748B;">Quotation Ref</td><td style="padding:5px 8px;border-bottom:1px solid #F1F5F9;font-weight:700;color:#1E293B;">' + wo.quoteId + '</td></tr>'
@@ -4118,6 +4120,7 @@ window.approveQuotation = function(quoteId) {
       customerName: q.customerName || 'Valued Client',
       product: q.productName || 'Commercial Body',
       date: q.date || new Date().toISOString().split('T')[0],
+      approvedDate: new Date().toISOString().split('T')[0],
       stage: 'Pending',
       progress: 0,
       specs: (() => {
