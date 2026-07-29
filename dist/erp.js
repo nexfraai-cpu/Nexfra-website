@@ -4448,6 +4448,81 @@ window.clearFinanceFilters = function() {
   renderFinanceLedger();
 };
 
+function buildPaymentRowHtml(p) {
+  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#F8FAFC;border-radius:4px;font-size:0.75rem;" id="payment-row-' + p.id + '">'
+    + '<div>'
+    + '<strong>' + p.date + '</strong>' + (p.time ? ' at ' + p.time : '')
+    + '<span style="color:#64748B;margin-left:8px;">' + (p.mode || '') + (p.ref ? ' · ' + p.ref : '') + '</span>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    + '<span style="font-weight:700;color:var(--color-success);">₹' + p.amount.toLocaleString('en-IN') + '</span>'
+    + '<button onclick="editPayment(\'' + p.id + '\')" style="background:none;border:none;cursor:pointer;padding:2px;color:#94A3B8;font-size:0.8rem;" title="Edit Payment">✏️</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function renderPaymentsList(quoteId) {
+  loadState();
+  var container = document.getElementById('payments-list-' + quoteId);
+  if (!container) return;
+  var payments = (STATE.payments || []).filter(function(p) { return p.quoteId === quoteId; });
+  container.innerHTML = payments.length > 0 ? payments.map(function(p) { return buildPaymentRowHtml(p); }).join('') : '<div style="color:#94A3B8;font-size:0.75rem;padding:8px 0;">No payments recorded yet.</div>';
+}
+
+window.editPayment = function(paymentId) {
+  loadState();
+  var row = document.getElementById('payment-row-' + paymentId);
+  if (!row) return;
+  var payment = (STATE.payments || []).find(function(p) { return p.id === paymentId; });
+  if (!payment) return;
+  var modes = ['RTGS','NEFT','Cheque','Cash'];
+  var modeOptions = modes.map(function(m) {
+    return '<option value="' + m + '"' + (payment.mode === m ? ' selected' : '') + '>' + m + '</option>';
+  }).join('');
+  row.innerHTML = '<div style="display:flex;flex-direction:column;gap:6px;padding:4px 0;width:100%;">'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">'
+    + '<input type="date" id="edit-pay-date-' + paymentId + '" value="' + (payment.date || '') + '" style="font-size:0.7rem;padding:4px 8px;width:130px;">'
+    + '<input type="time" id="edit-pay-time-' + paymentId + '" value="' + (payment.time || '') + '" style="font-size:0.7rem;padding:4px 8px;width:100px;">'
+    + '<input type="number" id="edit-pay-amount-' + paymentId + '" value="' + payment.amount + '" style="font-size:0.7rem;padding:4px 8px;width:120px;">'
+    + '<select id="edit-pay-mode-' + paymentId + '" style="font-size:0.7rem;padding:4px 8px;">' + modeOptions + '</select>'
+    + '<input type="text" id="edit-pay-ref-' + paymentId + '" value="' + (payment.ref || '') + '" placeholder="Ref/UTR" style="font-size:0.7rem;padding:4px 8px;width:120px;">'
+    + '</div>'
+    + '<div style="display:flex;gap:6px;justify-content:flex-end;">'
+    + '<button onclick="saveEditPayment(\'' + paymentId + '\')" style="background:#059669;color:#fff;border:none;padding:4px 12px;border-radius:4px;font-size:0.7rem;font-weight:700;cursor:pointer;">Save</button>'
+    + '<button onclick="cancelEditPayment(\'' + paymentId + '\')" style="background:#64748B;color:#fff;border:none;padding:4px 12px;border-radius:4px;font-size:0.7rem;cursor:pointer;">Cancel</button>'
+    + '</div>'
+    + '</div>';
+};
+
+window.saveEditPayment = function(paymentId) {
+  loadState();
+  var payment = (STATE.payments || []).find(function(p) { return p.id === paymentId; });
+  if (!payment) return;
+  var date = document.getElementById('edit-pay-date-' + paymentId)?.value;
+  var time = document.getElementById('edit-pay-time-' + paymentId)?.value;
+  var amount = parseFloat(document.getElementById('edit-pay-amount-' + paymentId)?.value);
+  var mode = document.getElementById('edit-pay-mode-' + paymentId)?.value;
+  var ref = document.getElementById('edit-pay-ref-' + paymentId)?.value || '';
+  if (!amount || amount <= 0) {
+    alert('Please enter a valid amount.');
+    return;
+  }
+  payment.date = date || payment.date;
+  payment.time = time || '';
+  payment.amount = amount;
+  payment.mode = mode || 'RTGS';
+  payment.ref = ref;
+  logSystemActivity('Payment ' + paymentId + ' updated to ₹' + amount.toLocaleString('en-IN') + '.');
+  saveState();
+  renderPaymentsList(payment.quoteId);
+};
+
+window.cancelEditPayment = function(paymentId) {
+  loadState();
+  var payment = (STATE.payments || []).find(function(p) { return p.id === paymentId; });
+  if (payment) renderPaymentsList(payment.quoteId);
+};
+
 window.renderFinanceLedger = function() {
   loadState();
   var container = document.getElementById('finance-ledger-container');
@@ -4596,15 +4671,7 @@ window.renderFinanceLedger = function() {
     }
     var showUrgent = ((prodNearlyDone || dueSoon) && outstanding > 0);
 
-    const paymentsListHtml = payments.length > 0 ? payments.map(p => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#F8FAFC;border-radius:4px;font-size:0.75rem;">
-        <div>
-          <strong>${p.date}</strong> ${p.time ? 'at ' + p.time : ''}
-          <span style="color:#64748B;margin-left:8px;">${p.mode || ''} ${p.ref ? '· ' + p.ref : ''}</span>
-        </div>
-        <span style="font-weight:700;color:var(--color-success);">₹${p.amount.toLocaleString('en-IN')}</span>
-      </div>
-    `).join('') : '<div style="color:#94A3B8;font-size:0.75rem;padding:8px 0;">No payments recorded yet.</div>';
+    const paymentsListHtml = payments.length > 0 ? payments.map(p => buildPaymentRowHtml(p)).join('') : '<div style="color:#94A3B8;font-size:0.75rem;padding:8px 0;">No payments recorded yet.</div>';
 
     html += `
       <div style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);${showUrgent ? 'border-color:#DC2626;' : ''}">
