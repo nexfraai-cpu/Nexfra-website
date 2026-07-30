@@ -12,14 +12,33 @@ import { getDefaultState } from './src/dev-data.js';
 const storage = getStorageProvider();
 const employeeService = new EmployeeService();
 
-if (localStorage.getItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN) !== 'true') {
-  alert("Access Denied: Please log in first.");
-  window.location.href = 'index.html';
-}
+let _sessionRole = 'admin';
+let _sessionUser = 'Admin';
 
-// Cache session info at module load
-const _sessionRole = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_ROLE) || 'admin';
-const _sessionUser = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_NAME) || 'Admin';
+// In-memory state cache for synchronous loadState/saveState access
+let _stateCache = {};
+
+async function initSession() {
+  try {
+    const token = await storage.get(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+    if (token !== 'true') {
+      alert('Access Denied: Please log in first.');
+      window.location.href = 'index.html';
+      return false;
+    }
+    _sessionRole = await storage.get(CONFIG.STORAGE_KEYS.USER_ROLE) || 'admin';
+    _sessionUser = await storage.get(CONFIG.STORAGE_KEYS.USER_NAME) || 'Admin';
+
+    // Pre-populate in-memory state cache from API
+    _stateCache = await storage.getJSON(CONFIG.STORAGE_KEYS.ERP_STATE) || {};
+    return true;
+  } catch (e) {
+    console.error('Session init failed', e);
+    alert('Access Denied: Please log in first.');
+    window.location.href = 'index.html';
+    return false;
+  }
+}
 
 const ROLE_INFO = {
   sales:   { name: 'Sales',   title: 'Sales Representative',  avatar: 'S' },
@@ -331,17 +350,7 @@ function syncStateCalculations() {
 }
 
 function loadState() {
-  const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.ERP_STATE);
-  if (saved) {
-    try {
-      STATE = JSON.parse(saved);
-    } catch(e) {
-      Logger.error("State loading error, resetting to defaults", e);
-      STATE = {};
-    }
-  } else {
-    STATE = {};
-  }
+  STATE = Object.assign({}, _stateCache);
 
   if (!STATE.customers) STATE.customers = [];
   if (!STATE.quotations) STATE.quotations = [];
@@ -361,7 +370,10 @@ function loadState() {
 
 function saveState() {
   syncStateCalculations();
-  localStorage.setItem(CONFIG.STORAGE_KEYS.ERP_STATE, JSON.stringify(STATE));
+  _stateCache = Object.assign({}, STATE);
+  storage.setJSON(CONFIG.STORAGE_KEYS.ERP_STATE, STATE).catch(e =>
+    Logger.error('Background state sync failed', e)
+  );
 }
 
 window.resetAllSystemData = function(silent = false) {
@@ -403,8 +415,11 @@ function logSystemActivity(message) {
 // 2. LIFECYCLE & ROUTING EVENT HANDLERS
 // ------------------------------------------
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadState();
+document.addEventListener('DOMContentLoaded', async () => {
+  const authed = await initSession();
+  if (!authed) return;
+
+  await loadState();
   if (!STATE.employees || STATE.employees.length === 0) {
     const defaults = getDefaultState();
     STATE.employees = defaults.employees || [];
@@ -429,7 +444,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initLogout();
   initPdfPreviewControls();
 
-  handleUrlRouting();
+  await handleUrlRouting();
 
   // Delegated employee action buttons
   document.addEventListener('click', (e) => {

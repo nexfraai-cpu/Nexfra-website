@@ -17,6 +17,7 @@ import { productionRouter } from './production/production.routes.js';
 import { financeRouter } from './finance/finance.routes.js';
 import { adminRouter } from './admin/admin.routes.js';
 import { uploadsRouter } from './uploads/uploads.routes.js';
+import { storageRouter } from './storage/storage.routes.js';
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/production', productionRouter);
 app.use('/api/finance', financeRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/uploads', uploadsRouter);
+app.use('/api/storage', storageRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);
