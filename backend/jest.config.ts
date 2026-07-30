@@ -5,7 +5,9 @@ const config: Config = {
   testEnvironment: 'node',
   roots: ['<rootDir>/src', '<rootDir>/tests'],
   testMatch: ['**/*.test.ts', '**/*.spec.ts'],
+  setupFiles: ['<rootDir>/jest.setup.cjs'],
   moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1',
     '^@config/(.*)$': '<rootDir>/src/config/$1',
     '^@middleware/(.*)$': '<rootDir>/src/middleware/$1',
     '^@database/(.*)$': '<rootDir>/src/database/$1',
