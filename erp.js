@@ -2,18 +2,24 @@
    Nexfra ERP Control Panel Core Script
    ========================================== */
 
-// 1. AUTH CHECK & STATE INITIALIZATION
-(function checkAuth() {
-  if (localStorage.getItem('adminLoggedIn') !== 'true') {
-    alert("Access Denied: Please log in first.");
-    window.location.href = 'index.html';
-  }
-  const role = localStorage.getItem('erpUserRole') || 'admin';
-  localStorage.setItem('erpUserRole', role);
-  if (!localStorage.getItem('erpUserName')) {
-    localStorage.setItem('erpUserName', role.charAt(0).toUpperCase() + role.slice(1));
-  }
-})();
+import { CONFIG, isDevelopment, isQuickLoginEnabled, isResetDataEnabled } from './src/config.js';
+import { getStorageProvider } from './src/storage/index.js';
+import { AuthenticationService } from './src/services/AuthenticationService.js';
+import { EmployeeService } from './src/services/EmployeeService.js';
+import { Logger } from './src/utils/Logger.js';
+import { getDefaultState } from './src/dev-data.js';
+
+const storage = getStorageProvider();
+const employeeService = new EmployeeService();
+
+if (localStorage.getItem(CONFIG.STORAGE_KEYS.AUTH_TOKEN) !== 'true') {
+  alert("Access Denied: Please log in first.");
+  window.location.href = 'index.html';
+}
+
+// Cache session info at module load
+const _sessionRole = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_ROLE) || 'admin';
+const _sessionUser = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_NAME) || 'Admin';
 
 const ROLE_INFO = {
   sales:   { name: 'Sales',   title: 'Sales Representative',  avatar: 'S' },
@@ -35,7 +41,7 @@ const ROLE_PERMISSIONS = {
 };
 
 function getCurrentRole() {
-  return localStorage.getItem('erpUserRole') || 'admin';
+  return _sessionRole;
 }
 
 function userCanAccess(moduleName) {
@@ -55,108 +61,7 @@ function getUserDefaultModule() {
   return defaults[role] || 'dashboard';
 }
 
-// ------------------------------------------
-// EmployeeService — abstraction layer for employee CRUD
-// Currently uses localStorage; later swap for Supabase/API
-// without changing the UI.
-// ------------------------------------------
-const EmployeeService = {
-  getEmployees() {
-    loadState();
-    return (STATE.employees || []).filter(e => !e.isDeleted);
-  },
 
-  getAllEmployees() {
-    loadState();
-    return STATE.employees || [];
-  },
-
-  getEmployeeById(id) {
-    loadState();
-    return (STATE.employees || []).find(e => e.id === id);
-  },
-
-  getEmployeeByEmail(email) {
-    loadState();
-    return (STATE.employees || []).find(e => e.email === email && !e.isDeleted);
-  },
-
-  authenticate(email, password) {
-    loadState();
-    const emp = (STATE.employees || []).find(e =>
-      e.email === email && e.password === password && !e.isDeleted && e.status === 'Active'
-    );
-    if (emp) {
-      emp.lastLogin = new Date().toISOString();
-      saveState();
-    }
-    return emp || null;
-  },
-
-  createEmployee(data) {
-    loadState();
-    STATE.employeeCounter = (STATE.employeeCounter || 0) + 1;
-    const id = 'EMP-' + String(STATE.employeeCounter).padStart(6, '0');
-    const emp = {
-      id,
-      fullName: data.fullName || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      employeeCode: data.employeeCode || '',
-      role: data.role || 'sales',
-      status: data.status || 'Active',
-      password: data.password || 'changeme',
-      isDeleted: false,
-      createdDate: new Date().toISOString().split('T')[0],
-      lastLogin: null
-    };
-    STATE.employees.push(emp);
-    saveState();
-    return emp;
-  },
-
-  updateEmployee(id, data) {
-    loadState();
-    const emp = STATE.employees.find(e => e.id === id);
-    if (!emp) return null;
-    if (data.fullName !== undefined) emp.fullName = data.fullName;
-    if (data.email !== undefined) emp.email = data.email;
-    if (data.phone !== undefined) emp.phone = data.phone;
-    if (data.employeeCode !== undefined) emp.employeeCode = data.employeeCode;
-    if (data.role !== undefined) emp.role = data.role;
-    if (data.status !== undefined) emp.status = data.status;
-    if (data.password !== undefined) emp.password = data.password;
-    saveState();
-    return emp;
-  },
-
-  disableEmployee(id) {
-    loadState();
-    const emp = STATE.employees.find(e => e.id === id);
-    if (!emp) return null;
-    emp.status = emp.status === 'Active' ? 'Disabled' : 'Active';
-    saveState();
-    return emp;
-  },
-
-  deleteEmployee(id) {
-    loadState();
-    const emp = STATE.employees.find(e => e.id === id);
-    if (!emp) return null;
-    emp.isDeleted = true;
-    saveState();
-    return emp;
-  },
-
-  resetPassword(id, newPassword) {
-    loadState();
-    const emp = STATE.employees.find(e => e.id === id);
-    if (!emp) return null;
-    emp.password = newPassword;
-    saveState();
-    return emp;
-  }
-};
 
 const ROLE_PERMISSION_SETS = {
   admin: {
@@ -196,6 +101,9 @@ const STAGES = [
 
 let STATE = {};
 let currentPreviewQuoteId = '';
+let _editState = null;
+let _moduleFilters = {};
+let _approvalsFilter = 'pending';
 
 // Product Configurator Wizard State
 let wizardState = {
@@ -423,57 +331,44 @@ function syncStateCalculations() {
 }
 
 function loadState() {
-  const saved = localStorage.getItem('NEXFRA_ERP_STATE');
+  const saved = localStorage.getItem(CONFIG.STORAGE_KEYS.ERP_STATE);
   if (saved) {
     try {
       STATE = JSON.parse(saved);
     } catch(e) {
-      console.error("State loading error, resetting to defaults", e);
+      Logger.error("State loading error, resetting to defaults", e);
       STATE = {};
     }
   } else {
     STATE = {};
   }
 
-  if (!STATE.customers) STATE.customers = [
-    { id: 'CUST-001', name: 'Tata Logistics Pvt Ltd', company: 'Tata Logistics', gst: '33AAACT8281M1Z5', phone: '+91 98400 12345', email: 'operations@tatalogistics.com', address: 'Plot 12, Port Road, Tuticorin, TN', vehicles: [], outstanding: 0 },
-    { id: 'CUST-002', name: 'Gati Mining & Minerals', company: 'Gati Minerals', gst: '27AAACG1928A2Z0', phone: '+91 99100 98765', email: 'mehta@gatimining.com', address: 'Mine Block C, Korba, Chhattisgarh', vehicles: [], outstanding: 0 }
-  ];
+  if (!STATE.customers) STATE.customers = [];
   if (!STATE.quotations) STATE.quotations = [];
   if (!STATE.workOrders) STATE.workOrders = [];
   if (!STATE.productionItems) STATE.productionItems = [];
   if (!STATE.sales) STATE.sales = [];
   if (!STATE.payments) STATE.payments = [];
   if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
-  if (!STATE.employees) {
-    STATE.employees = [
-      {
-        id: 'EMP-000001',
-        fullName: 'Administrator',
-        email: 'admin@nexframfg.com',
-        phone: '+91 98765 43210',
-        employeeCode: 'ADM-001',
-        role: 'admin',
-        status: 'Active',
-        password: 'admin123',
-        isDeleted: false,
-        createdDate: new Date().toISOString().split('T')[0],
-        lastLogin: null
-      }
-    ];
-    STATE.employeeCounter = 1;
-  }
-  if (!STATE.employeeCounter) STATE.employeeCounter = STATE.employees.filter(e => !e.isDeleted).length;
+  if (!STATE.employees) STATE.employees = [];
+  if (!STATE.employeeCounter) STATE.employeeCounter = 0;
+  if (!STATE.logs) STATE.logs = [];
+  if (!STATE.adminPricing) STATE.adminPricing = {};
+  if (!STATE.productSpecOverrides) STATE.productSpecOverrides = {};
 
   syncStateCalculations();
 }
 
 function saveState() {
   syncStateCalculations();
-  localStorage.setItem('NEXFRA_ERP_STATE', JSON.stringify(STATE));
+  localStorage.setItem(CONFIG.STORAGE_KEYS.ERP_STATE, JSON.stringify(STATE));
 }
 
 window.resetAllSystemData = function(silent = false) {
+  if (!isResetDataEnabled()) {
+    alert("This feature is not available in production mode.");
+    return;
+  }
   if (silent || confirm("Are you sure you want to clear all test quotations and reset the system pipeline? This will make the application completely fresh and production-ready.")) {
     STATE.quotations = [];
     STATE.productionItems = [];
@@ -500,7 +395,7 @@ window.resetAllSystemData = function(silent = false) {
 function logSystemActivity(message) {
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   STATE.logs.unshift({ time, message });
-  if (STATE.logs.length > 8) STATE.logs.pop();
+  if (STATE.logs.length > CONFIG.MAX_LOG_ENTRIES) STATE.logs.pop();
   saveState();
 }
 
@@ -510,6 +405,20 @@ function logSystemActivity(message) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
+  if (!STATE.employees || STATE.employees.length === 0) {
+    const defaults = getDefaultState();
+    STATE.employees = defaults.employees || [];
+    STATE.employeeCounter = defaults.employeeCounter || 0;
+  }
+  if (!STATE.customers || STATE.customers.length === 0) {
+    const defaults = getDefaultState();
+    STATE.customers = defaults.customers || [];
+  }
+  if (!isResetDataEnabled()) {
+    document.querySelectorAll('.reset-data-btn').forEach(el => {
+      el.style.display = 'none';
+    });
+  }
   filterSidebarByRole();
   updateHeaderDisplay();
   initSidebarNav();
@@ -520,10 +429,21 @@ document.addEventListener('DOMContentLoaded', () => {
   initLogout();
   initPdfPreviewControls();
 
-  // Read URL query parameter routing
   handleUrlRouting();
 
-  // Close filter dropdowns when clicking outside
+  // Delegated employee action buttons
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    const action = btn.getAttribute('data-action');
+    const id = btn.getAttribute('data-id');
+    if (action === 'view-employee') openEmployeeView(id);
+    else if (action === 'edit-employee') openEmployeeForm(id);
+    else if (action === 'disable-employee') window.disableEmployee(id);
+    else if (action === 'delete-employee') window.deleteEmployee(id);
+    else if (action === 'reset-employee-password') window.resetEmployeePassword(id);
+  });
+
   document.addEventListener('click', (e) => {
     document.querySelectorAll('.filter-dd').forEach(el => {
       if (el.style.display !== 'block') return;
@@ -551,7 +471,7 @@ function filterSidebarByRole() {
 function updateHeaderDisplay() {
   const role = getCurrentRole();
   const info = ROLE_INFO[role] || ROLE_INFO.admin;
-  const userName = localStorage.getItem('erpUserName') || info.name;
+  const userName = _sessionUser || info.name;
   const nameEl = document.getElementById('header-user-name');
   const roleEl = document.getElementById('header-user-role');
   const avatarEl = document.getElementById('header-user-avatar');
@@ -652,10 +572,11 @@ function initDashboardShortcuts() {
 }
 
 function initLogout() {
-  document.getElementById('portal-logout-btn').addEventListener('click', () => {
-    localStorage.removeItem('adminLoggedIn');
-    localStorage.removeItem('erpUserRole');
-    localStorage.removeItem('erpUserName');
+  document.getElementById('portal-logout-btn').addEventListener('click', async () => {
+    AuthenticationService.logout();
+    await storage.remove(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
+    await storage.remove(CONFIG.STORAGE_KEYS.USER_ROLE);
+    await storage.remove(CONFIG.STORAGE_KEYS.USER_NAME);
     alert("Signed out from Control Panel.");
     window.location.href = 'index.html';
   });
@@ -749,7 +670,7 @@ function renderDashboardOverview() {
   }
 }
 
-var _editingChassisId = null;
+let _editingChassisId = null;
 
 function renderChassisTable() {
   loadState();
@@ -776,7 +697,7 @@ function renderChassisTable() {
   });
   tbody.innerHTML = filtered.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#94A3B8;padding:40px;font-size:0.85rem;">No chassis records found.</td></tr>' : filtered.map(function(r, i) {
     var rowId = r.id;
-    var isEditing = window._editingChassisId === rowId;
+    var isEditing = _editingChassisId === rowId;
     if (isEditing) {
       return '<tr id="ch-row-' + rowId + '">'
         + '<td style="font-weight:700;">' + (i + 1) + '</td>'
@@ -2759,7 +2680,6 @@ window.showToastNotification = function(message, type = 'success') {
 };
 
 // ===== INLINE QUOTATION EDIT SYSTEM (APPROVALS PAGE) =====
-window._editState = null;
 
 window.editQuotation = function(quoteId) {
   loadState();
@@ -2771,7 +2691,7 @@ window.editQuotation = function(quoteId) {
 
   const categoryMap = { flatbed: 'trailer', sidewall: 'trailer', tiptrailer: 'trailer', boxbody: 'tipper', rockbody: 'tipper', rigid28: 'rigid', rigid30: 'rigid' };
 
-  window._editState = {
+  _editState = {
     quoteId: quoteId,
     subtype: q.subtype,
     capacity: q.capacity || 'NA',
@@ -2795,9 +2715,9 @@ window.editQuotation = function(quoteId) {
 function renderInlineEditForm(quoteId, template) {
   const container = document.getElementById('approvals-cards-container');
   if (!container) return;
-  const e = window._editState;
-  if (!e) return;
+  const e = _editState;
 
+  if (!e) return;
   const sections = ['material', 'chassis', 'hydraulic', 'painting', 'accessories', 'subframe'];
   const sectionLabels = {
     material: 'Steel Sheets & Material Grade',
@@ -2900,7 +2820,7 @@ function escHtml(s) {
 }
 
 function buildEditSpecControl(spec) {
-  const e = window._editState;
+  const e = _editState;
   if (!e) return '';
   const isNr = !!e.notRequired[spec.id];
   const selectedVal = e.specs[spec.id] !== undefined ? e.specs[spec.id] : (spec.defaultValue || '');
@@ -2934,29 +2854,29 @@ function buildEditSpecControl(spec) {
 }
 
 window.onEditSpecChange = function(id, val) {
-  if (window._editState) _editState.specs[id] = val;
+  if (_editState) _editState.specs[id] = val;
 };
 
 window.onEditToggleNr = function(id) {
-  if (!window._editState) return;
+  if (!_editState) return;
   _editState.notRequired[id] = !_editState.notRequired[id];
   const t = WIZARD_PRODUCT_TEMPLATES[_editState.subtype];
   if (t) renderInlineEditForm(_editState.quoteId, t);
 };
 
 window.onEditCustChange = function(field, val) {
-  if (window._editState) _editState[field] = val;
+  if (_editState) _editState[field] = val;
 };
 
 window.onEditDim = function(dim) {
-  if (!window._editState) return;
+  if (!_editState) return;
   const nEl = document.getElementById('e-dim-' + dim.charAt(0) + '-n');
   const uEl = document.getElementById('e-dim-' + dim.charAt(0) + '-u');
   if (nEl && uEl) _editState.dimensions[dim] = nEl.value + ' ' + uEl.value;
 };
 
 window.onEditPriceChange = function(val) {
-  if (!window._editState) return;
+  if (!_editState) return;
   _editState.manualTotal = (val !== '' && val !== null) ? parseFloat(val) : null;
   const d = document.getElementById('e-price-display');
   if (d) {
@@ -2966,17 +2886,17 @@ window.onEditPriceChange = function(val) {
 };
 
 window.onEditGstChange = function(val) {
-  if (!window._editState) return;
+  if (!_editState) return;
   _editState.gstRate = (val !== '' && val !== null) ? parseFloat(val) : 18;
 };
 
 window.onEditQtyChange = function(val) {
-  if (!window._editState) return;
+  if (!_editState) return;
   _editState.orderQty = (val !== '' && val !== null) ? parseInt(val, 10) || 1 : 1;
 };
 
 window.saveEditQty = function() {
-  if (!window._editState) return;
+  if (!_editState) return;
   const inp = document.getElementById('e-qty-input');
   if (!inp) return;
   const newQty = parseInt(inp.value, 10) || 1;
@@ -3013,21 +2933,21 @@ window.saveEditQty = function() {
 };
 
 window.onEditScopeChange = function(val) {
-  if (window._editState) _editState.scopeOfWork = val;
+  if (_editState) _editState.scopeOfWork = val;
 };
 
 window.onEditTermsChange = function(val) {
-  if (window._editState) _editState.terms = val.split('\n').filter(t => t.trim());
+  if (_editState) _editState.terms = val.split('\n').filter(t => t.trim());
 };
 
 window.cancelEditQuotation = function() {
-  window._editState = null;
-  renderApprovalsList(window._approvalsFilter || 'pending');
+  _editState = null;
+  renderApprovalsList(_approvalsFilter || 'pending');
 };
 
 window.saveEditQuotation = function(showPdf) {
   loadState();
-  const e = window._editState;
+  const e = _editState;
   if (!e || !e.quoteId) return;
 
   const q = STATE.quotations.find(x => x.id === e.quoteId);
@@ -3076,19 +2996,19 @@ window.saveEditQuotation = function(showPdf) {
   logSystemActivity('Quotation ' + e.quoteId + ' details updated via inline edit.');
   saveState();
 
-  window._editState = null;
+  _editState = null;
 
   // Look up client for address/gst
   var editClient = STATE.customers ? STATE.customers.find(function(c) { return c.id === q.customerId || (c.company && c.company === q.customerName); }) : null;
 
   if (showPdf) {
     showToastNotification('Quotation ' + q.id + ' updated! Opening PDF preview.');
-    renderApprovalsList(window._approvalsFilter || 'pending');
+    renderApprovalsList(_approvalsFilter || 'pending');
     setTimeout(function() { renderPdfFromQuote(q, editClient); }, 200);
   } else {
     showToastNotification('Quotation ' + q.id + ' updated successfully!');
     switchModule('approvals');
-    renderApprovalsList(window._approvalsFilter || 'pending');
+    renderApprovalsList(_approvalsFilter || 'pending');
   }
 };
 
@@ -3281,7 +3201,7 @@ window.saveWizardQuotation = function() {
     switchModule('approvals');
     if (window.renderApprovalsList) renderApprovalsList('pending');
   } catch(err) {
-    console.error("Save quotation error:", err);
+    Logger.error("Save quotation error:", err);
     showToastNotification("Quotation saved! Sent to Approval page.", "success");
     switchModule('approvals');
     if (window.renderApprovalsList) renderApprovalsList('pending');
@@ -3399,7 +3319,6 @@ window.printWizardPdf = function() {
 // ------------------------------------------
 
 // --- Filter helpers (shared across Work Orders, Production Board, Approvals) ---
-window._moduleFilters = {};
 
 function getProductCategory(productName) {
   const n = (productName || '').toLowerCase();
@@ -3416,7 +3335,7 @@ function toggleModuleFilter(moduleName) {
   // Close all other filter dropdowns
   document.querySelectorAll('.filter-dd').forEach(el => el.style.display = 'none');
   if (!isVisible) {
-    const f = window._moduleFilters[moduleName] || {};
+    const f = _moduleFilters[moduleName] || {};
     const fromEl = document.getElementById('filter-' + moduleName + '-from');
     const toEl = document.getElementById('filter-' + moduleName + '-to');
     const catEl = document.getElementById('filter-' + moduleName + '-cat');
@@ -3457,33 +3376,33 @@ function setDatePreset(moduleName, months) {
   const toEl = document.getElementById('filter-' + moduleName + '-to');
   if (fromEl) fromEl.value = fromStr;
   if (toEl) toEl.value = toStr;
-  if (!window._moduleFilters[moduleName]) window._moduleFilters[moduleName] = {};
-  window._moduleFilters[moduleName].dateFrom = fromStr;
-  window._moduleFilters[moduleName].dateTo = toStr;
+  if (!_moduleFilters[moduleName]) _moduleFilters[moduleName] = {};
+  _moduleFilters[moduleName].dateFrom = fromStr;
+  _moduleFilters[moduleName].dateTo = toStr;
   if (moduleName === 'workorders') renderWorkOrders();
   else if (moduleName === 'production') renderProductionBoard();
-  else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
+  else if (moduleName === 'approvals') renderApprovalsList(_approvalsFilter || 'pending');
 }
 
 function setModuleFilter(moduleName, field, value) {
-  if (!window._moduleFilters[moduleName]) window._moduleFilters[moduleName] = {};
-  window._moduleFilters[moduleName][field] = value;
+  if (!_moduleFilters[moduleName]) _moduleFilters[moduleName] = {};
+  _moduleFilters[moduleName][field] = value;
   if (moduleName === 'workorders') renderWorkOrders();
   else if (moduleName === 'production') renderProductionBoard();
-  else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
+  else if (moduleName === 'approvals') renderApprovalsList(_approvalsFilter || 'pending');
 }
 
 function clearModuleFilters(moduleName) {
-  delete window._moduleFilters[moduleName];
+  delete _moduleFilters[moduleName];
   const searchEl = document.getElementById('search-' + moduleName);
   if (searchEl) searchEl.value = '';
   if (moduleName === 'workorders') renderWorkOrders();
   else if (moduleName === 'production') renderProductionBoard();
-  else if (moduleName === 'approvals') renderApprovalsList(window._approvalsFilter || 'pending');
+  else if (moduleName === 'approvals') renderApprovalsList(_approvalsFilter || 'pending');
 }
 
 function applyModuleFilter(moduleName, items, dateField, productField, searchFields) {
-  const f = window._moduleFilters[moduleName] || {};
+  const f = _moduleFilters[moduleName] || {};
   const searchTerm = (f.search || '').toLowerCase().trim();
   if (!f.dateFrom && !f.dateTo && (!f.category || f.category === 'All') && !searchTerm) return items;
   return items.filter(item => {
@@ -3601,7 +3520,7 @@ function renderWorkOrders() {
   }
 
   const filtered = applyModuleFilter('workorders', STATE.workOrders, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
-  const urgentOnly = window._moduleFilters && window._moduleFilters.workorders && window._moduleFilters.workorders.urgent === '1';
+  const urgentOnly = _moduleFilters && _moduleFilters.workorders && _moduleFilters.workorders.urgent === '1';
   const displayItems = urgentOnly ? filtered.filter(wo => wo.urgent) : filtered;
   container.innerHTML = displayItems.map(wo => {
     const collapsed = wo._collapsed !== false;
@@ -4285,7 +4204,7 @@ function getInitialProgressionState() {
 }
 
 window.renderApprovalsList = function(filter = 'pending') {
-  window._approvalsFilter = filter;
+  _approvalsFilter = filter;
   loadState();
 
   const container = document.getElementById('approvals-cards-container');
@@ -4529,7 +4448,7 @@ window.setQuotationPending = function(quoteId) {
   logSystemActivity(`Quotation ${quoteId} reverted to Pending Approval.`);
   saveState();
   showToastNotification(`Quotation ${quoteId} moved back to Pending Approval.`);
-  renderApprovalsList(window._approvalsFilter || 'pending');
+  renderApprovalsList(_approvalsFilter || 'pending');
   if (typeof renderWorkOrders === 'function') renderWorkOrders();
   if (typeof renderFinanceLedger === 'function') renderFinanceLedger();
 };
@@ -4549,7 +4468,7 @@ function renderProductionBoard() {
   if (!container) return;
 
   const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
-  const urgentOnly = window._moduleFilters && window._moduleFilters.production && window._moduleFilters.production.urgent === '1';
+  const urgentOnly = _moduleFilters && _moduleFilters.production && _moduleFilters.production.urgent === '1';
   const displayItems = urgentOnly ? filteredItems.filter(item => item.urgent) : filteredItems;
 
   const columns = [
@@ -5643,7 +5562,7 @@ function renderAdminProductsTab() {
 function renderEmployeeManagement() {
   const tbody = document.getElementById('employees-tbody');
   if (!tbody) return;
-  const employees = EmployeeService.getEmployees();
+  const employees = (STATE.employees || []).filter(e => !e.isDeleted);
   tbody.innerHTML = employees.map(emp => {
     const roleInfo = ROLE_INFO[emp.role] || { name: emp.role, title: emp.role };
     const loginDate = emp.lastLogin ? new Date(emp.lastLogin).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -5658,12 +5577,12 @@ function renderEmployeeManagement() {
         <td style="font-size:0.8rem">${emp.createdDate || '—'}</td>
         <td style="font-size:0.8rem;color:var(--color-text-muted)">${loginDate}</td>
         <td>
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn btn-outline btn-xs" onclick="openEmployeeView('${emp.id}')" title="View">👁</button>
-            <button class="btn btn-outline btn-xs" onclick="openEmployeeForm('${emp.id}')" title="Edit">✏️</button>
-            <button class="btn btn-outline btn-xs" onclick="disableEmployee('${emp.id}')" title="${emp.status === 'Active' ? 'Disable' : 'Enable'}" style="color:${emp.status === 'Active' ? '#D97706' : '#15803D'}">${emp.status === 'Active' ? '🔒' : '🔓'}</button>
-            <button class="btn btn-outline btn-xs" onclick="resetEmployeePassword('${emp.id}')" title="Reset Password">🔑</button>
-            <button class="btn btn-outline btn-xs" onclick="deleteEmployee('${emp.id}')" title="Delete" style="color:#DC2626">🗑</button>
+          <div style="display:flex;gap:6px;flex-wrap:wrap" data-employee-actions="${emp.id}">
+            <button class="btn btn-outline btn-xs" data-action="view-employee" data-id="${emp.id}" title="View">👁</button>
+            <button class="btn btn-outline btn-xs" data-action="edit-employee" data-id="${emp.id}" title="Edit">✏️</button>
+            <button class="btn btn-outline btn-xs" data-action="disable-employee" data-id="${emp.id}" title="${emp.status === 'Active' ? 'Disable' : 'Enable'}" style="color:${emp.status === 'Active' ? '#D97706' : '#15803D'}">${emp.status === 'Active' ? '🔒' : '🔓'}</button>
+            <button class="btn btn-outline btn-xs" data-action="reset-employee-password" data-id="${emp.id}" title="Reset Password">🔑</button>
+            <button class="btn btn-outline btn-xs" data-action="delete-employee" data-id="${emp.id}" title="Delete" style="color:#DC2626">🗑</button>
           </div>
         </td>
       </tr>
@@ -5702,7 +5621,7 @@ function openEmployeeForm(empId) {
   const submitBtn = document.getElementById('emp-form-submit-btn');
   const idField = document.getElementById('emp-form-id');
   if (empId) {
-    const emp = EmployeeService.getEmployeeById(empId);
+    const emp = (STATE.employees || []).find(e => e.id === empId);
     if (!emp) return;
     title.innerText = 'Edit Employee';
     submitBtn.innerText = 'Update Employee';
@@ -5733,7 +5652,7 @@ function closeEmployeeForm() {
   document.getElementById('employee-form-modal').classList.remove('active');
 }
 
-function saveEmployeeForm(e) {
+async function saveEmployeeForm(e) {
   e.preventDefault();
   const id = document.getElementById('emp-form-id').value;
   const data = {
@@ -5751,27 +5670,33 @@ function saveEmployeeForm(e) {
     return;
   }
 
-  if (id) {
-    if (password) data.password = password;
-    EmployeeService.updateEmployee(id, data);
-    logSystemActivity('Employee ' + data.fullName + ' updated.');
-  } else {
-    if (!password) {
-      alert('Password is required for new employees.');
-      return;
+  try {
+    if (id) {
+      if (password) data.password = password;
+      await employeeService.update(id, data);
+      logSystemActivity('Employee ' + data.fullName + ' updated.');
+    } else {
+      if (!password) {
+        alert('Password is required for new employees.');
+        return;
+      }
+      data.password = password;
+      await employeeService.create(data);
+      logSystemActivity('Employee ' + data.fullName + ' created.');
     }
-    data.password = password;
-    EmployeeService.createEmployee(data);
-    logSystemActivity('Employee ' + data.fullName + ' created.');
+  } catch(err) {
+    Logger.error('Employee save failed', err);
+    alert('Failed to save employee: ' + err.message);
+    return;
   }
 
+  loadState();
   closeEmployeeForm();
   renderAdminSettings();
-  return false;
 }
 
 function openEmployeeView(empId) {
-  const emp = EmployeeService.getEmployeeById(empId);
+  const emp = (STATE.employees || []).find(e => e.id === empId);
   if (!emp) return;
   const roleInfo = ROLE_INFO[emp.role] || { name: emp.role, title: emp.role };
   const loginDate = emp.lastLogin ? new Date(emp.lastLogin).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never';
@@ -5831,39 +5756,52 @@ window.openEmployeeForm = openEmployeeForm;
 window.closeEmployeeForm = closeEmployeeForm;
 window.saveEmployeeForm = saveEmployeeForm;
 
-window.disableEmployee = function(empId) {
-  const emp = EmployeeService.getEmployeeById(empId);
+window.disableEmployee = async function(empId) {
+  const emp = (STATE.employees || []).find(e => e.id === empId);
   if (!emp) return;
   const newStatus = emp.status === 'Active' ? 'disable' : 'enable';
   if (!confirm('Are you sure you want to ' + newStatus + ' employee ' + emp.fullName + '?')) return;
-  EmployeeService.disableEmployee(empId);
-  logSystemActivity('Employee ' + emp.fullName + ' ' + (emp.status === 'Active' ? 'disabled' : 'enabled') + '.');
-  renderAdminSettings();
+  try {
+    await employeeService.disable(empId);
+    loadState();
+    logSystemActivity('Employee ' + emp.fullName + ' ' + (emp.status === 'Active' ? 'disabled' : 'enabled') + '.');
+    renderAdminSettings();
+  } catch(err) {
+    Logger.error('Failed to disable employee', err);
+    alert('Operation failed.');
+  }
 };
 
-window.deleteEmployee = function(empId) {
-  const emp = EmployeeService.getEmployeeById(empId);
+window.deleteEmployee = async function(empId) {
+  const emp = (STATE.employees || []).find(e => e.id === empId);
   if (!emp) return;
   if (!confirm('Soft-delete employee ' + emp.fullName + '? They can be restored from storage.')) return;
-  EmployeeService.deleteEmployee(empId);
-  logSystemActivity('Employee ' + emp.fullName + ' deleted (soft).');
-  renderAdminSettings();
+  try {
+    await employeeService.delete(empId);
+    loadState();
+    logSystemActivity('Employee ' + emp.fullName + ' deleted (soft).');
+    renderAdminSettings();
+  } catch(err) {
+    Logger.error('Failed to delete employee', err);
+    alert('Operation failed.');
+  }
 };
 
-window.resetEmployeePassword = function(empId) {
-  const emp = EmployeeService.getEmployeeById(empId);
+window.resetEmployeePassword = async function(empId) {
+  const emp = (STATE.employees || []).find(e => e.id === empId);
   if (!emp) return;
   const newPwd = prompt('Enter new password for ' + emp.fullName + ':');
   if (!newPwd || newPwd.trim() === '') return;
-  EmployeeService.resetPassword(empId, newPwd.trim());
-  logSystemActivity('Password reset for employee ' + emp.fullName + '.');
-  alert('Password updated successfully.');
+  try {
+    await employeeService.resetPassword(empId, newPwd.trim());
+    loadState();
+    logSystemActivity('Password reset for employee ' + emp.fullName + '.');
+    alert('Password updated successfully.');
+  } catch(err) {
+    Logger.error('Failed to reset password', err);
+    alert('Operation failed.');
+  }
 };
-
-function escHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 // ------------------------------------------
 // 9. HIGH-FIDELITY PDF PREVIEW GENERATOR

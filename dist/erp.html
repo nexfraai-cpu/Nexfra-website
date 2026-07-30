@@ -17,7 +17,9 @@
   
   <!-- html2pdf.js for High-Fidelity Client-side PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/styles-4FhM2E9Z.css">
+  <script type="module" crossorigin src="/assets/erp-554KQZ8H.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/dev-data-Bpkbra46.js">
+  <link rel="stylesheet" crossorigin href="/assets/dev-data-4FhM2E9Z.css">
 </head>
 <body style="background-color: var(--color-bg); overflow: hidden; height: 100vh; display: flex; flex-direction: column;">
 
@@ -99,7 +101,7 @@
           <div class="header-indicator" style="display:flex; align-items:center; gap:12px;">
             <span class="pulse-indicator"></span>
             <span>Live DB Connection</span>
-            <button onclick="resetAllSystemData()" class="btn" style="background:rgba(239, 68, 68, 0.1); color:#EF4444; border:1px solid rgba(239, 68, 68, 0.3); font-size:0.75rem; padding:4px 10px; border-radius:6px; font-weight:700; cursor:pointer;" title="Clear all test quotations & start fresh">
+             <button onclick="resetAllSystemData()" class="btn reset-data-btn" style="background:rgba(239, 68, 68, 0.1); color:#EF4444; border:1px solid rgba(239, 68, 68, 0.3); font-size:0.75rem; padding:4px 10px; border-radius:6px; font-weight:700; cursor:pointer;" title="Clear all test quotations & start fresh">
               🗑 Reset Test Data
             </button>
           </div>
@@ -1423,7 +1425,7 @@
               <div class="admin-matrix-section">
                 <h4>Data Management</h4>
                 <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
-                  <button onclick="resetAllSystemData()" class="btn" style="background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.3);padding:10px 20px;font-size:0.8rem;font-weight:700;cursor:pointer;border-radius:6px;width:fit-content">Reset Test Data</button>
+                  <button onclick="resetAllSystemData()" class="btn reset-data-btn" style="background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.3);padding:10px 20px;font-size:0.8rem;font-weight:700;cursor:pointer;border-radius:6px;width:fit-content">Reset Test Data</button>
                   <span style="font-size:0.75rem;color:var(--color-text-muted)">Clears all quotations, work orders, production items, sales, and payments. Preserves employees, customers, pricing, and settings.</span>
                 </div>
               </div>
@@ -1896,7 +1898,7 @@
             </div>
           </div>
           <div class="form-group">
-            <label for="emp-form-password" style="color:#9CA3AF">Password <span style="font-size:0.7rem;color:#6B7280">(dev only — will be replaced by Supabase Auth)</span></label>
+            <label for="emp-form-password" style="color:#9CA3AF">Password</label>
             <input type="password" id="emp-form-password" class="form-control" style="background:#374151;border-color:#4B5563;color:#fff">
           </div>
           <div style="margin-top:24px;border-top:1px solid rgba(255,255,255,0.1);padding-top:20px;display:flex;justify-content:flex-end;gap:12px">
@@ -1908,6 +1910,5 @@
     </div>
   </div>
 
-  <script src="erp.js"></script>
 </body>
 </html>
