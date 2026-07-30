@@ -6,6 +6,7 @@ export interface Database {
     Tables: {
       employees: EmployeeRow;
       customers: CustomerRow;
+      products: ProductRow;
       product_templates: ProductTemplateRow;
       product_template_specs: ProductTemplateSpecRow;
       product_spec_options: ProductSpecOptionRow;
@@ -55,6 +56,16 @@ export interface CustomerRow {
   created_by: string | null;
   updated_at: string;
   deleted_at: string | null;
+}
+
+export interface ProductRow {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProductTemplateRow {
