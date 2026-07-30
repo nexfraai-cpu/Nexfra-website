@@ -1,0 +1,322 @@
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { QuotationsService } from './quotations.service.js';
+import { QuotationQueries } from './quotations.queries.js';
+import {
+  QuotationNotFoundError,
+  QuotationNotDraftError,
+  InvalidStatusTransitionError,
+  QuotationAlreadyApprovedError,
+  QuotationAlreadyDeniedError,
+  QuotationNotPendingError,
+  DenyReasonRequiredError,
+  TemplatePricingNotFoundError,
+} from './quotations.errors.js';
+
+jest.mock('../database/client', () => ({
+  supabase: {
+    from: jest.fn(() => ({
+      insert: jest.fn(() => ({ error: null })),
+    })),
+  },
+}));
+
+function createMockQuotation(overrides: Record<string, any> = {}) {
+  return {
+    id: 'q1111111-1111-1111-1111-111111111111',
+    quotation_number: 'NQ-000001',
+    version: 1,
+    customer_id: 'c1111111-1111-1111-1111-111111111111',
+    customer_name: 'Sharma Fabricators',
+    customer_details: { gst: '27AABCU1234D1Z1' },
+    product_key: 'trailer',
+    template_key: 'flatbed',
+    capacity: '40 Ton',
+    dimensions: { length: '40 Feet', width: '98 Inches' },
+    total: 850000,
+    manual_total: null,
+    gst_rate: 18,
+    order_qty: 1,
+    status: 'Draft',
+    terms: ['Term 1'],
+    scope_of_work: 'Fabrication of flat bed trailer',
+    bank_details: { bankName: 'ICICI' },
+    notes: null,
+    approved_by: null,
+    approved_at: null,
+    denied_by: null,
+    denied_at: null,
+    denied_reason: null,
+    created_by: 'actor-uuid-1',
+    created_at: '2026-07-30T10:00:00Z',
+    updated_at: '2026-07-30T10:00:00Z',
+    deleted_at: null,
+    ...overrides,
+  };
+}
+
+function createMockSpecValue(overrides: Record<string, any> = {}) {
+  return {
+    id: 'sv1111111-1111-1111-1111-111111111111',
+    quotation_id: 'q1111111-1111-1111-1111-111111111111',
+    spec_key: 'deck_length',
+    spec_name: 'Deck Length',
+    section: 'Body',
+    selected_value: '32 Feet',
+    custom_description: null,
+    custom_price: null,
+    is_not_required: false,
+    effective_price_diff: 0,
+    ...overrides,
+  };
+}
+
+function createMockCustomItem(overrides: Record<string, any> = {}) {
+  return {
+    id: 'ci1111111-1111-1111-1111-111111111111',
+    quotation_id: 'q1111111-1111-1111-1111-111111111111',
+    name: 'Extra LED Lighting',
+    description: 'Additional LED strip lighting',
+    quantity: 2,
+    price: 5000,
+    sort_order: 0,
+    created_at: '2026-07-30T10:00:00Z',
+    ...overrides,
+  };
+}
+
+function createMockQueries() {
+  return {
+    findAll: jest.fn<any>(),
+    findById: jest.fn<any>(),
+    create: jest.fn<any>(),
+    update: jest.fn<any>(),
+    softDelete: jest.fn<any>(),
+    findSpecValues: jest.fn<any>(),
+    replaceSpecValues: jest.fn<any>(),
+    findCustomItems: jest.fn<any>(),
+    replaceCustomItems: jest.fn<any>(),
+    findTemplateBasePrice: jest.fn<any>(),
+    findSpecPriceDiffs: jest.fn<any>(),
+    findAppSettings: jest.fn<any>(),
+  };
+}
+
+describe('QuotationsService', () => {
+  let queries: ReturnType<typeof createMockQueries>;
+  let service: QuotationsService;
+  const actorId = 'actor-uuid-1';
+
+  beforeEach(() => {
+    queries = createMockQueries();
+    service = new QuotationsService(queries as unknown as QuotationQueries);
+  });
+
+  describe('list', () => {
+    const defaultOptions = { page: 1, perPage: 20 };
+
+    it('returns paginated quotations', async () => {
+      const rows = [
+        createMockQuotation(),
+        createMockQuotation({ id: 'id-2', quotation_number: 'NQ-000002' }),
+      ];
+      queries.findAll.mockResolvedValue({ data: rows, total: 2 });
+
+      const result = await service.list(defaultOptions, actorId);
+
+      expect(queries.findAll).toHaveBeenCalledWith(defaultOptions);
+      expect(result.data).toHaveLength(2);
+      expect(result.meta.total).toBe(2);
+      expect(result.data[0].quotationNumber).toBe('NQ-000001');
+      expect(result.data[0].customerName).toBe('Sharma Fabricators');
+    });
+
+    it('passes filter params to queries', async () => {
+      queries.findAll.mockResolvedValue({ data: [], total: 0 });
+      await service.list({ ...defaultOptions, status: 'Draft', search: 'Sharma' }, actorId);
+      expect(queries.findAll).toHaveBeenCalledWith({
+        page: 1, perPage: 20, status: 'Draft', search: 'Sharma',
+      });
+    });
+  });
+
+  describe('getById', () => {
+    it('returns quotation with spec values and custom items', async () => {
+      const q = createMockQuotation();
+      const sv = createMockSpecValue();
+      const ci = createMockCustomItem();
+      queries.findById.mockResolvedValue(q);
+      queries.findSpecValues.mockResolvedValue([sv]);
+      queries.findCustomItems.mockResolvedValue([ci]);
+
+      const result = await service.getById(q.id, actorId);
+
+      expect(result.id).toBe(q.id);
+      expect(result.quotationNumber).toBe('NQ-000001');
+      expect(result.specValues).toHaveLength(1);
+      expect(result.specValues[0].specKey).toBe('deck_length');
+      expect(result.customItems).toHaveLength(1);
+      expect(result.customItems[0].name).toBe('Extra LED Lighting');
+      expect(result.total).toBe(850000);
+    });
+
+    it('throws QuotationNotFoundError when missing', async () => {
+      queries.findById.mockResolvedValue(null);
+      await expect(service.getById('bad-id', actorId)).rejects.toThrow(QuotationNotFoundError);
+    });
+
+    it('throws QuotationNotFoundError when deleted', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ deleted_at: '2026-07-31T00:00:00Z' }));
+      await expect(service.getById('any-id', actorId)).rejects.toThrow(QuotationNotFoundError);
+    });
+  });
+
+  describe('create', () => {
+    const createInput = {
+      customerName: 'New Customer',
+      productKey: 'trailer',
+      templateKey: 'flatbed',
+      specValues: [{ specKey: 'deck_length', selectedValue: '32 Feet' }],
+      customItems: [{ name: 'Extra Item', price: 10000 }],
+    };
+
+    it('creates quotation with pricing', async () => {
+      queries.findTemplateBasePrice.mockResolvedValue(850000);
+      queries.create.mockImplementation(async (input: any) =>
+        createMockQuotation({ id: 'new-id', total: input.total ?? 850000 }),
+      );
+      queries.replaceSpecValues.mockResolvedValue([createMockSpecValue()]);
+      queries.replaceCustomItems.mockResolvedValue([createMockCustomItem()]);
+
+      const result = await service.create(createInput, actorId);
+
+      expect(queries.findTemplateBasePrice).toHaveBeenCalledWith('flatbed');
+      expect(queries.create).toHaveBeenCalled();
+      expect(queries.replaceSpecValues).toHaveBeenCalled();
+      expect(queries.replaceCustomItems).toHaveBeenCalled();
+      expect(result.total).toBe(860000); // 850000 base + 0 spec diff + 10000 custom = 860000
+    });
+
+    it('creates quotation with manualTotal override', async () => {
+      queries.create.mockResolvedValue(createMockQuotation({ id: 'new-id', total: 900000 }));
+      queries.replaceSpecValues.mockResolvedValue([]);
+      queries.replaceCustomItems.mockResolvedValue([]);
+
+      const result = await service.create({ ...createInput, manualTotal: 900000 }, actorId);
+
+      expect(queries.findTemplateBasePrice).not.toHaveBeenCalled();
+      expect(result.total).toBe(900000);
+    });
+
+    it('throws TemplatePricingNotFoundError when template missing', async () => {
+      queries.findTemplateBasePrice.mockResolvedValue(null);
+      await expect(service.create(createInput, actorId)).rejects.toThrow(TemplatePricingNotFoundError);
+    });
+  });
+
+  describe('update', () => {
+    it('updates draft quotation with version increment', async () => {
+      const q = createMockQuotation();
+      queries.findById.mockResolvedValue(q);
+      queries.findTemplateBasePrice.mockResolvedValue(850000);
+      queries.update.mockResolvedValue({ ...q, total: 900000, version: 2 });
+      queries.replaceSpecValues.mockResolvedValue([]);
+      queries.replaceCustomItems.mockResolvedValue([]);
+
+      const result = await service.update(q.id, { notes: 'Updated notes' }, actorId);
+
+      expect(queries.update).toHaveBeenCalled();
+      expect(result.version).toBe(2);
+    });
+
+    it('throws QuotationNotDraftError when not draft', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Pending' }));
+      await expect(service.update('id', { notes: 'x' }, actorId)).rejects.toThrow(QuotationNotDraftError);
+    });
+  });
+
+  describe('softDelete', () => {
+    it('deletes draft quotation', async () => {
+      const q = createMockQuotation();
+      queries.findById.mockResolvedValue(q);
+      queries.softDelete.mockResolvedValue(undefined);
+
+      await service.softDelete(q.id, actorId);
+
+      expect(queries.softDelete).toHaveBeenCalledWith(q.id);
+    });
+
+    it('throws QuotationNotDraftError when not draft', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
+      await expect(service.softDelete('id', actorId)).rejects.toThrow(QuotationNotDraftError);
+    });
+  });
+
+  describe('submit', () => {
+    it('transitions from Draft to Pending', async () => {
+      const q = createMockQuotation();
+      queries.findById.mockResolvedValue(q);
+      queries.update.mockResolvedValue({ ...q, status: 'Pending' });
+      queries.findSpecValues.mockResolvedValue([]);
+      queries.findCustomItems.mockResolvedValue([]);
+
+      const result = await service.submit(q.id, actorId);
+
+      expect(queries.update).toHaveBeenCalledWith(q.id, { status: 'Pending' });
+      expect(result.status).toBe('Pending');
+    });
+
+    it('throws InvalidStatusTransitionError when not Draft', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
+      await expect(service.submit('id', actorId)).rejects.toThrow(InvalidStatusTransitionError);
+    });
+  });
+
+  describe('approve', () => {
+    it('approves a pending quotation', async () => {
+      const q = createMockQuotation({ status: 'Pending' });
+      queries.findById.mockResolvedValue(q);
+      queries.update.mockResolvedValue({ ...q, status: 'Approved', approved_by: actorId });
+      queries.findSpecValues.mockResolvedValue([]);
+      queries.findCustomItems.mockResolvedValue([]);
+
+      const result = await service.approve(q.id, 'Looks good', actorId);
+
+      expect(result.status).toBe('Approved');
+    });
+
+    it('throws QuotationAlreadyApprovedError', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
+      await expect(service.approve('id', undefined, actorId)).rejects.toThrow(QuotationAlreadyApprovedError);
+    });
+
+    it('throws QuotationAlreadyDeniedError', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Denied' }));
+      await expect(service.approve('id', undefined, actorId)).rejects.toThrow(QuotationAlreadyDeniedError);
+    });
+
+    it('throws QuotationNotPendingError for Draft', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Draft' }));
+      await expect(service.approve('id', undefined, actorId)).rejects.toThrow(QuotationNotPendingError);
+    });
+  });
+
+  describe('deny', () => {
+    it('denies a pending quotation', async () => {
+      const q = createMockQuotation({ status: 'Pending' });
+      queries.findById.mockResolvedValue(q);
+      queries.update.mockResolvedValue({
+        ...q, status: 'Denied', denied_by: actorId, denied_reason: 'Wrong specs',
+      });
+      queries.findSpecValues.mockResolvedValue([]);
+      queries.findCustomItems.mockResolvedValue([]);
+
+      const result = await service.deny(q.id, 'Wrong specs', actorId);
+
+      expect(result.status).toBe('Denied');
+    });
+
+    it('throws DenyReasonRequiredError without reason', async () => {
+      await expect(service.deny('id', '', actorId)).rejects.toThrow(DenyReasonRequiredError);
+    });
+  });
+});

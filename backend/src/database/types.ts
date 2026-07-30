@@ -70,10 +70,13 @@ export interface ProductRow {
 
 export interface ProductTemplateRow {
   id: string;
-  product_key: string;
+  product_id: string;
+  key: string;
   name: string;
-  description: string | null;
+  base_price: number;
+  dimensions: unknown;
   sort_order: number;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -82,10 +85,10 @@ export interface ProductTemplateSpecRow {
   id: string;
   template_id: string;
   spec_key: string;
-  label: string;
-  control_type: string;
-  unit: string | null;
-  placeholder: string | null;
+  name: string;
+  section: string;
+  spec_type: string;
+  default_value: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;
@@ -94,32 +97,39 @@ export interface ProductTemplateSpecRow {
 export interface ProductSpecOptionRow {
   id: string;
   spec_id: string;
-  label: string;
-  value: string;
-  multiplier: number;
+  option_name: string;
+  price_diff: number;
+  is_default: boolean;
   sort_order: number;
   created_at: string;
-  updated_at: string;
 }
 
 export interface QuotationRow {
   id: string;
   quotation_number: string;
-  customer_id: string;
-  employee_id: string;
-  product_key: string;
-  product_name: string;
-  quantity: number;
-  base_price: number;
-  spec_price_total: number;
-  custom_items_total: number;
-  total_amount: number;
-  delivery_date: string | null;
-  notes: string | null;
+  version: number;
+  customer_id: string | null;
+  customer_name: string;
+  customer_details: unknown;
+  product_key: string | null;
+  template_key: string | null;
+  capacity: string | null;
+  dimensions: unknown;
+  total: number;
+  manual_total: number | null;
+  gst_rate: number;
+  order_qty: number;
   status: 'Draft' | 'Pending' | 'Approved' | 'Denied';
-  approval_comment: string | null;
+  terms: unknown;
+  scope_of_work: string | null;
+  bank_details: unknown;
+  notes: string | null;
   approved_by: string | null;
   approved_at: string | null;
+  denied_by: string | null;
+  denied_at: string | null;
+  denied_reason: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -129,17 +139,23 @@ export interface QuotationSpecValueRow {
   id: string;
   quotation_id: string;
   spec_key: string;
-  spec_label: string;
-  value: string;
-  price_impact: number;
-  created_at: string;
+  spec_name: string;
+  section: string;
+  selected_value: string | null;
+  custom_description: string | null;
+  custom_price: number | null;
+  is_not_required: boolean;
+  effective_price_diff: number;
 }
 
 export interface QuotationCustomItemRow {
   id: string;
   quotation_id: string;
-  description: string;
-  amount: number;
+  name: string;
+  description: string | null;
+  quantity: number;
+  price: number;
+  sort_order: number;
   created_at: string;
 }
 
