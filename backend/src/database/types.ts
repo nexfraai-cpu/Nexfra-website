@@ -15,6 +15,7 @@ export interface Database {
       quotation_custom_items: QuotationCustomItemRow;
       work_orders: WorkOrderRow;
       production_items: ProductionItemRow;
+      production_stage_records: ProductionStageRecordRow;
       chassis_records: ChassisRecordRow;
       sales: SaleRow;
       payments: PaymentRow;
@@ -162,14 +163,20 @@ export interface QuotationCustomItemRow {
 export interface WorkOrderRow {
   id: string;
   work_order_number: string;
-  quotation_id: string;
-  customer_id: string;
-  total_amount: number;
-  delivery_date: string | null;
+  version: number;
+  quotation_id: string | null;
+  customer_name: string;
+  product_name: string;
+  specifications: unknown;
+  dimensions: unknown;
+  colour: string | null;
+  quantity: number;
+  factory_notes: string | null;
   due_date: string | null;
   is_urgent: boolean;
   status: string;
-  created_by: string | null;
+  booked_by: string | null;
+  approved_by: string | null;
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
@@ -178,27 +185,45 @@ export interface WorkOrderRow {
 export interface ProductionItemRow {
   id: string;
   work_order_id: string;
-  product_name: string;
-  quantity: number;
-  specs: unknown;
-  stage: string;
+  quotation_id: string | null;
+  current_stage: string;
+  stage_progress: unknown;
+  dispatch_fields: unknown;
   started_at: string | null;
   completed_at: string | null;
-  assigned_to: string | null;
-  notes: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
+}
+
+export interface ProductionStageRecordRow {
+  id: string;
+  production_item_id: string;
+  stage_key: string;
+  stage_name: string;
+  is_completed: boolean;
+  completed_by: string | null;
+  completed_at: string | null;
+  remark: string | null;
+  created_at: string;
 }
 
 export interface ChassisRecordRow {
   id: string;
-  production_item_id: string;
-  chassis_number: string;
-  stage: string;
-  recorded_at: string;
-  recorded_by: string | null;
+  work_order_id: string | null;
+  customer_id: string | null;
+  field: string | null;
+  brand: string | null;
+  model: string | null;
+  chassis_number: string | null;
+  arrival_date: string | null;
+  customer_name: string | null;
+  product_name: string | null;
   notes: string | null;
+  created_by: string | null;
   created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface SaleRow {
