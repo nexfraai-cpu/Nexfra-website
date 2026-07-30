@@ -14,7 +14,7 @@ import { productsRouter } from './products/products.routes.js';
 import { quotationsRouter } from './quotations/quotations.routes.js';
 import { workordersRouter } from './workorders/workorders.routes.js';
 import { productionRouter } from './production/production.routes.js';
-import { accountsRouter } from './accounts/accounts.routes.js';
+import { financeRouter } from './finance/finance.routes.js';
 import { adminRouter } from './admin/admin.routes.js';
 import { uploadsRouter } from './uploads/uploads.routes.js';
 
@@ -55,7 +55,7 @@ app.use('/api/products', productsRouter);
 app.use('/api/quotations', quotationsRouter);
 app.use('/api/work-orders', workordersRouter);
 app.use('/api/production', productionRouter);
-app.use('/api/accounts', accountsRouter);
+app.use('/api/finance', financeRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/uploads', uploadsRouter);
 

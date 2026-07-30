@@ -228,13 +228,18 @@ export interface ChassisRecordRow {
 
 export interface SaleRow {
   id: string;
-  quotation_id: string;
-  customer_id: string;
-  total_amount: number;
-  paid_amount: number;
-  status: string;
+  invoice_number: string;
+  quotation_id: string | null;
+  customer_name: string;
+  product_name: string;
+  amount: number;
+  status: 'Pending' | 'Partial' | 'Paid';
+  delivery_date: string | null;
+  notes: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface PaymentRow {
@@ -242,11 +247,14 @@ export interface PaymentRow {
   payment_number: string;
   sale_id: string;
   amount: number;
-  mode: string;
+  mode: 'Cash' | 'RTGS' | 'Cheque' | 'UPI' | 'Card' | 'Other';
   reference: string | null;
-  received_at: string;
+  payment_date: string;
+  notes: string | null;
   received_by: string | null;
   created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface AuditLogRow {
