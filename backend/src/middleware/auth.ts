@@ -3,16 +3,19 @@ import { supabase } from '../database/client.js';
 import { AuthError } from './error-handler.js';
 import { logger } from '../config/logger.js';
 
+export interface AuthenticatedUser {
+  id: string;
+  authId: string;
+  role: 'admin' | 'sales' | 'finance' | 'manager';
+  email: string;
+  name: string;
+  employeeNumber: string;
+}
+
 declare global {
   namespace Express {
     interface Request {
-      user?: {
-        id: string;
-        authId: string;
-        role: string;
-        email: string;
-        name: string;
-      };
+      user?: AuthenticatedUser;
     }
   }
 }
@@ -31,16 +34,15 @@ export async function auth(req: Request, _res: Response, next: NextFunction) {
     return next(new AuthError('Invalid or expired token'));
   }
 
-  const authId = data.user.id;
   const { data: employee, error: empError } = await supabase
     .from('employees')
-    .select('id, role, full_name')
-    .eq('auth_id', authId)
+    .select('id, role, full_name, employee_number')
+    .eq('auth_id', data.user.id)
     .is('deleted_at', null)
     .single();
 
   if (empError || !employee) {
-    logger.warn({ authId }, 'No employee record linked to auth user');
+    logger.warn({ authId: data.user.id }, 'No employee record linked to auth user');
     return next(new AuthError('Employee record not found'));
   }
 
@@ -50,10 +52,11 @@ export async function auth(req: Request, _res: Response, next: NextFunction) {
 
   req.user = {
     id: employee.id,
-    authId,
+    authId: data.user.id,
     role: employee.role,
     email: data.user.email ?? '',
     name: employee.full_name,
+    employeeNumber: employee.employee_number,
   };
 
   next();
