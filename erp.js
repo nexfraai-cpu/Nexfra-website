@@ -5,10 +5,181 @@
 // 1. AUTH CHECK & STATE INITIALIZATION
 (function checkAuth() {
   if (localStorage.getItem('adminLoggedIn') !== 'true') {
-    alert("Access Denied: Please log in as Administrator first.");
+    alert("Access Denied: Please log in first.");
     window.location.href = 'index.html';
   }
+  const role = localStorage.getItem('erpUserRole') || 'admin';
+  localStorage.setItem('erpUserRole', role);
+  if (!localStorage.getItem('erpUserName')) {
+    localStorage.setItem('erpUserName', role.charAt(0).toUpperCase() + role.slice(1));
+  }
 })();
+
+const ROLE_INFO = {
+  sales:   { name: 'Sales',   title: 'Sales Representative',  avatar: 'S' },
+  finance: { name: 'Finance', title: 'Finance Officer',       avatar: 'F' },
+  manager: { name: 'Manager', title: 'Production Manager',    avatar: 'M' },
+  admin:   { name: 'Admin',   title: 'Administrator',         avatar: 'A' }
+};
+
+const ROLE_PERMISSIONS = {
+  dashboard:      ['admin'],
+  quotations:     ['sales', 'admin'],
+  allquotations:  ['sales', 'admin'],
+  approvals:      ['admin'],
+  status:         ['manager', 'admin'],
+  workorders:     ['manager', 'admin'],
+  sales:          ['manager', 'admin'],
+  accounts:       ['finance', 'admin'],
+  admin:          ['admin']
+};
+
+function getCurrentRole() {
+  return localStorage.getItem('erpUserRole') || 'admin';
+}
+
+function userCanAccess(moduleName) {
+  const role = getCurrentRole();
+  const allowed = ROLE_PERMISSIONS[moduleName];
+  return allowed && allowed.includes(role);
+}
+
+function getUserDefaultModule() {
+  const role = getCurrentRole();
+  const defaults = {
+    sales:   'quotations',
+    finance: 'accounts',
+    manager: 'workorders',
+    admin:   'dashboard'
+  };
+  return defaults[role] || 'dashboard';
+}
+
+// ------------------------------------------
+// EmployeeService — abstraction layer for employee CRUD
+// Currently uses localStorage; later swap for Supabase/API
+// without changing the UI.
+// ------------------------------------------
+const EmployeeService = {
+  getEmployees() {
+    loadState();
+    return (STATE.employees || []).filter(e => !e.isDeleted);
+  },
+
+  getAllEmployees() {
+    loadState();
+    return STATE.employees || [];
+  },
+
+  getEmployeeById(id) {
+    loadState();
+    return (STATE.employees || []).find(e => e.id === id);
+  },
+
+  getEmployeeByEmail(email) {
+    loadState();
+    return (STATE.employees || []).find(e => e.email === email && !e.isDeleted);
+  },
+
+  authenticate(email, password) {
+    loadState();
+    const emp = (STATE.employees || []).find(e =>
+      e.email === email && e.password === password && !e.isDeleted && e.status === 'Active'
+    );
+    if (emp) {
+      emp.lastLogin = new Date().toISOString();
+      saveState();
+    }
+    return emp || null;
+  },
+
+  createEmployee(data) {
+    loadState();
+    STATE.employeeCounter = (STATE.employeeCounter || 0) + 1;
+    const id = 'EMP-' + String(STATE.employeeCounter).padStart(6, '0');
+    const emp = {
+      id,
+      fullName: data.fullName || '',
+      email: data.email || '',
+      phone: data.phone || '',
+      employeeCode: data.employeeCode || '',
+      role: data.role || 'sales',
+      status: data.status || 'Active',
+      password: data.password || 'changeme',
+      isDeleted: false,
+      createdDate: new Date().toISOString().split('T')[0],
+      lastLogin: null
+    };
+    STATE.employees.push(emp);
+    saveState();
+    return emp;
+  },
+
+  updateEmployee(id, data) {
+    loadState();
+    const emp = STATE.employees.find(e => e.id === id);
+    if (!emp) return null;
+    if (data.fullName !== undefined) emp.fullName = data.fullName;
+    if (data.email !== undefined) emp.email = data.email;
+    if (data.phone !== undefined) emp.phone = data.phone;
+    if (data.employeeCode !== undefined) emp.employeeCode = data.employeeCode;
+    if (data.role !== undefined) emp.role = data.role;
+    if (data.status !== undefined) emp.status = data.status;
+    if (data.password !== undefined) emp.password = data.password;
+    saveState();
+    return emp;
+  },
+
+  disableEmployee(id) {
+    loadState();
+    const emp = STATE.employees.find(e => e.id === id);
+    if (!emp) return null;
+    emp.status = emp.status === 'Active' ? 'Disabled' : 'Active';
+    saveState();
+    return emp;
+  },
+
+  deleteEmployee(id) {
+    loadState();
+    const emp = STATE.employees.find(e => e.id === id);
+    if (!emp) return null;
+    emp.isDeleted = true;
+    saveState();
+    return emp;
+  },
+
+  resetPassword(id, newPassword) {
+    loadState();
+    const emp = STATE.employees.find(e => e.id === id);
+    if (!emp) return null;
+    emp.password = newPassword;
+    saveState();
+    return emp;
+  }
+};
+
+const ROLE_PERMISSION_SETS = {
+  admin: {
+    label: 'Administrator',
+    canAccess: ['dashboard', 'quotations', 'allquotations', 'approvals', 'status', 'workorders', 'sales', 'accounts', 'admin'],
+    cannotAccess: []
+  },
+  sales: {
+    label: 'Sales Representative',
+    canAccess: ['dashboard', 'quotations', 'allquotations'],
+    cannotAccess: ['accounts', 'status', 'workorders', 'sales', 'approvals', 'admin']
+  },
+  finance: {
+    label: 'Finance Officer',
+    canAccess: ['dashboard', 'accounts'],
+    cannotAccess: ['quotations', 'allquotations', 'status', 'workorders', 'sales', 'approvals', 'admin']
+  },
+  manager: {
+    label: 'Production Manager',
+    canAccess: ['dashboard', 'workorders', 'status', 'sales'],
+    cannotAccess: ['accounts', 'quotations', 'allquotations', 'approvals', 'admin']
+  }
+};
 
 const STAGES = [
   'Pending',
@@ -274,6 +445,25 @@ function loadState() {
   if (!STATE.sales) STATE.sales = [];
   if (!STATE.payments) STATE.payments = [];
   if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
+  if (!STATE.employees) {
+    STATE.employees = [
+      {
+        id: 'EMP-000001',
+        fullName: 'Administrator',
+        email: 'admin@nexframfg.com',
+        phone: '+91 98765 43210',
+        employeeCode: 'ADM-001',
+        role: 'admin',
+        status: 'Active',
+        password: 'admin123',
+        isDeleted: false,
+        createdDate: new Date().toISOString().split('T')[0],
+        lastLogin: null
+      }
+    ];
+    STATE.employeeCounter = 1;
+  }
+  if (!STATE.employeeCounter) STATE.employeeCounter = STATE.employees.filter(e => !e.isDeleted).length;
 
   syncStateCalculations();
 }
@@ -320,6 +510,8 @@ function logSystemActivity(message) {
 
 document.addEventListener('DOMContentLoaded', () => {
   loadState();
+  filterSidebarByRole();
+  updateHeaderDisplay();
   initSidebarNav();
   initDashboardShortcuts();
   initQuotationBuilder();
@@ -344,9 +536,35 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+function filterSidebarByRole() {
+  const role = getCurrentRole();
+  document.querySelectorAll('.sidebar-link').forEach(link => {
+    const rolesAttr = link.getAttribute('data-roles');
+    if (!rolesAttr) return;
+    const allowedRoles = rolesAttr.split(',').map(r => r.trim());
+    if (!allowedRoles.includes(role)) {
+      link.style.display = 'none';
+    }
+  });
+}
+
+function updateHeaderDisplay() {
+  const role = getCurrentRole();
+  const info = ROLE_INFO[role] || ROLE_INFO.admin;
+  const userName = localStorage.getItem('erpUserName') || info.name;
+  const nameEl = document.getElementById('header-user-name');
+  const roleEl = document.getElementById('header-user-role');
+  const avatarEl = document.getElementById('header-user-avatar');
+  const footerEl = document.getElementById('sidebar-footer-info');
+  if (nameEl) nameEl.innerText = userName;
+  if (roleEl) roleEl.innerText = info.title;
+  if (avatarEl) avatarEl.innerText = userName.charAt(0).toUpperCase();
+  if (footerEl) footerEl.innerText = `Signed in as ${userName} (${info.title})`;
+}
+
 function handleUrlRouting() {
   const params = new URLSearchParams(window.location.search);
-  const targetModule = params.get('module') || 'dashboard';
+  const targetModule = params.get('module') || getUserDefaultModule();
   const targetProduct = params.get('product');
 
   switchModule(targetModule);
@@ -383,6 +601,14 @@ function initSidebarNav() {
 }
 
 function switchModule(moduleName) {
+  if (!userCanAccess(moduleName)) {
+    const fallback = getUserDefaultModule();
+    if (moduleName !== fallback) {
+      switchModule(fallback);
+      return;
+    }
+  }
+
   const links = document.querySelectorAll('.sidebar-link');
   const views = document.querySelectorAll('.module-view');
 
@@ -408,7 +634,6 @@ function switchModule(moduleName) {
     if (moduleName === 'workorders') renderWorkOrders();
     if (moduleName === 'status') renderProductionBoard();
     if (moduleName === 'accounts') renderFinanceLedger();
-    if (moduleName === 'customers') renderCustomersDirectory();
     if (moduleName === 'admin') renderAdminSettings();
     if (moduleName === 'quotations') startNewQuotationWizard();
     if (moduleName === 'allquotations') renderAllQuotations();
@@ -429,6 +654,8 @@ function initDashboardShortcuts() {
 function initLogout() {
   document.getElementById('portal-logout-btn').addEventListener('click', () => {
     localStorage.removeItem('adminLoggedIn');
+    localStorage.removeItem('erpUserRole');
+    localStorage.removeItem('erpUserName');
     alert("Signed out from Control Panel.");
     window.location.href = 'index.html';
   });
@@ -450,6 +677,41 @@ function renderDashboardOverview() {
   document.getElementById('kpi-active-wo').innerText = activeWOCount;
   document.getElementById('kpi-pending-quotes').innerText = pendingQuotesCount;
   document.getElementById('kpi-receivable').innerText = `₹${(outstandingBalance/100000).toFixed(1)}L`;
+
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+  const prevMonth = thisMonth === 0 ? 11 : thisMonth - 1;
+  const prevYear = thisMonth === 0 ? thisYear - 1 : thisYear;
+
+  const payments = STATE.payments || [];
+  const thisMonthPayments = payments.filter(p => {
+    const d = new Date(p.date);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  });
+  const prevMonthPayments = payments.filter(p => {
+    const d = new Date(p.date);
+    return d.getMonth() === prevMonth && d.getFullYear() === prevYear;
+  });
+
+  const thisMonthTotal = thisMonthPayments.reduce((s, p) => s + p.amount, 0);
+  const prevMonthTotal = prevMonthPayments.reduce((s, p) => s + p.amount, 0);
+
+  document.getElementById('kpi-monthly-billing').innerText = `₹${thisMonthTotal.toLocaleString('en-IN')}`;
+
+  const trendEl = document.getElementById('kpi-billing-trend');
+  if (prevMonthTotal > 0) {
+    const diff = ((thisMonthTotal - prevMonthTotal) / prevMonthTotal) * 100;
+    const sign = diff >= 0 ? '+' : '';
+    trendEl.innerText = `${sign}${diff.toFixed(1)}% vs last month`;
+    trendEl.className = `kpi-trend ${diff >= 0 ? 'trend-up' : 'trend-down'}`;
+  } else if (thisMonthTotal > 0) {
+    trendEl.innerText = 'New this month';
+    trendEl.className = 'kpi-trend trend-up';
+  } else {
+    trendEl.innerText = 'No billing this month';
+    trendEl.className = 'kpi-trend trend-neutral';
+  }
 
   const logListContainer = document.getElementById('system-log-list');
   logListContainer.innerHTML = STATE.logs.map(log => `
@@ -503,9 +765,13 @@ function renderChassisTable() {
   }
   var searchQ = (document.getElementById('ch-search-input')?.value || '').toLowerCase();
   var fieldFilter = fieldSelect ? fieldSelect.value : 'all';
+  var arrivalFrom = document.getElementById('ch-filter-arrival-from')?.value || '';
+  var arrivalTo = document.getElementById('ch-filter-arrival-to')?.value || '';
   var filtered = STATE.chassisRecords.filter(function(r) {
     if (fieldFilter !== 'all' && r.field !== fieldFilter) return false;
     if (searchQ && !r.field.toLowerCase().includes(searchQ) && !r.brand.toLowerCase().includes(searchQ) && !(r.model || '').toLowerCase().includes(searchQ) && !r.chassisNumber.toLowerCase().includes(searchQ) && !r.workOrderId.toLowerCase().includes(searchQ)) return false;
+    if (arrivalFrom && (r.arrivalDate || '') < arrivalFrom) return false;
+    if (arrivalTo && (r.arrivalDate || '') > arrivalTo) return false;
     return true;
   });
   tbody.innerHTML = filtered.length === 0 ? '<tr><td colspan="9" style="text-align:center;color:#94A3B8;padding:40px;font-size:0.85rem;">No chassis records found.</td></tr>' : filtered.map(function(r, i) {
@@ -3288,7 +3554,41 @@ window.renderAllQuotations = function() {
       </div>
     `;
   }).join('');
+  renderSalesCustomers();
 };
+
+window.toggleSalesCustomers = function() {
+  const content = document.getElementById('sales-customers-content');
+  const toggle = document.getElementById('sales-customers-toggle');
+  if (!content || !toggle) return;
+  const isHidden = content.style.display === 'none' || !content.style.display;
+  content.style.display = isHidden ? 'block' : 'none';
+  toggle.innerText = isHidden ? 'Hide' : 'Show';
+  if (isHidden) renderSalesCustomers();
+};
+
+function renderSalesCustomers() {
+  const tbody = document.querySelector('#customers-table tbody');
+  if (!tbody) return;
+  if (!STATE.customers) return;
+  tbody.innerHTML = STATE.customers.map(c => `
+    <tr>
+      <td style="font-weight:600">${c.company}</td>
+      <td style="font-family:var(--font-headings)">${c.gst}</td>
+      <td>
+        <div>${c.name}</div>
+        <div style="font-size:0.75rem;color:var(--color-text-muted)">${c.phone} | ${c.email}</div>
+      </td>
+      <td style="font-size:0.8rem;color:var(--color-text-muted)">${c.address}</td>
+      <td>
+        ${(c.vehicles || []).map(v => `<span class="tbl-status-badge status-paid" style="font-size:0.65rem;margin-right:4px">${v}</span>`).join('') || '<span class="section-hint" style="font-size:0.75rem">None</span>'}
+      </td>
+      <td style="font-family:var(--font-headings);font-weight:700;color:${c.outstanding > 0 ? 'var(--color-danger)' : 'var(--color-success)'}">
+        ₹${c.outstanding.toLocaleString('en-IN')}
+      </td>
+    </tr>
+  `).join('');
+}
 
 function renderWorkOrders() {
   loadState();
@@ -5259,10 +5559,19 @@ function initAdminModule() {
       renderAdminSettings();
     };
   }
+
+  const addBtn = document.getElementById('btn-add-employee');
+  if (addBtn) {
+    addBtn.onclick = () => openEmployeeForm(null);
+  }
 }
 
 function renderAdminSettings() {
   loadState();
+  initAdminTabs();
+  renderEmployeeManagement();
+  renderRolePermissions();
+  renderAdminProductsTab();
   document.getElementById('admin-p-floor-6').value = STATE.adminPricing.floor6;
   document.getElementById('admin-p-floor-10').value = STATE.adminPricing.floor10;
   document.getElementById('admin-p-steel-hardox').value = STATE.adminPricing.steelHardox;
@@ -5271,12 +5580,289 @@ function renderAdminSettings() {
 
   const auditContainer = document.getElementById('admin-audit-logs');
   if (auditContainer) {
-    auditContainer.innerHTML = `
+    auditContainer.innerHTML = (STATE.logs || []).map(log => `
+      <li><span class="audit-time">${log.time}</span> ${log.message}</li>
+    `).join('') || `
       <li><span class="audit-time">10:42 AM</span> Admin updated baseline pricing matrix coefficients.</li>
       <li><span class="audit-time">09:15 AM</span> Sales approved Quote #2026-002 for Tata Logistics.</li>
       <li><span class="audit-time">08:00 AM</span> System synchronized database instances (4 active modules).</li>
     `;
   }
+}
+
+function initAdminTabs() {
+  const tabs = document.querySelectorAll('#admin-tabs .admin-tab');
+  if (!tabs.length) return;
+  tabs.forEach(tab => {
+    tab.onclick = () => {
+      const tabName = tab.getAttribute('data-tab');
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
+      const panel = document.getElementById('admin-tab-' + tabName);
+      if (panel) panel.classList.add('active');
+    };
+  });
+}
+
+function renderAdminProductsTab() {
+  const productList = document.getElementById('admin-product-list');
+  const customItemsList = document.getElementById('admin-custom-items-list');
+  if (productList) {
+    productList.innerHTML = Object.entries(STATE.products || {}).map(([key, p]) => `
+      <div style="background:var(--color-bg);border:1px solid var(--color-border);padding:16px;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <strong style="font-size:0.85rem">${p.name}</strong>
+          <div style="font-size:0.75rem;color:var(--color-text-muted)">Base: ₹${(p.basePrice || 0).toLocaleString('en-IN')} · ${(p.templates || []).length} templates</div>
+        </div>
+        <span style="font-size:0.7rem;background:var(--color-primary-light);color:var(--color-primary-dark);padding:4px 8px;font-weight:600">${key}</span>
+      </div>
+    `).join('');
+  }
+  if (customItemsList) {
+    const items = STATE.customItemDefinitions || [];
+    if (items.length === 0) {
+      customItemsList.innerHTML = '<p class="section-hint">No custom item definitions yet.</p>';
+    } else {
+      customItemsList.innerHTML = items.map(item => `
+        <div style="background:var(--color-bg);border:1px solid var(--color-border);padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <strong style="font-size:0.8rem">${escHtml(item.name || 'Unnamed')}</strong>
+            <div style="font-size:0.7rem;color:var(--color-text-muted)">₹${(item.price || 0).toLocaleString('en-IN')}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+  }
+}
+
+// ------------------------------------------
+// 8b. EMPLOYEE MANAGEMENT
+// ------------------------------------------
+
+function renderEmployeeManagement() {
+  const tbody = document.getElementById('employees-tbody');
+  if (!tbody) return;
+  const employees = EmployeeService.getEmployees();
+  tbody.innerHTML = employees.map(emp => {
+    const roleInfo = ROLE_INFO[emp.role] || { name: emp.role, title: emp.role };
+    const loginDate = emp.lastLogin ? new Date(emp.lastLogin).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    return `
+      <tr>
+        <td style="font-family:var(--font-headings);font-weight:600;font-size:0.8rem">${emp.id}</td>
+        <td><strong>${escHtml(emp.fullName)}</strong></td>
+        <td style="font-size:0.8rem;color:var(--color-text-muted)">${escHtml(emp.email)}</td>
+        <td style="font-size:0.8rem">${emp.employeeCode ? escHtml(emp.employeeCode) : '<span class="section-hint">—</span>'}</td>
+        <td><span class="tbl-status-badge" style="background:${emp.role === 'admin' ? '#FEE2E2' : emp.role === 'sales' ? '#DBEAFE' : emp.role === 'finance' ? '#FEF3C7' : '#E0F2FE'};color:${emp.role === 'admin' ? '#991B1B' : emp.role === 'sales' ? '#1E40AF' : emp.role === 'finance' ? '#92400E' : '#075985'}">${roleInfo.name}</span></td>
+        <td><span class="tbl-status-badge ${emp.status === 'Active' ? 'status-paid' : 'status-unpaid'}">${emp.status}</span></td>
+        <td style="font-size:0.8rem">${emp.createdDate || '—'}</td>
+        <td style="font-size:0.8rem;color:var(--color-text-muted)">${loginDate}</td>
+        <td>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-outline btn-xs" onclick="openEmployeeView('${emp.id}')" title="View">👁</button>
+            <button class="btn btn-outline btn-xs" onclick="openEmployeeForm('${emp.id}')" title="Edit">✏️</button>
+            <button class="btn btn-outline btn-xs" onclick="disableEmployee('${emp.id}')" title="${emp.status === 'Active' ? 'Disable' : 'Enable'}" style="color:${emp.status === 'Active' ? '#D97706' : '#15803D'}">${emp.status === 'Active' ? '🔒' : '🔓'}</button>
+            <button class="btn btn-outline btn-xs" onclick="resetEmployeePassword('${emp.id}')" title="Reset Password">🔑</button>
+            <button class="btn btn-outline btn-xs" onclick="deleteEmployee('${emp.id}')" title="Delete" style="color:#DC2626">🗑</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderRolePermissions() {
+  const grid = document.getElementById('role-permissions-grid');
+  if (!grid) return;
+  grid.innerHTML = Object.entries(ROLE_PERMISSION_SETS).map(([key, set]) => `
+    <div class="card" style="padding:20px;margin:0">
+      <h4 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--color-border)">${set.label}</h4>
+      <div style="font-size:0.75rem">
+        <div style="margin-bottom:8px">
+          <span style="font-weight:600;color:var(--color-success)">Can access:</span>
+          <ul style="margin-top:4px;padding-left:16px;list-style:disc">
+            ${set.canAccess.map(m => `<li style="margin-bottom:2px">${m.charAt(0).toUpperCase() + m.slice(1)}</li>`).join('')}
+          </ul>
+        </div>
+        ${set.cannotAccess.length ? `
+        <div>
+          <span style="font-weight:600;color:var(--color-danger)">Cannot access:</span>
+          <ul style="margin-top:4px;padding-left:16px;list-style:disc;color:var(--color-text-muted)">
+            ${set.cannotAccess.map(m => `<li style="margin-bottom:2px">${m.charAt(0).toUpperCase() + m.slice(1)}</li>`).join('')}
+          </ul>
+        </div>` : '<div style="color:var(--color-primary);font-weight:600;margin-top:4px">Full system access</div>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+function openEmployeeForm(empId) {
+  const modal = document.getElementById('employee-form-modal');
+  const title = document.getElementById('employee-form-title');
+  const submitBtn = document.getElementById('emp-form-submit-btn');
+  const idField = document.getElementById('emp-form-id');
+  if (empId) {
+    const emp = EmployeeService.getEmployeeById(empId);
+    if (!emp) return;
+    title.innerText = 'Edit Employee';
+    submitBtn.innerText = 'Update Employee';
+    idField.value = emp.id;
+    document.getElementById('emp-form-fullName').value = emp.fullName || '';
+    document.getElementById('emp-form-email').value = emp.email || '';
+    document.getElementById('emp-form-phone').value = emp.phone || '';
+    document.getElementById('emp-form-code').value = emp.employeeCode || '';
+    document.getElementById('emp-form-role').value = emp.role || 'sales';
+    document.getElementById('emp-form-status').value = emp.status || 'Active';
+    document.getElementById('emp-form-password').value = '';
+  } else {
+    title.innerText = 'Add Employee';
+    submitBtn.innerText = 'Save Employee';
+    idField.value = '';
+    document.getElementById('emp-form-fullName').value = '';
+    document.getElementById('emp-form-email').value = '';
+    document.getElementById('emp-form-phone').value = '';
+    document.getElementById('emp-form-code').value = '';
+    document.getElementById('emp-form-role').value = 'sales';
+    document.getElementById('emp-form-status').value = 'Active';
+    document.getElementById('emp-form-password').value = '';
+  }
+  modal.classList.add('active');
+}
+
+function closeEmployeeForm() {
+  document.getElementById('employee-form-modal').classList.remove('active');
+}
+
+function saveEmployeeForm(e) {
+  e.preventDefault();
+  const id = document.getElementById('emp-form-id').value;
+  const data = {
+    fullName: document.getElementById('emp-form-fullName').value.trim(),
+    email: document.getElementById('emp-form-email').value.trim(),
+    phone: document.getElementById('emp-form-phone').value.trim(),
+    employeeCode: document.getElementById('emp-form-code').value.trim(),
+    role: document.getElementById('emp-form-role').value,
+    status: document.getElementById('emp-form-status').value
+  };
+  const password = document.getElementById('emp-form-password').value.trim();
+
+  if (!data.fullName || !data.email) {
+    alert('Full Name and Email are required.');
+    return;
+  }
+
+  if (id) {
+    if (password) data.password = password;
+    EmployeeService.updateEmployee(id, data);
+    logSystemActivity('Employee ' + data.fullName + ' updated.');
+  } else {
+    if (!password) {
+      alert('Password is required for new employees.');
+      return;
+    }
+    data.password = password;
+    EmployeeService.createEmployee(data);
+    logSystemActivity('Employee ' + data.fullName + ' created.');
+  }
+
+  closeEmployeeForm();
+  renderAdminSettings();
+  return false;
+}
+
+function openEmployeeView(empId) {
+  const emp = EmployeeService.getEmployeeById(empId);
+  if (!emp) return;
+  const roleInfo = ROLE_INFO[emp.role] || { name: emp.role, title: emp.role };
+  const loginDate = emp.lastLogin ? new Date(emp.lastLogin).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never';
+  const permSet = ROLE_PERMISSION_SETS[emp.role];
+  const content = document.getElementById('employee-view-content');
+  content.innerHTML = `
+    <div style="background:#374151;padding:24px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+        <div style="width:48px;height:48px;background:${emp.role === 'admin' ? '#DC2626' : emp.role === 'sales' ? '#2563EB' : emp.role === 'finance' ? '#D97706' : '#0891B2'};color:#fff;font-family:var(--font-headings);font-weight:700;font-size:1.25rem;display:flex;align-items:center;justify-content:center">${emp.fullName.charAt(0).toUpperCase()}</div>
+        <div>
+          <div style="font-size:1.15rem;font-weight:700;color:#fff">${escHtml(emp.fullName)}</div>
+          <div style="font-size:0.8rem;color:#9CA3AF">${emp.id}</div>
+        </div>
+        <div style="margin-left:auto">
+          <span class="tbl-status-badge ${emp.status === 'Active' ? 'status-paid' : 'status-unpaid'}">${emp.status}</span>
+        </div>
+      </div>
+      <div class="grid grid-2-col gap-md" style="font-size:0.85rem">
+        <div><span style="color:#9CA3AF">Email:</span><br><span style="color:#fff">${escHtml(emp.email)}</span></div>
+        <div><span style="color:#9CA3AF">Phone:</span><br><span style="color:#fff">${emp.phone || '—'}</span></div>
+        <div><span style="color:#9CA3AF">Employee Code:</span><br><span style="color:#fff">${emp.employeeCode || '—'}</span></div>
+        <div><span style="color:#9CA3AF">Role:</span><br><span style="color:#fff">${roleInfo.title}</span></div>
+        <div><span style="color:#9CA3AF">Created:</span><br><span style="color:#fff">${emp.createdDate || '—'}</span></div>
+        <div><span style="color:#9CA3AF">Last Login:</span><br><span style="color:#fff">${loginDate}</span></div>
+      </div>
+    </div>
+    ${permSet ? `
+    <div style="background:#374151;padding:24px">
+      <h4 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.5px;color:#fff;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.1)">Permissions</h4>
+      <div style="font-size:0.8rem">
+        <div style="margin-bottom:12px">
+          <span style="font-weight:600;color:#10B981">Can access:</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+            ${permSet.canAccess.map(m => `<span style="background:rgba(16,185,129,0.15);color:#10B981;padding:4px 10px;font-size:0.7rem;font-weight:600">${m.charAt(0).toUpperCase() + m.slice(1)}</span>`).join('')}
+          </div>
+        </div>
+        ${permSet.cannotAccess.length ? `
+        <div>
+          <span style="font-weight:600;color:#EF4444">Cannot access:</span>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
+            ${permSet.cannotAccess.map(m => `<span style="background:rgba(239,68,68,0.1);color:#FCA5A5;padding:4px 10px;font-size:0.7rem;font-weight:600">${m.charAt(0).toUpperCase() + m.slice(1)}</span>`).join('')}
+          </div>
+        </div>` : '<div style="color:#10B981;font-weight:600;margin-top:4px">✓ Full system access</div>'}
+      </div>
+    </div>` : ''}
+  `;
+  document.getElementById('employee-view-modal').classList.add('active');
+}
+
+function closeEmployeeView() {
+  document.getElementById('employee-view-modal').classList.remove('active');
+}
+
+window.openEmployeeView = openEmployeeView;
+window.closeEmployeeView = closeEmployeeView;
+window.openEmployeeForm = openEmployeeForm;
+window.closeEmployeeForm = closeEmployeeForm;
+window.saveEmployeeForm = saveEmployeeForm;
+
+window.disableEmployee = function(empId) {
+  const emp = EmployeeService.getEmployeeById(empId);
+  if (!emp) return;
+  const newStatus = emp.status === 'Active' ? 'disable' : 'enable';
+  if (!confirm('Are you sure you want to ' + newStatus + ' employee ' + emp.fullName + '?')) return;
+  EmployeeService.disableEmployee(empId);
+  logSystemActivity('Employee ' + emp.fullName + ' ' + (emp.status === 'Active' ? 'disabled' : 'enabled') + '.');
+  renderAdminSettings();
+};
+
+window.deleteEmployee = function(empId) {
+  const emp = EmployeeService.getEmployeeById(empId);
+  if (!emp) return;
+  if (!confirm('Soft-delete employee ' + emp.fullName + '? They can be restored from storage.')) return;
+  EmployeeService.deleteEmployee(empId);
+  logSystemActivity('Employee ' + emp.fullName + ' deleted (soft).');
+  renderAdminSettings();
+};
+
+window.resetEmployeePassword = function(empId) {
+  const emp = EmployeeService.getEmployeeById(empId);
+  if (!emp) return;
+  const newPwd = prompt('Enter new password for ' + emp.fullName + ':');
+  if (!newPwd || newPwd.trim() === '') return;
+  EmployeeService.resetPassword(empId, newPwd.trim());
+  logSystemActivity('Password reset for employee ' + emp.fullName + '.');
+  alert('Password updated successfully.');
+};
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 // ------------------------------------------

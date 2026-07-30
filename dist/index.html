@@ -16,7 +16,7 @@
   <!-- GSAP for Smooth Animations -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/styles-yUOeEVp0.css">
+  <link rel="stylesheet" crossorigin href="/assets/styles-4FhM2E9Z.css">
 </head>
 <body>
 
@@ -560,22 +560,39 @@
 
     <div class="portal-body">
       <div class="portal-login-screen" id="portal-login-screen">
-        <div class="login-card" style="max-width: 460px;">
+        <div class="login-card" style="max-width: 540px;">
           <div class="login-header">
-            <h2>Administrator Sign In</h2>
-            <p>Access the Nexfra internal operating system to manage Sales, Production, Accounts, and System Pricing.</p>
+            <h2>Nexfra Control Panel</h2>
+            <p>Select your role to access the internal operating system.</p>
           </div>
           <form class="login-form" id="portal-login-form">
             <div class="form-group">
-              <label for="login-email">Admin ID / Email</label>
+              <label for="login-email">Email</label>
               <input type="text" id="login-email" class="form-control" value="admin@nexframfg.com" required>
             </div>
             <div class="form-group">
-              <label for="login-password">Access Password</label>
-              <input type="password" id="login-password" class="form-control" value="••••••••" required>
+              <label for="login-password">Password</label>
+              <input type="password" id="login-password" class="form-control" value="admin123" required>
             </div>
-            <button type="submit" class="btn btn-primary w-full btn-lg">Launch Admin Portal</button>
+            <button type="submit" class="btn btn-primary w-full btn-lg">Sign In</button>
           </form>
+          <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.1);text-align:center">
+            <span style="font-size:0.7rem;color:#6B7280">Dev quick-login:</span>
+            <div class="role-selector" id="role-selector" style="margin-top:8px;grid-template-columns:repeat(4,1fr)">
+              <button class="role-card" data-role="sales" type="button" style="padding:12px 8px">
+                <span class="role-name" style="font-size:0.8rem">Sales</span>
+              </button>
+              <button class="role-card" data-role="finance" type="button" style="padding:12px 8px">
+                <span class="role-name" style="font-size:0.8rem">Finance</span>
+              </button>
+              <button class="role-card" data-role="manager" type="button" style="padding:12px 8px">
+                <span class="role-name" style="font-size:0.8rem">Manager</span>
+              </button>
+              <button class="role-card" data-role="admin" type="button" style="padding:12px 8px">
+                <span class="role-name" style="font-size:0.8rem">Admin</span>
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="portal-dashboard-view" id="portal-dashboard-view" style="display: none; width: 100%; height: 100%;">

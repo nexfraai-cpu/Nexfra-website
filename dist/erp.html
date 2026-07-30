@@ -17,7 +17,7 @@
   
   <!-- html2pdf.js for High-Fidelity Client-side PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/styles-yUOeEVp0.css">
+  <link rel="stylesheet" crossorigin href="/assets/styles-4FhM2E9Z.css">
 </head>
 <body style="background-color: var(--color-bg); overflow: hidden; height: 100vh; display: flex; flex-direction: column;">
 
@@ -28,10 +28,10 @@
     </div>
     <div class="portal-user-profile" id="user-profile-header">
       <div class="user-info">
-        <span class="user-name">Administrator</span>
-        <span class="user-role">System Admin (Full Access)</span>
+        <span class="user-name" id="header-user-name">Operator</span>
+        <span class="user-role" id="header-user-role">Loading...</span>
       </div>
-      <div class="user-avatar">A</div>
+      <div class="user-avatar" id="header-user-avatar">O</div>
       <button class="btn-logout" id="portal-logout-btn" title="Logout" style="margin-left: 12px;">
         <svg class="icon-sm" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       </button>
@@ -44,49 +44,45 @@
     <!-- LEFT SIDEBAR -->
     <aside class="dashboard-sidebar" style="background-color: #111827;">
       <nav class="sidebar-nav">
-        <a href="#" class="sidebar-link active" data-module="dashboard">
+        <a href="#" class="sidebar-link active" data-module="dashboard" data-roles="admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
           Overview
         </a>
-        <a href="#" class="sidebar-link" data-module="quotations">
+        <a href="#" class="sidebar-link" data-module="quotations" data-roles="sales,admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Quotation Builder
         </a>
-        <a href="#" class="sidebar-link" data-module="allquotations">
+        <a href="#" class="sidebar-link" data-module="allquotations" data-roles="sales,admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
           All Quotations
         </a>
-        <a href="#" class="sidebar-link" data-module="approvals">
+        <a href="#" class="sidebar-link" data-module="approvals" data-roles="admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
           Approval
         </a>
-        <a href="#" class="sidebar-link" data-module="status">
+        <a href="#" class="sidebar-link" data-module="status" data-roles="manager,admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           Production Board
         </a>
-        <a href="#" class="sidebar-link" data-module="workorders">
+        <a href="#" class="sidebar-link" data-module="workorders" data-roles="manager,admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           Work Orders List
         </a>
-        <a href="#" class="sidebar-link" data-module="sales">
+        <a href="#" class="sidebar-link" data-module="sales" data-roles="manager,admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83M22 12A10 10 0 0 0 12 2v10z"/></svg>
           Chassis Filtering
         </a>
-        <a href="#" class="sidebar-link" data-module="accounts">
+        <a href="#" class="sidebar-link" data-module="accounts" data-roles="finance,admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
           Finance Ledger
         </a>
-        <a href="#" class="sidebar-link" data-module="customers">
-          <svg class="sidebar-icon" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Client Directory
-        </a>
-        <a href="#" class="sidebar-link" data-module="admin">
+        <a href="#" class="sidebar-link" data-module="admin" data-roles="admin">
           <svg class="sidebar-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33a1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09"/></svg>
-          Pricing Config
+          Administration
         </a>
       </nav>
       <div style="padding: 24px; font-size: 0.7rem; color: #4B5563; border-top: 1px solid rgba(255, 255, 255, 0.05); margin-top: auto;">
-        Signed in: admin@nexframfg.com<br>IP: 192.168.1.48
+        <span id="sidebar-footer-info">Loading...</span>
       </div>
     </aside>
 
@@ -122,8 +118,8 @@
           </div>
           <div class="kpi-card">
             <span class="kpi-label">Monthly Billing</span>
-            <span class="kpi-value">₹48,20,000</span>
-            <span class="kpi-trend trend-up">+14% vs June</span>
+            <span class="kpi-value" id="kpi-monthly-billing">₹0</span>
+            <span class="kpi-trend trend-up" id="kpi-billing-trend">—</span>
           </div>
           <div class="kpi-card">
             <span class="kpi-label">Accounts Receivable</span>
@@ -228,10 +224,13 @@
           <div class="search-wrap">
             <input type="text" id="ch-search-input" class="form-control form-control-sm" placeholder="Search field, brand, chassis #..." oninput="renderChassisTable()">
           </div>
-          <div class="filter-wrap">
-            <select id="ch-filter-field" class="form-control form-control-sm" onchange="renderChassisTable()">
+          <div class="filter-wrap" style="display:flex;gap:6px;align-items:center;">
+            <select id="ch-filter-field" class="form-control form-control-sm" onchange="renderChassisTable()" style="width:130px;">
               <option value="all">All Fields</option>
             </select>
+            <input type="date" id="ch-filter-arrival-from" class="form-control form-control-sm" onchange="renderChassisTable()" style="width:130px;font-size:0.75rem;padding:4px 8px;" title="Arrival From">
+            <span style="font-size:0.7rem;color:#94A3B8;">–</span>
+            <input type="date" id="ch-filter-arrival-to" class="form-control form-control-sm" onchange="renderChassisTable()" style="width:130px;font-size:0.75rem;padding:4px 8px;" title="Arrival To">
           </div>
         </div>
 
@@ -325,6 +324,33 @@
         </div>
         <div id="allquotations-cards-container" style="margin-top:20px; display:flex; flex-direction:column; gap:12px;">
           <!-- Dynamic Quotations List Injected by JS -->
+        </div>
+
+        <!-- Customers Directory (accessible from Sales workflow) -->
+        <div class="card mt-lg" id="sales-customers-section">
+          <div class="card-header" style="cursor:pointer;margin-bottom:0;padding-bottom:12px" onclick="toggleSalesCustomers()">
+            <h3>Customer Directory</h3>
+            <span id="sales-customers-toggle" style="font-size:0.75rem;color:var(--color-text-muted)">Show</span>
+          </div>
+          <div id="sales-customers-content" style="display:none;padding-top:20px;border-top:1px solid var(--color-border)">
+            <div class="table-container">
+              <table class="data-table" id="customers-table">
+                <thead>
+                  <tr>
+                    <th>Company Name</th>
+                    <th>GSTIN</th>
+                    <th>Primary Contact</th>
+                    <th>Registered Address</th>
+                    <th>Registered Vehicles</th>
+                    <th>Outstanding Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- Injected by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1240,45 +1266,83 @@
         </div>
       </div>
 
-      <!-- MODULE: CUSTOMER DIRECTORY -->
-      <div class="module-view" id="view-customers">
-        <div class="module-header">
-          <div>
-            <h1>Client Registry Directory</h1>
-            <p>Verified companies, contact info, and registered commercial vehicle chassis allocations.</p>
-          </div>
-        </div>
-
-        <div class="table-container">
-          <table class="data-table" id="customers-table">
-            <thead>
-              <tr>
-                <th>Company Name</th>
-                <th>GSTIN</th>
-                <th>Primary Contact</th>
-                <th>Registered Address</th>
-                <th>Registered Vehicles</th>
-                <th>Outstanding Balance</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Injected by JS -->
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- MODULE: ADMIN CONFIG -->
+      <!-- MODULE: ADMIN CONFIG (tabbed) -->
       <div class="module-view" id="view-admin">
         <div class="module-header">
           <div>
-            <h1>Raw Material Pricing Settings</h1>
-            <p>Modify raw material upgrading coefficients. Price adjustments instantly reflect in the Quotation Builder.</p>
+            <h1>Administration</h1>
+            <p>System configuration, employee management, pricing, and settings.</p>
           </div>
         </div>
 
-        <div class="grid grid-2-col gap-lg">
-          <!-- Pricing Matrix Form -->
+        <!-- Tab Navigation -->
+        <div class="admin-tabs" id="admin-tabs">
+          <button class="admin-tab active" data-tab="employees">Employees</button>
+          <button class="admin-tab" data-tab="products">Products &amp; Templates</button>
+          <button class="admin-tab" data-tab="pricing">Pricing Configuration</button>
+          <button class="admin-tab" data-tab="roles">Roles &amp; Permissions</button>
+          <button class="admin-tab" data-tab="audit">Audit Logs</button>
+          <button class="admin-tab" data-tab="settings">System Settings</button>
+        </div>
+
+        <!-- Tab: Employees -->
+        <div class="admin-tab-panel active" id="admin-tab-employees">
+          <div class="card">
+            <div class="card-header">
+              <h3>Employee Management</h3>
+              <button class="btn btn-primary btn-sm" id="btn-add-employee">+ Add Employee</button>
+            </div>
+            <div class="table-container">
+              <table class="data-table" id="employees-table">
+                <thead>
+                  <tr>
+                    <th>Employee ID</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Created Date</th>
+                    <th>Last Login</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="employees-tbody">
+                  <!-- Injected by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Products & Templates -->
+        <div class="admin-tab-panel" id="admin-tab-products">
+          <div class="card">
+            <div class="card-header">
+              <h3>Products &amp; Templates</h3>
+            </div>
+            <div id="admin-products-content">
+              <p class="section-hint" style="margin-bottom:16px">Product templates and base configurations are managed from the product definitions. Custom item definitions and spec overrides are listed below.</p>
+              <div class="grid grid-2-col gap-lg">
+                <div>
+                  <h4 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--color-border)">Product Types</h4>
+                  <div id="admin-product-list" style="display:flex;flex-direction:column;gap:8px">
+                    <!-- Injected by JS -->
+                  </div>
+                </div>
+                <div>
+                  <h4 style="font-size:0.85rem;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid var(--color-border)">Custom Item Definitions</h4>
+                  <div id="admin-custom-items-list" style="display:flex;flex-direction:column;gap:8px">
+                    <!-- Injected by JS -->
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Pricing Configuration -->
+        <div class="admin-tab-panel" id="admin-tab-pricing">
           <div class="card">
             <div class="card-header">
               <h3>Pricing Matrix Adjustments</h3>
@@ -1319,8 +1383,22 @@
               <button type="submit" class="btn btn-primary w-full mt-lg">Update System Pricing Coefficients</button>
             </form>
           </div>
+        </div>
 
-          <!-- Administrative Logs -->
+        <!-- Tab: Roles & Permissions -->
+        <div class="admin-tab-panel" id="admin-tab-roles">
+          <div class="card">
+            <div class="card-header">
+              <h3>Role Permissions Reference</h3>
+            </div>
+            <div class="grid grid-4-col gap-md" id="role-permissions-grid">
+              <!-- Injected by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Audit Logs -->
+        <div class="admin-tab-panel" id="admin-tab-audit">
           <div class="card">
             <div class="card-header">
               <h3>System Session Audit Log</h3>
@@ -1330,6 +1408,25 @@
               <ul class="audit-list" id="admin-audit-logs">
                 <!-- Injected by JS -->
               </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: System Settings -->
+        <div class="admin-tab-panel" id="admin-tab-settings">
+          <div class="card">
+            <div class="card-header">
+              <h3>System Settings</h3>
+            </div>
+            <div id="admin-settings-content">
+              <p class="section-hint" style="margin-bottom:16px">General ERP system preferences and configuration.</p>
+              <div class="admin-matrix-section">
+                <h4>Data Management</h4>
+                <div style="display:flex;flex-direction:column;gap:12px;margin-top:12px">
+                  <button onclick="resetAllSystemData()" class="btn" style="background:rgba(239,68,68,0.1);color:#EF4444;border:1px solid rgba(239,68,68,0.3);padding:10px 20px;font-size:0.8rem;font-weight:700;cursor:pointer;border-radius:6px;width:fit-content">Reset Test Data</button>
+                  <span style="font-size:0.75rem;color:var(--color-text-muted)">Clears all quotations, work orders, production items, sales, and payments. Preserves employees, customers, pricing, and settings.</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1729,6 +1826,84 @@
             💾 Save Pipeline Settings
           </button>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- EMPLOYEE MODALS -->
+  <!-- ========================================== -->
+
+  <!-- View Employee Modal -->
+  <div class="pdf-modal" id="employee-view-modal">
+    <div class="pdf-modal-container" style="max-width:600px;height:auto;max-height:80%">
+      <div class="pdf-modal-toolbar">
+        <h3>Employee Details</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeEmployeeView()" style="color:#fff;border-color:rgba(255,255,255,0.3)">Close</button>
+      </div>
+      <div class="pdf-modal-content" style="background:#1F2937;padding:30px">
+        <div id="employee-view-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Employee Modal -->
+  <div class="pdf-modal" id="employee-form-modal">
+    <div class="pdf-modal-container" style="max-width:600px;height:auto;max-height:90%">
+      <div class="pdf-modal-toolbar">
+        <h3 id="employee-form-title">Add Employee</h3>
+        <button class="btn btn-outline btn-sm" onclick="closeEmployeeForm()" style="color:#fff;border-color:rgba(255,255,255,0.3)">Cancel</button>
+      </div>
+      <div class="pdf-modal-content" style="background:#1F2937;padding:30px;overflow-y:auto">
+        <form id="employee-form" onsubmit="return saveEmployeeForm(event)">
+          <input type="hidden" id="emp-form-id" value="">
+          <div class="grid grid-2-col gap-md">
+            <div class="form-group">
+              <label for="emp-form-fullName" style="color:#9CA3AF">Full Name *</label>
+              <input type="text" id="emp-form-fullName" class="form-control" required style="background:#374151;border-color:#4B5563;color:#fff">
+            </div>
+            <div class="form-group">
+              <label for="emp-form-email" style="color:#9CA3AF">Email *</label>
+              <input type="email" id="emp-form-email" class="form-control" required style="background:#374151;border-color:#4B5563;color:#fff">
+            </div>
+          </div>
+          <div class="grid grid-2-col gap-md">
+            <div class="form-group">
+              <label for="emp-form-phone" style="color:#9CA3AF">Phone Number</label>
+              <input type="text" id="emp-form-phone" class="form-control" style="background:#374151;border-color:#4B5563;color:#fff">
+            </div>
+            <div class="form-group">
+              <label for="emp-form-code" style="color:#9CA3AF">Employee Code</label>
+              <input type="text" id="emp-form-code" class="form-control" style="background:#374151;border-color:#4B5563;color:#fff">
+            </div>
+          </div>
+          <div class="grid grid-2-col gap-md">
+            <div class="form-group">
+              <label for="emp-form-role" style="color:#9CA3AF">Role *</label>
+              <select id="emp-form-role" class="form-control" required style="background:#374151;border-color:#4B5563;color:#fff">
+                <option value="sales">Sales</option>
+                <option value="finance">Finance</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="emp-form-status" style="color:#9CA3AF">Status *</label>
+              <select id="emp-form-status" class="form-control" required style="background:#374151;border-color:#4B5563;color:#fff">
+                <option value="Active">Active</option>
+                <option value="Disabled">Disabled</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="emp-form-password" style="color:#9CA3AF">Password <span style="font-size:0.7rem;color:#6B7280">(dev only — will be replaced by Supabase Auth)</span></label>
+            <input type="password" id="emp-form-password" class="form-control" style="background:#374151;border-color:#4B5563;color:#fff">
+          </div>
+          <div style="margin-top:24px;border-top:1px solid rgba(255,255,255,0.1);padding-top:20px;display:flex;justify-content:flex-end;gap:12px">
+            <button type="button" class="btn btn-outline" onclick="closeEmployeeForm()" style="color:#fff;border-color:rgba(255,255,255,0.3)">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="emp-form-submit-btn">Save Employee</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

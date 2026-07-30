@@ -132,7 +132,23 @@ const DEFAULT_STATE = {
     steelHardox: 150000,
     axle2: -100000,
     axle3_16: 80000
-  }
+  },
+  employees: [
+    {
+      id: 'EMP-000001',
+      fullName: 'Administrator',
+      email: 'admin@nexframfg.com',
+      phone: '+91 98765 43210',
+      employeeCode: 'ADM-001',
+      role: 'admin',
+      status: 'Active',
+      password: 'admin123',
+      isDeleted: false,
+      createdDate: new Date().toISOString().split('T')[0],
+      lastLogin: null
+    }
+  ],
+  employeeCounter: 1
 };
 
 function syncStateCalculations(s) {
@@ -172,11 +188,13 @@ function loadState() {
   if (saved) {
     try {
       st = JSON.parse(saved);
-      if (!st.quotations) st.quotations = [];
+          if (!st.quotations) st.quotations = [];
       if (!st.workOrders) st.workOrders = [];
       if (!st.productionItems) st.productionItems = [];
       if (!st.sales) st.sales = [];
       if (!st.payments) st.payments = [];
+      if (!st.employees) st.employees = DEFAULT_STATE.employees.map(e => Object.assign({}, e));
+      if (!st.employeeCounter) st.employeeCounter = DEFAULT_STATE.employeeCounter;
     } catch(e) {
       console.error("Failed to parse state, using defaults.", e);
     }
@@ -451,20 +469,60 @@ function initPortalLogin() {
     });
   });
 
-  // Admin login form submit
+  // Dev quick-login role selector
+  const roleSelector = document.getElementById('role-selector');
+  if (roleSelector) {
+    roleSelector.addEventListener('click', (e) => {
+      const roleCard = e.target.closest('.role-card');
+      if (!roleCard) return;
+      const role = roleCard.getAttribute('data-role');
+      const st = loadState();
+      const emp = (st.employees || []).find(e => e.role === role && !e.isDeleted && e.status === 'Active');
+      if (emp) {
+        emp.lastLogin = new Date().toISOString();
+        saveState();
+        localStorage.setItem('adminLoggedIn', 'true');
+        localStorage.setItem('erpUserRole', emp.role);
+        localStorage.setItem('erpUserName', emp.fullName);
+        logSystemActivity(emp.fullName + ' (' + emp.role + ') quick-login.');
+      } else {
+        localStorage.setItem('adminLoggedIn', 'true');
+        localStorage.setItem('erpUserRole', role);
+        localStorage.setItem('erpUserName', role.charAt(0).toUpperCase() + role.slice(1));
+      }
+      checkLoginState();
+      const redirectTarget = localStorage.getItem('redirectAfterLogin');
+      if (redirectTarget) {
+        localStorage.removeItem('redirectAfterLogin');
+        openErpPage(redirectTarget);
+      } else {
+        openErpPage();
+      }
+    });
+  }
+
+  // Employee login form submit
   if (loginForm) {
     loginForm.addEventListener('submit', (e) => {
       e.preventDefault();
-      
-      // Perform simple validation
-      const email = document.getElementById('login-email').value;
-      
-      if (email.trim() !== '') {
+      const email = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value.trim();
+      if (!email || !password) {
+        alert('Please enter your email and password.');
+        return;
+      }
+      const st = loadState();
+      const emp = (st.employees || []).find(e =>
+        e.email === email && e.password === password && !e.isDeleted && e.status === 'Active'
+      );
+      if (emp) {
+        emp.lastLogin = new Date().toISOString();
+        saveState();
         localStorage.setItem('adminLoggedIn', 'true');
-        logSystemActivity('Admin signed in successfully.');
+        localStorage.setItem('erpUserRole', emp.role);
+        localStorage.setItem('erpUserName', emp.fullName);
+        logSystemActivity(emp.fullName + ' (' + emp.role + ') signed in.');
         checkLoginState();
-
-        // Redirect to configuration if pre-targeted, else show dashboard inline
         const redirectTarget = localStorage.getItem('redirectAfterLogin');
         if (redirectTarget) {
           localStorage.removeItem('redirectAfterLogin');
@@ -472,6 +530,8 @@ function initPortalLogin() {
         } else {
           openErpPage();
         }
+      } else {
+        alert('Invalid credentials or account is disabled.');
       }
     });
   }
@@ -480,6 +540,8 @@ function initPortalLogin() {
   if (logoutBtn) {
     logoutBtn.addEventListener('click', () => {
       localStorage.removeItem('adminLoggedIn');
+      localStorage.removeItem('erpUserRole');
+      localStorage.removeItem('erpUserName');
       logSystemActivity('Admin logged out.');
       checkLoginState();
       alert('Logged out from Admin Portal.');
