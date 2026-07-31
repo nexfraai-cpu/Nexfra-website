@@ -1,19 +1,19 @@
-import { supabase } from '../database/client.js';
+import { supabase, authSupabase } from '../database/client.js';
 import { config } from '../config/index.js';
 
 export class AuthQueries {
   async signIn(email: string, password: string) {
-    return supabase.auth.signInWithPassword({ email, password });
+    return authSupabase.auth.signInWithPassword({ email, password });
   }
 
-  async signOut(accessToken: string) {
-    const client = supabase;
-    client.auth.setSession({ access_token: accessToken, refresh_token: '' });
-    return client.auth.signOut();
+  async signOut() {
+    return authSupabase.auth.signOut();
   }
 
   async refreshSession(refreshToken: string) {
-    return supabase.auth.refreshSession({ refresh_token: refreshToken });
+    return authSupabase.auth.refreshSession({
+      refresh_token: refreshToken,
+    });
   }
 
   async getUser(token: string) {
@@ -37,18 +37,23 @@ export class AuthQueries {
   }
 
   async updatePassword(newPassword: string) {
-    return supabase.auth.updateUser({ password: newPassword });
+    return authSupabase.auth.updateUser({
+      password: newPassword,
+    });
   }
 
   async sendPasswordResetEmail(email: string) {
     const redirectTo = config.isProd()
       ? 'https://erp.nexfra.in/reset-password'
       : 'http://localhost:3000/reset-password';
-    return supabase.auth.resetPasswordForEmail(email, { redirectTo });
+
+    return authSupabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
   }
 
   async signUp(email: string, password: string, fullName: string, role: string) {
-    return supabase.auth.signUp({
+    return authSupabase.auth.signUp({
       email,
       password,
       options: {

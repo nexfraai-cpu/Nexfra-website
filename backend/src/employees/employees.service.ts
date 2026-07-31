@@ -9,7 +9,12 @@ import {
   LastAdminCannotDisableError,
   LastAdminCannotDeleteError,
 } from './employees.errors.js';
-import { EmployeeResponse, CreateEmployeeInput, UpdateEmployeeInput, EmployeeListOptions } from './employees.types.js';
+import {
+  EmployeeResponse,
+  CreateEmployeeInput,
+  UpdateEmployeeInput,
+  EmployeeListOptions,
+} from './employees.types.js';
 import { logger } from '../config/logger.js';
 import { supabase } from '../database/client.js';
 
@@ -60,7 +65,14 @@ export class EmployeesService {
       created_by: actorId,
     };
 
-    const employee = await this.queries.updateByAuthId(authId, updates as any);
+    let employee;
+
+    try {
+      employee = await this.queries.updateByAuthId(authId, updates as any);
+    } catch (err) {
+      console.error('UPDATE FAILED:', err);
+      throw err;
+    }
 
     await this._logAudit(actorId, 'create', 'employee', employee.id, null, {
       fullName: input.fullName,
@@ -158,7 +170,14 @@ export class EmployeesService {
 
     const updated = await this.queries.update(id, { status: newStatus } as any);
 
-    await this._logAudit(actorId, 'update-status', 'employee', id, { status: employee.status }, { status: newStatus });
+    await this._logAudit(
+      actorId,
+      'update-status',
+      'employee',
+      id,
+      { status: employee.status },
+      { status: newStatus },
+    );
 
     logger.info({ actorId, employeeId: id, newStatus }, 'Employee status changed');
     return this._toResponse(updated);
