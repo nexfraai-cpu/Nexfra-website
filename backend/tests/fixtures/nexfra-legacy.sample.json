@@ -1,0 +1,178 @@
+{
+  "storage": {
+    "NEXFRA_ERP_STATE": {
+      "activeRole": "Admin",
+      "customers": [
+        {
+          "id": "CUST-001",
+          "name": "Tata Logistics Pvt Ltd",
+          "company": "Tata Logistics",
+          "gst": "33AAACT8281M1Z5",
+          "phone": "+91 98400 12345",
+          "email": "operations@tatalogistics.com",
+          "address": "Plot 12, Port Road, Tuticorin, TN",
+          "vehicles": ["TN-69-AA-1234", "TN-69-AA-5678"],
+          "outstanding": 450000
+        },
+        {
+          "id": "CUST-002",
+          "name": "Gati Mining & Minerals",
+          "company": "Gati Minerals",
+          "gst": "27AAACG1928A2Z0",
+          "phone": "+91 99100 98765",
+          "email": "mehta@gatimining.com",
+          "address": "Mine Block C, Korba, Chhattisgarh",
+          "vehicles": ["CG-12-BB-9922"],
+          "outstanding": 0
+        }
+      ],
+      "products": {
+        "flatbed": {
+          "name": "Flat Bed Trailer",
+          "basePrice": 850000,
+          "templates": ["32 Feet Flatbed", "40 Feet Flatbed"],
+          "specs": [
+            {
+              "id": "length",
+              "name": "Length",
+              "default": "40 Feet",
+              "options": [
+                { "name": "32 Feet", "priceDiff": -50000 },
+                { "name": "40 Feet", "priceDiff": 0 }
+              ]
+            },
+            {
+              "id": "floor",
+              "name": "Floor Thickness / Type",
+              "default": "4mm Chequered MS",
+              "options": [
+                { "name": "4mm Chequered MS", "priceDiff": 0 },
+                { "name": "6mm Chequered MS", "priceDiff": 15000 },
+                { "name": "8mm Chequered MS", "priceDiff": 32000 }
+              ]
+            }
+          ]
+        },
+        "tiptrailer": {
+          "name": "Tip Trailer",
+          "basePrice": 1420000,
+          "templates": ["32 CBM Tip Trailer", "36 CBM Tip Trailer"],
+          "specs": [
+            {
+              "id": "capacity",
+              "name": "Volumetric Capacity",
+              "default": "32 CBM",
+              "options": [
+                { "name": "32 CBM", "priceDiff": 0 },
+                { "name": "36 CBM", "priceDiff": 60000 }
+              ]
+            }
+          ]
+        }
+      },
+      "quotations": [
+        {
+          "id": "TL/001/2026",
+          "subtype": "flatbed",
+          "customerId": "CUST-001",
+          "customerName": "Tata Logistics",
+          "model": "Tata Prima 3530K",
+          "productName": "Flat Bed Trailer",
+          "date": "2026-07-15",
+          "createdAt": "2026-07-15T10:00:00.000Z",
+          "total": 935000,
+          "status": "Pending Approval",
+          "specs": { "length": "40 Feet", "floor": "6mm Chequered MS" },
+          "notRequired": {},
+          "capacity": "NA",
+          "dimensions": { "length": "40 Feet", "height": "NA", "width": "98 Inches" },
+          "scopeOfWork": "As Mentioned above",
+          "terms": ["50% advance", "50% before delivery"],
+          "orderQty": 1,
+          "bankDetails": { "bankName": "ICICI BANK", "ifsc": "ICIC0000156" }
+        }
+      ],
+      "quotationCounter": 1,
+      "workOrders": [
+        {
+          "id": "WO-2026-001",
+          "quoteId": "TL/001/2026",
+          "customerName": "Tata Logistics",
+          "product": "Flat Bed Trailer",
+          "date": "2026-07-20",
+          "stage": "Pending",
+          "progress": 0,
+          "specs": ["40 Feet Deck - 6mm Chequered MS"],
+          "notes": "Configured via ERP Wizard.",
+          "dueDate": "2026-08-01",
+          "urgent": false
+        }
+      ],
+      "productionItems": [
+        {
+          "id": "PI-2026-001",
+          "quoteId": "TL/001/2026",
+          "customerName": "Tata Logistics",
+          "product": "Flat Bed Trailer",
+          "date": "2026-07-21",
+          "columnStatus": "Not Started",
+          "progressPct": 0,
+          "progressionMap": {},
+          "remarks": {},
+          "dueDate": "2026-08-01",
+          "urgent": false
+        }
+      ],
+      "sales": [
+        {
+          "invoiceId": "INV-000001",
+          "customerName": "Tata Logistics",
+          "product": "Flat Bed Trailer",
+          "amount": 935000,
+          "date": "2026-07-22",
+          "status": "Partial"
+        }
+      ],
+      "payments": [
+        {
+          "id": "TXN-1001",
+          "quoteId": "TL/001/2026",
+          "invoiceId": "INV-000001",
+          "date": "2026-07-23",
+          "time": "11:30",
+          "amount": 467500,
+          "mode": "RTGS",
+          "ref": "NEFT-8842"
+        }
+      ],
+      "employees": [
+        {
+          "id": "EMP-000001",
+          "fullName": "Ramesh Kumar",
+          "email": "ramesh@nexfra.in",
+          "phone": "+91 90000 00001",
+          "employeeCode": "RK01",
+          "role": "admin",
+          "status": "Active",
+          "password": "secret-do-not-migrate",
+          "isDeleted": false,
+          "createdDate": "2026-01-10",
+          "lastLogin": null
+        }
+      ],
+      "employeeCounter": 1,
+      "logs": [
+        { "time": "3:45 PM", "message": "Nexfra ERP Production System initialized." },
+        { "time": "4:10 PM", "message": "Quotation TL/001/2026 generated & sent to Approval." }
+      ],
+      "adminPricing": { "floor6": -15000, "floor10": 30000, "steelHardox": 150000, "axle2": -100000, "axle3_16": 80000 },
+      "customItemDefinitions": [],
+      "productSpecOverrides": {},
+      "chassisRecords": []
+    },
+    "NEXFRA_AUTH_TOKEN": "true",
+    "NEXFRA_USER_ROLE": "admin",
+    "NEXFRA_USER_NAME": "Admin"
+  },
+  "exportedAt": "2026-07-31T04:00:00.000Z"
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nexfra ERP — LocalStorage Export Tool</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; background: #0F172A; color: #E2E8F0; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 40px 20px; }
+  h1 { font-size: 1.4rem; margin: 0 0 6px; color: #F8FAFC; }
+  p.sub { color: #94A3B8; font-size: 0.9rem; margin: 0 0 24px; }
+  .card { background: #1E293B; border: 1px solid #334155; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 1rem; margin: 0 0 12px; color: #38BDF8; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #334155; }
+  th { color: #94A3B8; font-weight: 600; }
+  .key { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #FBBF24; }
+  .empty { color: #64748B; font-style: italic; }
+  button { background: #0EA5E9; border: none; color: white; font-weight: 600; padding: 12px 22px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; margin-right: 10px; }
+  button:hover { background: #0284C7; }
+  button.secondary { background: #334155; }
+  button.secondary:hover { background: #475569; }
+  .hint { font-size: 0.8rem; color: #64748B; margin-top: 10px; line-height: 1.5; }
+  code { background: #0B1220; border: 1px solid #1E293B; padding: 2px 6px; border-radius: 4px; font-size: 0.8rem; }
+  .ok { color: #4ADE80; }
+  .warn { color: #FACC15; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Nexfra ERP — LocalStorage Export Tool</h1>
+  <p class="sub">Reads the ERP state out of this browser's <code>localStorage</code> and downloads it as a JSON file for import into PostgreSQL.</p>
+
+  <div class="card">
+    <h2>1. Detected Keys</h2>
+    <table>
+      <thead><tr><th>Key</th><th>Size</th></tr></thead>
+      <tbody id="key-table"></tbody>
+    </table>
+    <div class="hint">Only <code>NEXFRA_*</code> prefixed keys are exported. If no rows appear, open the frontend app once (so it writes state), then reload this page.</div>
+  </div>
+
+  <div class="card">
+    <h2>2. Export</h2>
+    <button id="download">Download nexfra-legacy.json</button>
+    <button id="copy" class="secondary">Copy to clipboard</button>
+    <div class="hint">
+      The exported file is the wrapper object: <code>{ "storage": { "NEXFRA_ERP_STATE": {...}, "NEXFRA_AUTH_TOKEN": "true", ... } }</code>.
+      Import it with:
+      <br /><br />
+      <code>npm run migrate -- backend/../nexfra-legacy.json --dry-run</code>
+      <br />
+      <code>npm run migrate -- nexfra-legacy.json</code>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Import to PostgreSQL</h2>
+    <div class="hint">
+      From <code>backend/</code>, run the migration CLI against the exported file:
+      <br /><br />
+      <code>tsx scripts/migrate.ts nexfra-legacy.json --dry-run</code> &nbsp;<span class="ok">(validate only)</span>
+      <br />
+      <code>tsx scripts/migrate.ts nexfra-legacy.json</code> &nbsp;<span class="ok">(write to PostgreSQL)</span>
+      <br /><br />
+      <span class="warn">Warning:</span> Ensure the Supabase schema migration has been applied and
+      <code>SUPABASE_URL</code> / <code>SUPABASE_SERVICE_KEY</code> are configured in <code>backend/.env</code>.
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var PREFIX = 'NEXFRA_';
+  var table = document.getElementById('key-table');
+
+  function collect() {
+    var out = {};
+    for (var i = 0; i < localStorage.length; i++) {
+      var key = localStorage.key(i);
+      if (key && key.indexOf(PREFIX) === 0) {
+        out[key] = localStorage.getItem(key);
+      }
+    }
+    return out;
+  }
+
+  function render() {
+    var data = collect();
+    var keys = Object.keys(data);
+    table.innerHTML = '';
+    if (keys.length === 0) {
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td class="empty" colspan="2">No NEXFRA_* keys found in this browser.</td>';
+      table.appendChild(tr);
+      return;
+    }
+    keys.forEach(function (key) {
+      var value = data[key];
+      var sizeBytes = new Blob([value]).size;
+      var size = sizeBytes > 1024 ? (sizeBytes / 1024).toFixed(1) + ' KB' : sizeBytes + ' B';
+      var tr = document.createElement('tr');
+      var tdKey = document.createElement('td');
+      tdKey.className = 'key';
+      tdKey.textContent = key;
+      var tdSize = document.createElement('td');
+      tdSize.textContent = size;
+      tr.appendChild(tdKey);
+      tr.appendChild(tdSize);
+      table.appendChild(tr);
+    });
+  }
+
+  function buildWrapper() {
+    return { storage: collect(), exportedAt: new Date().toISOString() };
+  }
+
+  document.getElementById('download').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(buildWrapper(), null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'nexfra-legacy.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('copy').addEventListener('click', function () {
+    navigator.clipboard.writeText(JSON.stringify(buildWrapper(), null, 2));
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -274,6 +274,33 @@
 
 ---
 
+## Phase 14: Data Migration Tools ✅
+
+**Objective:** Migrate legacy `localStorage` ERP data into PostgreSQL via an intermediate JSON file.
+
+### Deliverables
+
+- [x] Browser export tool (`tools/export-localstorage.html`) — dumps all `NEXFRA_*` localStorage keys to JSON
+- [x] Migration module (`backend/src/migration/`) — types, zod validator, mapper, service
+- [x] Migration CLI (`backend/scripts/migrate.ts`) — dry-run, inspect, import + verify
+- [x] Deterministic UUID mapping from legacy string IDs (relationship preservation)
+- [x] Entity mapping:
+  - Employees → `employees`
+  - Customers → `customers`
+  - Products → `products` + `product_templates` + `product_template_specs` + `product_spec_options`
+  - Quotations → `quotations` + `quotation_spec_values`
+  - Work Orders → `work_orders`
+  - Production → `production_items`
+  - Finance → `sales` + `payments`
+  - Audit Logs → `audit_logs`
+  - Chassis / Custom Items / Spec Overrides / Admin Pricing / Counters → respective tables + `app_settings`
+- [x] Post-import verification report per table
+- [x] Unit tests (16 tests) for mapper, validator, and service
+- [x] Sample fixture (`backend/tests/fixtures/nexfra-legacy.sample.json`)
+- [x] Migration documentation (`backend/src/migration/README.md`)
+
+---
+
 ## Future Improvements 🔮
 
 ### Q4 2026
