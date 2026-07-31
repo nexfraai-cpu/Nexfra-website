@@ -42,7 +42,9 @@ export class WorkordersService {
   }
 
   async create(input: { quotationId: string; factoryNotes?: string | null; dueDate?: string | null; isUrgent?: boolean }, user: AuthenticatedUser): Promise<WorkOrderResponse> {
+    console.log(`[WORKORDER CREATE] Payload passed to WorkordersService:`, JSON.stringify({ input, actorRole: user.role, actorId: user.id }));
     const quotation = await this.queries.findQuotationById(input.quotationId, user);
+    console.log(`[WORKORDER CREATE] Quotation status from DB for quotationId=${input.quotationId}:`, quotation ? (quotation as any).status : 'NOT_FOUND');
     if (!quotation) throw new WorkOrderNotFoundError(input.quotationId);
     if ((quotation as any).status !== 'Approved') {
       throw new QuotationNotApprovedError(input.quotationId);

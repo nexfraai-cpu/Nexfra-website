@@ -45,11 +45,12 @@ export class ConflictError extends AppError {
 
 export function errorHandler(
   err: Error,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ) {
   if (err instanceof AppError) {
+    console.log(`[APP ERROR ${err.statusCode}] Method: ${req.method} Path: ${req.originalUrl || req.url} Name: ${err.name} Message: ${err.message}`, JSON.stringify(err.details ?? {}));
     logger.warn(
       { statusCode: err.statusCode, name: err.name, details: err.details },
       err.message,

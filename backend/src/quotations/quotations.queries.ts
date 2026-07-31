@@ -4,22 +4,24 @@ import { applyOwnershipScope, OwnershipRule } from '../middleware/ownership.js';
 
 type RowData = Record<string, unknown>;
 
+// Quotations are visible to their creator (sales) and to admins only.
+// Managers and finance never see quotations.
 const QUOTATION_RULE: OwnershipRule = {
   table: 'quotations',
-  fullAccessRoles: ['admin', 'manager'],
+  fullAccessRoles: ['admin'],
   allowSales: true,
   includeAssignedTo: true,
 };
 
 const SPEC_VALUE_RULE: OwnershipRule = {
   table: 'quotation_spec_values',
-  fullAccessRoles: ['admin', 'manager'],
+  fullAccessRoles: ['admin', 'sales'],
   allowSales: true,
 };
 
 const CUSTOM_ITEM_RULE: OwnershipRule = {
   table: 'quotation_custom_items',
-  fullAccessRoles: ['admin', 'manager'],
+  fullAccessRoles: ['admin', 'sales'],
   allowSales: true,
 };
 
@@ -27,6 +29,7 @@ export interface FindAllParams {
   status?: string;
   search?: string;
   customerName?: string;
+  financeView?: 'inbox' | 'mine';
   sortBy: string;
   sortOrder: string;
   page: number;
@@ -42,29 +45,47 @@ export class QuotationQueries {
   /*** Quotations ***/
 
   async findAll(params: FindAllParams, user: AuthenticatedUser): Promise<FindAllResult> {
-    const { status, search, customerName, sortBy = 'created_at', sortOrder = 'desc', page, perPage } = params;
+    const { status, search, customerName, financeView, sortBy = 'created_at', sortOrder = 'desc', page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let countQuery = applyOwnershipScope(
-      supabase
-        .from('quotations')
-        .select('id', { count: 'exact', head: true })
-        .is('deleted_at', null),
-      user,
-      QUOTATION_RULE,
-    );
+    const summaryColumns =
+      'id, quotation_number, version, customer_name, product_key, template_key, total, status, order_qty, created_by, created_at, updated_at, finance_owner, payment_due_date';
 
-    let dataQuery = applyOwnershipScope(
-      supabase
-        .from('quotations')
-        .select('id, quotation_number, version, customer_name, product_key, template_key, total, status, order_qty, created_by, created_at, updated_at')
-        .is('deleted_at', null)
-        .order(sortBy as any, { ascending: sortOrder === 'asc' })
-        .range(from, to),
-      user,
-      QUOTATION_RULE,
-    );
+    let countQuery = supabase
+      .from('quotations')
+      .select('id', { count: 'exact', head: true })
+      .is('deleted_at', null);
+
+    let dataQuery = supabase
+      .from('quotations')
+      .select(summaryColumns)
+      .is('deleted_at', null)
+      .order(sortBy as any, { ascending: sortOrder === 'asc' })
+      .range(from, to);
+
+    // Finance ownership scope: the finance inbox is the approved-and-unclaimed
+    // list; "mine" is the current finance employee's claimed quotations.
+    if (user.role === 'finance') {
+      if (financeView === 'inbox') {
+        countQuery = countQuery.eq('status', 'Approved').is('finance_owner', null);
+        dataQuery = dataQuery.eq('status', 'Approved').is('finance_owner', null);
+      } else if (financeView === 'mine') {
+        countQuery = countQuery.eq('finance_owner', user.id);
+        dataQuery = dataQuery.eq('finance_owner', user.id);
+      } else {
+        countQuery = applyOwnershipScope(countQuery, user, QUOTATION_RULE);
+        dataQuery = applyOwnershipScope(dataQuery, user, QUOTATION_RULE);
+      }
+    } else {
+      countQuery = applyOwnershipScope(countQuery, user, QUOTATION_RULE);
+      dataQuery = applyOwnershipScope(dataQuery, user, QUOTATION_RULE);
+      // Admin viewing the finance inbox sees every approved quotation.
+      if (financeView === 'inbox') {
+        countQuery = countQuery.eq('status', 'Approved');
+        dataQuery = dataQuery.eq('status', 'Approved');
+      }
+    }
 
     if (status) {
       countQuery = countQuery.eq('status', status);
@@ -96,15 +117,20 @@ export class QuotationQueries {
   }
 
   async findById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
-    const { data, error } = await applyOwnershipScope(
-      supabase
-        .from('quotations')
-        .select('*')
-        .eq('id', id)
-        .single(),
-      user,
-      QUOTATION_RULE,
-    );
+    let query = supabase
+      .from('quotations')
+      .select('*')
+      .eq('id', id);
+
+    if (user.role === 'finance') {
+      // Finance employees may open quotations they own, or approved-and-unclaimed
+      // quotations from the inbox (so they can claim / view them).
+      query = query.or(`finance_owner.eq.${user.id},and(status.eq.Approved,finance_owner.is.null)`);
+    } else {
+      query = applyOwnershipScope(query, user, QUOTATION_RULE);
+    }
+
+    const { data, error } = await query.single();
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -124,19 +150,26 @@ export class QuotationQueries {
     return data;
   }
 
-  async update(id: string, updates: RowData, user: AuthenticatedUser): Promise<RowData> {
-    const { data, error } = await applyOwnershipScope(
-      supabase
-        .from('quotations')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single(),
-      user,
-      QUOTATION_RULE,
-    );
+  async update(id: string, updates: RowData, user: AuthenticatedUser): Promise<RowData | null> {
+    let query = supabase
+      .from('quotations')
+      .update(updates)
+      .eq('id', id);
 
-    if (error) throw error;
+    if (user.role === 'finance') {
+      // Finance employees can only update quotations they own, or
+      // approved-and-unclaimed quotations (i.e. the one being claimed).
+      query = query.or(`finance_owner.eq.${user.id},and(status.eq.Approved,finance_owner.is.null)`);
+    } else {
+      query = applyOwnershipScope(query, user, QUOTATION_RULE);
+    }
+
+    const { data, error } = await query.select().single();
+
+    if (error) {
+      if (error.code === 'PGRST116') return null;
+      throw error;
+    }
     return data;
   }
 

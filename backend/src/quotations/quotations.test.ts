@@ -9,6 +9,8 @@ import {
   QuotationAlreadyApprovedError,
   QuotationAlreadyDeniedError,
   QuotationNotPendingError,
+  QuotationNotApprovedError,
+  QuotationAlreadyClaimedError,
   DenyReasonRequiredError,
   TemplatePricingNotFoundError,
 } from './quotations.errors.js';
@@ -326,6 +328,69 @@ describe('QuotationsService', () => {
 
     it('throws DenyReasonRequiredError without reason', async () => {
       await expect(service.deny('id', '', actor)).rejects.toThrow(DenyReasonRequiredError);
+    });
+  });
+
+  describe('claim', () => {
+    const financeActor: AuthenticatedUser = {
+      id: 'finance-uuid-1',
+      authId: 'auth-finance-1',
+      role: 'finance',
+      email: 'finance@nexfra.in',
+      name: 'Finance A',
+      employeeNumber: 'FIN-001',
+    };
+
+    it('claims an approved, unclaimed quotation and sets payment due date', async () => {
+      const q = createMockQuotation({ status: 'Approved', finance_owner: null, payment_due_date: null });
+      queries.findById.mockResolvedValue(q);
+      queries.update.mockResolvedValue({
+        ...q,
+        finance_owner: 'finance-uuid-1',
+        payment_due_date: '2026-08-15',
+      });
+      queries.findSpecValues.mockResolvedValue([]);
+      queries.findCustomItems.mockResolvedValue([]);
+
+      const result = await service.claim(q.id, '2026-08-15', financeActor);
+
+      expect(result.financeOwner).toBe('finance-uuid-1');
+      expect(result.paymentDueDate).toBe('2026-08-15');
+      expect(queries.update).toHaveBeenCalledWith(
+        q.id,
+        expect.objectContaining({ finance_owner: 'finance-uuid-1', payment_due_date: '2026-08-15' }),
+        financeActor,
+      );
+    });
+
+    it('throws QuotationNotApprovedError for non-approved quotation', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Pending' }));
+      await expect(service.claim('id', '2026-08-15', financeActor)).rejects.toThrow(QuotationNotApprovedError);
+    });
+
+    it('throws QuotationAlreadyClaimedError when claimed by another finance employee', async () => {
+      queries.findById.mockResolvedValue(
+        createMockQuotation({ status: 'Approved', finance_owner: 'finance-uuid-2' }),
+      );
+      await expect(service.claim('id', '2026-08-15', financeActor)).rejects.toThrow(QuotationAlreadyClaimedError);
+    });
+
+    it('throws QuotationNotFoundError when update returns null (race or unauthorised row)', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved', finance_owner: null }));
+      queries.update.mockResolvedValue(null);
+      await expect(service.claim('id', '2026-08-15', financeActor)).rejects.toThrow(QuotationNotFoundError);
+    });
+
+    it('allows admin to reassign an already-claimed quotation', async () => {
+      const q = createMockQuotation({ status: 'Approved', finance_owner: 'finance-uuid-2' });
+      queries.findById.mockResolvedValue(q);
+      queries.update.mockResolvedValue({ ...q, finance_owner: actorId, payment_due_date: '2026-09-01' });
+      queries.findSpecValues.mockResolvedValue([]);
+      queries.findCustomItems.mockResolvedValue([]);
+
+      const result = await service.claim(q.id, '2026-09-01', actor);
+
+      expect(result.financeOwner).toBe(actorId);
     });
   });
 });

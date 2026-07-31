@@ -19,10 +19,11 @@ export interface FindAllResult {
   total: number;
 }
 
+// Work orders are visible to admins and managers only; sales never sees them.
 const WORK_ORDER_RULE: OwnershipRule = {
   table: 'work_orders',
   fullAccessRoles: ['admin', 'manager'],
-  allowSales: true,
+  allowSales: false,
 };
 
 const PRODUCTION_ITEM_RULE: OwnershipRule = {

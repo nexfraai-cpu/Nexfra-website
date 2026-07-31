@@ -78,6 +78,7 @@ export const quotationListSchema = z.object({
     status: z.enum(['Draft', 'Pending', 'Approved', 'Denied']).optional(),
     search: z.string().max(100).optional(),
     customerName: z.string().max(200).optional(),
+    financeView: z.enum(['inbox', 'mine']).optional(),
     sortBy: z.enum(validSortBy).optional().default('created_at'),
     sortOrder: z.enum(validSortOrder).optional().default('desc'),
     page: z.coerce.number().int().min(1).optional().default(1),
@@ -87,7 +88,7 @@ export const quotationListSchema = z.object({
 
 export const approveQuotationSchema = z.object({
   body: z.object({
-    comment: z.string().max(500).optional(),
+    comment: z.string().max(500).nullable().optional(),
   }),
   params: z.object({
     id: z.string().uuid('Invalid quotation ID format'),
@@ -97,6 +98,15 @@ export const approveQuotationSchema = z.object({
 export const denyQuotationSchema = z.object({
   body: z.object({
     reason: z.string().min(1, 'Reason is required when denying').max(500),
+  }),
+  params: z.object({
+    id: z.string().uuid('Invalid quotation ID format'),
+  }),
+});
+
+export const claimQuotationSchema = z.object({
+  body: z.object({
+    paymentDueDate: z.string().max(10).nullable().optional(),
   }),
   params: z.object({
     id: z.string().uuid('Invalid quotation ID format'),

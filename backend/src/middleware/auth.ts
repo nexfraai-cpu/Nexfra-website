@@ -53,7 +53,7 @@ export async function auth(req: Request, _res: Response, next: NextFunction) {
   req.user = {
     id: employee.id,
     authId: data.user.id,
-    role: employee.role,
+    role: (employee.role ? employee.role.toLowerCase() : '') as any,
     email: data.user.email ?? '',
     name: employee.full_name,
     employeeNumber: employee.employee_number,

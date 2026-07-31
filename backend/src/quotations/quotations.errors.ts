@@ -36,6 +36,18 @@ export class QuotationNotPendingError extends AppError {
   }
 }
 
+export class QuotationNotApprovedError extends AppError {
+  constructor(status: string) {
+    super(400, `Only approved quotations can be claimed by finance, currently '${status}'`);
+  }
+}
+
+export class QuotationAlreadyClaimedError extends AppError {
+  constructor() {
+    super(403, 'This quotation has already been claimed by another finance employee');
+  }
+}
+
 export class QuotationApprovalUnauthorizedError extends AppError {
   constructor() {
     super(403, 'Only admin and manager roles can approve or deny quotations');

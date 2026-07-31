@@ -133,6 +133,8 @@ export interface QuotationRow {
   denied_by: string | null;
   denied_at: string | null;
   denied_reason: string | null;
+  finance_owner: string | null;
+  payment_due_date: string | null;
   created_by: string | null;
   assigned_to_employee_id: string | null;
   created_at: string;

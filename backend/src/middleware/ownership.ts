@@ -52,18 +52,22 @@ export function applyOwnershipScope<T>(
   if (!user) return query;
   const q = query as any;
 
+  const role = user.role ? user.role.toLowerCase() : '';
+  const fullAccessRoles = rule.fullAccessRoles.map((r) => r.toLowerCase());
+  const denyRoles = rule.denyRoles?.map((r) => r.toLowerCase());
+
   // Denied roles see nothing.
-  if (rule.denyRoles?.includes(user.role)) {
+  if (denyRoles?.includes(role)) {
     return q.is('id', null);
   }
 
   // Full-access roles (admin; or finance/manager on their own tables).
-  if (rule.fullAccessRoles.includes(user.role)) {
+  if (fullAccessRoles.includes(role)) {
     return query;
   }
 
   // Sales: scope to owned records.
-  if (user.role === 'sales') {
+  if (role === 'sales') {
     if (rule.allowSales !== true) return q.is('id', null);
     const column = rule.column ?? 'created_by';
     if (rule.includeAssignedTo) {
@@ -78,14 +82,19 @@ export function applyOwnershipScope<T>(
 
 /** Predicate: does this role get full access to the given ownership table? */
 export function hasFullAccess(role: string, rule: OwnershipRule): boolean {
-  return rule.fullAccessRoles.includes(role);
+  const normRole = (role || '').toLowerCase();
+  return rule.fullAccessRoles.map((r) => r.toLowerCase()).includes(normRole);
 }
 
 /** Predicate: can this role access a record owned by `ownerId`? */
 export function canAccessRecord(role: string, rule: OwnershipRule, ownerId: string | null, currentUserId: string): boolean {
-  if (rule.denyRoles?.includes(role)) return false;
-  if (rule.fullAccessRoles.includes(role)) return true;
-  if (role === 'sales') {
+  const normRole = (role || '').toLowerCase();
+  const fullAccessRoles = rule.fullAccessRoles.map((r) => r.toLowerCase());
+  const denyRoles = rule.denyRoles?.map((r) => r.toLowerCase());
+
+  if (denyRoles?.includes(normRole)) return false;
+  if (fullAccessRoles.includes(normRole)) return true;
+  if (normRole === 'sales') {
     return ownerId === currentUserId;
   }
   return false;

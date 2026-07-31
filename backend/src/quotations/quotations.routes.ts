@@ -12,6 +12,7 @@ import {
   quotationListSchema,
   approveQuotationSchema,
   denyQuotationSchema,
+  claimQuotationSchema,
 } from './quotations.validator.js';
 
 const queries = new QuotationQueries();
@@ -26,7 +27,7 @@ quotationsRouter.get('/', validate(quotationListSchema), controller.list);
 
 quotationsRouter.get('/:id', validate(quotationIdSchema), controller.getById);
 
-quotationsRouter.post('/', validate(createQuotationSchema), controller.create);
+quotationsRouter.post('/', authorize('admin', 'sales'), validate(createQuotationSchema), controller.create);
 
 quotationsRouter.put('/:id', authorize('admin', 'sales'), validate(updateQuotationSchema), controller.update);
 
@@ -34,6 +35,9 @@ quotationsRouter.delete('/:id', authorize('admin', 'sales'), validate(quotationI
 
 quotationsRouter.patch('/:id/submit', authorize('admin', 'sales'), validate(quotationIdSchema), controller.submit);
 
-quotationsRouter.patch('/:id/approve', authorize('admin', 'manager'), validate(approveQuotationSchema), controller.approve);
+quotationsRouter.patch('/:id/approve', authorize('admin'), validate(approveQuotationSchema), controller.approve);
 
-quotationsRouter.patch('/:id/deny', authorize('admin', 'manager'), validate(denyQuotationSchema), controller.deny);
+quotationsRouter.patch('/:id/deny', authorize('admin'), validate(denyQuotationSchema), controller.deny);
+
+// Finance ownership: claim an approved quotation and set the payment due date.
+quotationsRouter.patch('/:id/finance-claim', authorize('admin', 'finance'), validate(claimQuotationSchema), controller.claim);

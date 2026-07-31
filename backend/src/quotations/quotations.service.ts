@@ -6,6 +6,8 @@ import {
   QuotationAlreadyApprovedError,
   QuotationAlreadyDeniedError,
   QuotationNotPendingError,
+  QuotationNotApprovedError,
+  QuotationAlreadyClaimedError,
   DenyReasonRequiredError,
   TemplatePricingNotFoundError,
 } from './quotations.errors.js';
@@ -34,6 +36,7 @@ export class QuotationsService {
       status?: string;
       search?: string;
       customerName?: string;
+      financeView?: 'inbox' | 'mine';
       sortBy?: string;
       sortOrder?: string;
       page: number;
@@ -222,10 +225,11 @@ export class QuotationsService {
     const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
 
-    const status = (quotation as any).status;
-    if (status === 'Approved') throw new QuotationAlreadyApprovedError();
-    if (status === 'Denied') throw new QuotationAlreadyDeniedError();
-    if (status !== 'Pending') throw new QuotationNotPendingError(status);
+    const statusBefore = (quotation as any).status;
+    console.log(`[APPROVE SERVICE] id=${id} statusBeforeUpdate=${statusBefore}`);
+    if (statusBefore === 'Approved') throw new QuotationAlreadyApprovedError();
+    if (statusBefore === 'Denied') throw new QuotationAlreadyDeniedError();
+    if (statusBefore !== 'Pending') throw new QuotationNotPendingError(statusBefore);
 
     const updated = await this.queries.update(id, {
       status: 'Approved',
@@ -233,6 +237,9 @@ export class QuotationsService {
       approved_at: new Date().toISOString(),
       updated_by: user.id,
     } as any, user);
+
+    const statusAfter = (updated as any).status;
+    console.log(`[APPROVE SERVICE] id=${id} statusAfterUpdate=${statusAfter}`);
 
     const specValues = await this.queries.findSpecValues(id, user);
     const customItems = await this.queries.findCustomItems(id, user);
@@ -268,6 +275,39 @@ export class QuotationsService {
     await this._logAudit(user.id, 'deny', 'quotation', id, { status: 'Pending' }, { status: 'Denied', reason });
 
     logger.info({ actorId: user.id, quotationId: id }, 'Quotation denied');
+    return this._toDetailResponse(updated, specValues, customItems);
+  }
+
+  async claim(id: string, paymentDueDate: string | null | undefined, user: AuthenticatedUser): Promise<QuotationResponse> {
+    const quotation = await this.queries.findById(id, user);
+    if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
+
+    const status = (quotation as any).status;
+    if (status !== 'Approved') throw new QuotationNotApprovedError(status);
+
+    const currentOwner = (quotation as any).finance_owner ?? null;
+    // Another finance employee may not take ownership; only admin can reassign.
+    if (user.role !== 'admin' && currentOwner && currentOwner !== user.id) {
+      throw new QuotationAlreadyClaimedError();
+    }
+
+    const updated = await this.queries.update(id, {
+      finance_owner: user.id,
+      payment_due_date: paymentDueDate || null,
+      updated_by: user.id,
+    } as any, user);
+
+    if (!updated) throw new QuotationNotFoundError(id);
+
+    const specValues = await this.queries.findSpecValues(id, user);
+    const customItems = await this.queries.findCustomItems(id, user);
+
+    await this._logAudit(user.id, 'finance-claim', 'quotation', id, { finance_owner: currentOwner }, {
+      finance_owner: user.id,
+      payment_due_date: paymentDueDate || null,
+    });
+
+    logger.info({ actorId: user.id, quotationId: id, paymentDueDate }, 'Quotation claimed by finance');
     return this._toDetailResponse(updated, specValues, customItems);
   }
 
@@ -394,6 +434,8 @@ export class QuotationsService {
       total: Number(row.total),
       status: row.status,
       orderQty: row.order_qty,
+      financeOwner: row.finance_owner ?? null,
+      paymentDueDate: row.payment_due_date ?? null,
       createdBy: row.created_by ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
@@ -426,6 +468,8 @@ export class QuotationsService {
       deniedBy: quotation.denied_by ?? null,
       deniedAt: quotation.denied_at ?? null,
       deniedReason: quotation.denied_reason ?? null,
+      financeOwner: quotation.finance_owner ?? null,
+      paymentDueDate: quotation.payment_due_date ?? null,
       createdBy: quotation.created_by ?? null,
       createdAt: quotation.created_at,
       updatedAt: quotation.updated_at,

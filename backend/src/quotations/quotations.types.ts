@@ -104,6 +104,8 @@ export interface QuotationResponse {
   deniedBy: string | null;
   deniedAt: string | null;
   deniedReason: string | null;
+  financeOwner: string | null;
+  paymentDueDate: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
@@ -115,6 +117,7 @@ export interface QuotationListOptions {
   status?: string;
   search?: string;
   customerName?: string;
+  financeView?: 'inbox' | 'mine';
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   page: number;
@@ -131,6 +134,8 @@ export interface QuotationSummaryResponse {
   total: number;
   status: string;
   orderQty: number;
+  financeOwner: string | null;
+  paymentDueDate: string | null;
   createdBy: string | null;
   createdAt: string;
   updatedAt: string;
