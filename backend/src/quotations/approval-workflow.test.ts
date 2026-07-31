@@ -21,7 +21,7 @@ jest.mock('../database/client', () => ({
 function createMockQuotation(overrides: Record<string, any> = {}) {
   return {
     id: 'q-uuid-1111-2222-3333',
-    quotation_number: 'NQ-000001',
+    quotation_number: 'JP/2026/000001',
     version: 1,
     customer_id: 'c-uuid-1',
     customer_name: 'Test Customer',

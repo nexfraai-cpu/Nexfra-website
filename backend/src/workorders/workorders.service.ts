@@ -77,7 +77,7 @@ export class WorkordersService {
     } as any);
 
     for (let i = 0; i < (q.order_qty ?? 1); i++) {
-      await this.queries.createProductionItem({
+      const productionItem = await this.queries.createProductionItem({
         work_order_id: wo.id as string,
         quotation_id: q.id,
         current_stage: 'Pending',
@@ -86,7 +86,7 @@ export class WorkordersService {
       } as any);
 
       await this.queries.createStageRecord({
-        production_item_id: wo.id as string,
+        production_item_id: productionItem.id as string,
         stage_key: 'Pending',
         stage_name: 'Pending',
         is_completed: false,
@@ -104,7 +104,7 @@ export class WorkordersService {
 
     const productionItems = await this.queries.findProductionItems(wo.id as string, user);
     logger.info({ actorId: user.id, workOrderId: wo.id, items: productionItems.length }, 'Work order created');
-    return this._toDetailResponse(wo, productionItems);
+    return this._toDetailResponse({ ...wo, quotation_number: q.quotation_number }, productionItems);
   }
 
   async update(id: string, input: Record<string, unknown>, user: AuthenticatedUser): Promise<WorkOrderResponse> {
@@ -175,26 +175,47 @@ export class WorkordersService {
 
   private _toSummaryResponse(row: any): WorkOrderSummaryResponse {
     return {
-      id: row.id, workOrderNumber: row.work_order_number, customerName: row.customer_name,
-      productName: row.product_name, quantity: row.quantity, status: row.status,
-      dueDate: row.due_date ?? null, isUrgent: row.is_urgent,
-      createdAt: row.created_at, updatedAt: row.updated_at,
+      id: row.id,
+      workOrderNumber: row.work_order_number,
+      quotationId: row.quotation_id ?? null,
+      quotationNumber: row.quotation_number ?? row.quotationNumber ?? row.quotations?.quotation_number ?? null,
+      customerName: row.customer_name,
+      productName: row.product_name,
+      quantity: row.quantity,
+      status: row.status,
+      dueDate: row.due_date ?? null,
+      isUrgent: row.is_urgent,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
     };
   }
 
   private _toDetailResponse(wo: any, productionItems: any[]): WorkOrderResponse {
     return {
-      id: wo.id, workOrderNumber: wo.work_order_number, version: wo.version ?? 1,
-      quotationId: wo.quotation_id ?? null, customerName: wo.customer_name,
-      productName: wo.product_name, specifications: wo.specifications ?? {},
-      dimensions: wo.dimensions ?? {}, colour: wo.colour ?? null,
-      quantity: wo.quantity, factoryNotes: wo.factory_notes ?? null,
-      dueDate: wo.due_date ?? null, isUrgent: wo.is_urgent, status: wo.status,
-      bookedBy: wo.booked_by ?? null, approvedBy: wo.approved_by ?? null,
-      createdAt: wo.created_at, updatedAt: wo.updated_at,
+      id: wo.id,
+      workOrderNumber: wo.work_order_number,
+      version: wo.version ?? 1,
+      quotationId: wo.quotation_id ?? null,
+      quotationNumber: wo.quotation_number ?? wo.quotationNumber ?? wo.quotations?.quotation_number ?? null,
+      customerName: wo.customer_name,
+      productName: wo.product_name,
+      specifications: wo.specifications ?? {},
+      dimensions: wo.dimensions ?? {},
+      colour: wo.colour ?? null,
+      quantity: wo.quantity,
+      factoryNotes: wo.factory_notes ?? null,
+      dueDate: wo.due_date ?? null,
+      isUrgent: wo.is_urgent,
+      status: wo.status,
+      bookedBy: wo.booked_by ?? null,
+      approvedBy: wo.approved_by ?? null,
+      createdAt: wo.created_at,
+      updatedAt: wo.updated_at,
       productionItems: (productionItems ?? []).map((pi: any) => ({
-        id: pi.id, currentStage: pi.current_stage,
-        startedAt: pi.started_at ?? null, completedAt: pi.completed_at ?? null,
+        id: pi.id,
+        currentStage: pi.current_stage,
+        startedAt: pi.started_at ?? null,
+        completedAt: pi.completed_at ?? null,
       })),
     };
   }

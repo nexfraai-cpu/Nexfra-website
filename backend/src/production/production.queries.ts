@@ -53,7 +53,7 @@ export class ProductionQueries {
     let countQuery = applyOwnershipScope(
       supabase
         .from('production_items')
-        .select('id', { count: 'exact', head: true })
+        .select('id, work_orders!inner(customer_name, product_name, work_order_number, quotations(quotation_number))', { count: 'exact', head: true })
         .is('deleted_at', null),
       user,
       PRODUCTION_ITEM_RULE,
@@ -62,7 +62,7 @@ export class ProductionQueries {
     let dataQuery = applyOwnershipScope(
       supabase
         .from('production_items')
-        .select('*, work_orders!inner(customer_name, product_name, work_order_number)')
+        .select('*, work_orders!inner(customer_name, product_name, work_order_number, quotations(quotation_number))')
         .is('deleted_at', null)
         .order(sortBy as any, { ascending: sortOrder === 'asc' })
         .range(from, to),
@@ -82,8 +82,8 @@ export class ProductionQueries {
 
     if (search) {
       const term = `%${search}%`;
-      countQuery = countQuery.or(`work_orders.customer_name.ilike.${term},work_orders.product_name.ilike.${term}`);
-      dataQuery = dataQuery.or(`work_orders.customer_name.ilike.${term},work_orders.product_name.ilike.${term}`);
+      countQuery = countQuery.or(`work_orders.customer_name.ilike.${term},work_orders.product_name.ilike.${term},work_orders.work_order_number.ilike.${term},work_orders.quotations.quotation_number.ilike.${term}`);
+      dataQuery = dataQuery.or(`work_orders.customer_name.ilike.${term},work_orders.product_name.ilike.${term},work_orders.work_order_number.ilike.${term},work_orders.quotations.quotation_number.ilike.${term}`);
     }
 
     const [{ count, error: countError }, { data, error: dataError }] = await Promise.all([countQuery, dataQuery]);
@@ -96,7 +96,7 @@ export class ProductionQueries {
     const { data, error } = await applyOwnershipScope(
       supabase
         .from('production_items')
-        .select('*, work_orders!inner(customer_name, product_name, work_order_number)')
+        .select('*, work_orders!inner(customer_name, product_name, work_order_number, quotations(quotation_number))')
         .eq('id', id)
         .single(),
       user,

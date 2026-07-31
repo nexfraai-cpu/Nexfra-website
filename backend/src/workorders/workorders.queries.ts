@@ -41,7 +41,7 @@ export class WorkOrderQueries {
     let countQuery = applyOwnershipScope(
       supabase
         .from('work_orders')
-        .select('id', { count: 'exact', head: true })
+        .select('id, quotations(quotation_number)', { count: 'exact', head: true })
         .is('deleted_at', null),
       user,
       WORK_ORDER_RULE,
@@ -50,7 +50,7 @@ export class WorkOrderQueries {
     let dataQuery = applyOwnershipScope(
       supabase
         .from('work_orders')
-        .select('*')
+        .select('*, quotations(quotation_number)')
         .is('deleted_at', null)
         .order(sortBy as any, { ascending: sortOrder === 'asc' })
         .range(from, to),
@@ -70,7 +70,7 @@ export class WorkOrderQueries {
 
     if (search) {
       const term = `%${search}%`;
-      const filter = `customer_name.ilike.${term},product_name.ilike.${term},work_order_number.ilike.${term}`;
+      const filter = `customer_name.ilike.${term},product_name.ilike.${term},work_order_number.ilike.${term},quotations.quotation_number.ilike.${term}`;
       countQuery = countQuery.or(filter);
       dataQuery = dataQuery.or(filter);
     }
@@ -85,7 +85,7 @@ export class WorkOrderQueries {
     const { data, error } = await applyOwnershipScope(
       supabase
         .from('work_orders')
-        .select('*')
+        .select('*, quotations(quotation_number)')
         .eq('id', id)
         .single(),
       user,

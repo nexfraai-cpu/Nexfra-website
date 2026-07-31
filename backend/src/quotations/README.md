@@ -56,7 +56,7 @@ Get full quotation detail with spec values and custom items.
 {
   "data": {
     "id": "uuid",
-    "quotationNumber": "NQ-000001",
+    "quotationNumber": "JP/2026/000001",
     "version": 1,
     "customerName": "Sharma Fabricators",
     "customerDetails": { "gst": "27AABCU1234D1Z1" },

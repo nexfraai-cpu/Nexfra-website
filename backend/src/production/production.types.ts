@@ -2,6 +2,7 @@ export interface ProductionItemResponse {
   id: string;
   workOrderId: string;
   quotationId: string | null;
+  quotationNumber: string | null;
   currentStage: string;
   stageProgress: Record<string, unknown>;
   dispatchFields: Record<string, unknown>;

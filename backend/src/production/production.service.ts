@@ -218,6 +218,7 @@ export class ProductionService {
     const wo = row.work_orders ?? {};
     return {
       id: row.id, workOrderId: row.work_order_id, quotationId: row.quotation_id ?? null,
+      quotationNumber: row.quotation_number ?? row.quotationNumber ?? wo.quotations?.quotation_number ?? null,
       currentStage: row.current_stage, stageProgress: row.stage_progress ?? {},
       dispatchFields: row.dispatch_fields ?? {},
       startedAt: row.started_at ?? null, completedAt: row.completed_at ?? null,

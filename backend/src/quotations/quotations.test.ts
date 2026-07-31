@@ -26,7 +26,7 @@ jest.mock('../database/client', () => ({
 function createMockQuotation(overrides: Record<string, any> = {}) {
   return {
     id: 'q1111111-1111-1111-1111-111111111111',
-    quotation_number: 'NQ-000001',
+    quotation_number: 'JP/2026/000001',
     version: 1,
     customer_id: 'c1111111-1111-1111-1111-111111111111',
     customer_name: 'Sharma Fabricators',
@@ -128,7 +128,7 @@ describe('QuotationsService', () => {
     it('returns paginated quotations', async () => {
       const rows = [
         createMockQuotation(),
-        createMockQuotation({ id: 'id-2', quotation_number: 'NQ-000002' }),
+        createMockQuotation({ id: 'id-2', quotation_number: 'JP/2026/000002' }),
       ];
       queries.findAll.mockResolvedValue({ data: rows, total: 2 });
 
@@ -137,7 +137,7 @@ describe('QuotationsService', () => {
       expect(queries.findAll).toHaveBeenCalledWith(defaultOptions, actor);
       expect(result.data).toHaveLength(2);
       expect(result.meta.total).toBe(2);
-      expect(result.data[0].quotationNumber).toBe('NQ-000001');
+      expect(result.data[0].quotationNumber).toBe('JP/2026/000001');
       expect(result.data[0].customerName).toBe('Sharma Fabricators');
     });
 
@@ -162,7 +162,7 @@ describe('QuotationsService', () => {
       const result = await service.getById(q.id, actor);
 
       expect(result.id).toBe(q.id);
-      expect(result.quotationNumber).toBe('NQ-000001');
+      expect(result.quotationNumber).toBe('JP/2026/000001');
       expect(result.specValues).toHaveLength(1);
       expect(result.specValues[0].specKey).toBe('deck_length');
       expect(result.customItems).toHaveLength(1);

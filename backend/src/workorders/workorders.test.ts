@@ -41,7 +41,7 @@ function createMockWO(overrides: Record<string, any> = {}) {
 function createMockQuotation(overrides: Record<string, any> = {}) {
   return {
     id: 'q-1111-1111-1111-1111',
-    quotation_number: 'NQ-000001',
+    quotation_number: 'JP/2026/000001',
     customer_name: 'Sharma Fabricators',
     product_key: 'trailer',
     template_key: 'flatbed',

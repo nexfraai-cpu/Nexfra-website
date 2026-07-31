@@ -17,6 +17,7 @@ export interface WorkOrderResponse {
   workOrderNumber: string;
   version: number;
   quotationId: string | null;
+  quotationNumber: string | null;
   customerName: string;
   productName: string;
   specifications: Record<string, unknown>;
@@ -37,6 +38,8 @@ export interface WorkOrderResponse {
 export interface WorkOrderSummaryResponse {
   id: string;
   workOrderNumber: string;
+  quotationId: string | null;
+  quotationNumber: string | null;
   customerName: string;
   productName: string;
   quantity: number;

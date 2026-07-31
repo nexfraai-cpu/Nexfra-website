@@ -17,7 +17,7 @@ describe('Finance Claim Route & UUID Validation Integration', () => {
   let quoteService: QuotationsService;
 
   const uuidId = '493d5160-008f-4bac-9ff2-a56976efce35';
-  const displayId = 'NQ-000010';
+  const displayId = 'JP/2026/000010';
 
   const financeUser: AuthenticatedUser = {
     id: 'finance-uuid-1',
@@ -51,7 +51,7 @@ describe('Finance Claim Route & UUID Validation Integration', () => {
     }
   });
 
-  it('rejects route parameter with quotation_number (NQ-000010) with HTTP 400 validation error', () => {
+  it('rejects route parameter with quotation_number (JP/2026/000010) with HTTP 400 validation error', () => {
     const invalidReq = {
       params: { id: displayId },
       body: { paymentDueDate: '2026-08-15' },

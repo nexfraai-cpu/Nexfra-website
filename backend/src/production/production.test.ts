@@ -27,7 +27,12 @@ function createMockItem(overrides: Record<string, any> = {}) {
     created_at: '2026-07-30T10:00:00Z',
     updated_at: '2026-07-30T10:00:00Z',
     deleted_at: null,
-    work_orders: { customer_name: 'Sharma Fabricators', product_name: 'trailer flatbed', work_order_number: 'WO-000001' },
+    work_orders: {
+      customer_name: 'Sharma Fabricators',
+      product_name: 'trailer flatbed',
+      work_order_number: 'WO-000001',
+      quotations: { quotation_number: 'JP/2026/000001' },
+    },
     ...overrides,
   };
 }
@@ -113,6 +118,7 @@ describe('ProductionService', () => {
       expect(result.meta.total).toBe(2);
       expect(result.data[0].currentStage).toBe('Pending');
       expect(result.data[0].customerName).toBe('Sharma Fabricators');
+      expect(result.data[0].quotationNumber).toBe('JP/2026/000001');
     });
   });
 
@@ -126,6 +132,7 @@ describe('ProductionService', () => {
       const result = await service.getById(item.id, actor);
 
       expect(result.currentStage).toBe('Pending');
+      expect(result.quotationNumber).toBe('JP/2026/000001');
       expect(result.stageRecords).toHaveLength(1);
       expect(result.chassisRecords).toHaveLength(1);
       expect(result.chassisRecords[0].chassisNumber).toBe('TATA12345');
