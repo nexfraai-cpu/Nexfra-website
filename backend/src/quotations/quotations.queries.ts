@@ -139,6 +139,37 @@ export class QuotationQueries {
     return data;
   }
 
+  async getNextSequenceForYear(year: number): Promise<number> {
+    try {
+      const { data, error } = await (supabase as any).rpc('get_next_quotation_sequence', { p_year: year });
+      if (!error && typeof data === 'number') {
+        return data;
+      }
+    } catch {
+      // Fallback for mock environment
+    }
+
+    const yearPattern = `%/${year}/%`;
+    const { data } = await supabase
+      .from('quotations')
+      .select('quotation_number')
+      .like('quotation_number', yearPattern);
+
+    let maxSeq = 0;
+    if (data && data.length) {
+      for (const row of data) {
+        const parts = ((row as any).quotation_number || '').split('/');
+        if (parts.length === 3) {
+          const num = parseInt(parts[2], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+      }
+    }
+    return maxSeq + 1;
+  }
+
   async create(input: RowData): Promise<RowData> {
     const { data, error } = await supabase
       .from('quotations')

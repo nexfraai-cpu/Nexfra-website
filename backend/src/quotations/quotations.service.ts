@@ -1,4 +1,5 @@
 import { QuotationQueries } from './quotations.queries.js';
+import { formatQuotationNumber } from './quotation-number.service.js';
 import {
   QuotationNotFoundError,
   QuotationNotDraftError,
@@ -82,7 +83,14 @@ export class QuotationsService {
           input.orderQty as number | undefined,
         );
 
+    const year = new Date().getFullYear();
+    const seqNum = typeof (this.queries as any).getNextSequenceForYear === 'function'
+      ? await (this.queries as any).getNextSequenceForYear(year)
+      : 1;
+    const quotationNumber = formatQuotationNumber(String(input.customerName || ''), year, seqNum);
+
     const quotation = await this.queries.create({
+      quotation_number: quotationNumber,
       customer_id: input.customerId ?? null,
       customer_name: input.customerName,
       customer_details: input.customerDetails ?? {},
