@@ -12,6 +12,7 @@ import {
 } from './customers.types.js';
 import { logger } from '../config/logger.js';
 import { supabase } from '../database/client.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 
 export class CustomersService {
   constructor(private queries: CustomerQueries) {}
@@ -25,16 +26,16 @@ export class CustomersService {
       page: number;
       perPage: number;
     },
-    actorId: string,
+    user: AuthenticatedUser,
   ): Promise<PaginatedResult<CustomerResponse>> {
     if (options.page < 1 || options.perPage < 1 || options.perPage > 100) {
       throw new InvalidPaginationError();
     }
 
-    const { data, total } = await this.queries.findAll(options);
+    const { data, total } = await this.queries.findAll(options, user);
 
     logger.info(
-      { actorId, page: options.page, total },
+      { actorId: user.id, page: options.page, total },
       'Customers listed',
     );
 
@@ -49,19 +50,19 @@ export class CustomersService {
     };
   }
 
-  async getById(id: string, actorId: string): Promise<CustomerResponse> {
-    const customer = await this.queries.findById(id);
+  async getById(id: string, user: AuthenticatedUser): Promise<CustomerResponse> {
+    const customer = await this.queries.findById(id, user);
     if (!customer || customer.deleted_at) {
       throw new CustomerNotFoundError(id);
     }
 
-    logger.info({ actorId, targetId: id }, 'Customer retrieved');
+    logger.info({ actorId: user.id, targetId: id }, 'Customer retrieved');
     return this._toResponse(customer);
   }
 
-  async create(input: CreateCustomerInput, actorId: string): Promise<CustomerResponse> {
+  async create(input: CreateCustomerInput, user: AuthenticatedUser): Promise<CustomerResponse> {
     if (input.gst) {
-      const existing = await this.queries.findByGst(input.gst);
+      const existing = await this.queries.findByGst(input.gst, undefined, user);
       if (existing) {
         throw new CustomerGstConflictError(input.gst);
       }
@@ -75,31 +76,32 @@ export class CustomersService {
       email: input.email ?? null,
       address: input.address ?? null,
       vehicles: input.vehicles ?? [],
-      created_by: actorId,
+      created_by: user.id,
+      updated_by: user.id,
     } as any);
 
-    await this._logAudit(actorId, 'create', 'customer', customer.id, null, {
+    await this._logAudit(user.id, 'create', 'customer', customer.id, null, {
       name: input.name,
       company: input.company,
       gst: input.gst,
     });
 
-    logger.info({ actorId, customerId: customer.id }, 'Customer created');
+    logger.info({ actorId: user.id, customerId: customer.id }, 'Customer created');
     return this._toResponse(customer);
   }
 
   async update(
     id: string,
     input: UpdateCustomerInput,
-    actorId: string,
+    user: AuthenticatedUser,
   ): Promise<CustomerResponse> {
-    const customer = await this.queries.findById(id);
+    const customer = await this.queries.findById(id, user);
     if (!customer || customer.deleted_at) {
       throw new CustomerNotFoundError(id);
     }
 
     if (input.gst) {
-      const existing = await this.queries.findByGst(input.gst, id);
+      const existing = await this.queries.findByGst(input.gst, id, user);
       if (existing) {
         throw new CustomerGstConflictError(input.gst);
       }
@@ -115,30 +117,31 @@ export class CustomersService {
     if (input.email !== undefined) updates.email = input.email;
     if (input.address !== undefined) updates.address = input.address;
     if (input.vehicles !== undefined) updates.vehicles = input.vehicles;
+    updates.updated_by = user.id;
 
-    if (Object.keys(updates).length === 0) {
+    if (Object.keys(updates).length === 1) {
       return this._toResponse(customer);
     }
 
-    const updated = await this.queries.update(id, updates as any);
+    const updated = await this.queries.update(id, updates as any, user);
 
-    await this._logAudit(actorId, 'update', 'customer', id, oldData, updated);
+    await this._logAudit(user.id, 'update', 'customer', id, oldData, updated);
 
-    logger.info({ actorId, customerId: id }, 'Customer updated');
+    logger.info({ actorId: user.id, customerId: id }, 'Customer updated');
     return this._toResponse(updated);
   }
 
-  async softDelete(id: string, actorId: string): Promise<void> {
-    const customer = await this.queries.findById(id);
+  async softDelete(id: string, user: AuthenticatedUser): Promise<void> {
+    const customer = await this.queries.findById(id, user);
     if (!customer || customer.deleted_at) {
       throw new CustomerNotFoundError(id);
     }
 
-    await this.queries.softDelete(id);
+    await this.queries.softDelete(id, user);
 
-    await this._logAudit(actorId, 'delete', 'customer', id, customer, { deleted: true });
+    await this._logAudit(user.id, 'delete', 'customer', id, customer, { deleted: true });
 
-    logger.info({ actorId, customerId: id }, 'Customer soft-deleted');
+    logger.info({ actorId: user.id, customerId: id }, 'Customer soft-deleted');
   }
 
   private async _logAudit(

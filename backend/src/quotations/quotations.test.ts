@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { QuotationsService } from './quotations.service.js';
 import { QuotationQueries } from './quotations.queries.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 import {
   QuotationNotFoundError,
   QuotationNotDraftError,
@@ -105,6 +106,14 @@ describe('QuotationsService', () => {
   let queries: ReturnType<typeof createMockQueries>;
   let service: QuotationsService;
   const actorId = 'actor-uuid-1';
+  const actor: AuthenticatedUser = {
+    id: actorId,
+    authId: 'auth-uuid-1',
+    role: 'admin',
+    email: 'admin@nexfra.in',
+    name: 'Test Admin',
+    employeeNumber: 'EMP-001',
+  };
 
   beforeEach(() => {
     queries = createMockQueries();
@@ -121,9 +130,9 @@ describe('QuotationsService', () => {
       ];
       queries.findAll.mockResolvedValue({ data: rows, total: 2 });
 
-      const result = await service.list(defaultOptions, actorId);
+      const result = await service.list(defaultOptions, actor);
 
-      expect(queries.findAll).toHaveBeenCalledWith(defaultOptions);
+      expect(queries.findAll).toHaveBeenCalledWith(defaultOptions, actor);
       expect(result.data).toHaveLength(2);
       expect(result.meta.total).toBe(2);
       expect(result.data[0].quotationNumber).toBe('NQ-000001');
@@ -132,10 +141,10 @@ describe('QuotationsService', () => {
 
     it('passes filter params to queries', async () => {
       queries.findAll.mockResolvedValue({ data: [], total: 0 });
-      await service.list({ ...defaultOptions, status: 'Draft', search: 'Sharma' }, actorId);
+      await service.list({ ...defaultOptions, status: 'Draft', search: 'Sharma' }, actor);
       expect(queries.findAll).toHaveBeenCalledWith({
         page: 1, perPage: 20, status: 'Draft', search: 'Sharma',
-      });
+      }, actor);
     });
   });
 
@@ -148,7 +157,7 @@ describe('QuotationsService', () => {
       queries.findSpecValues.mockResolvedValue([sv]);
       queries.findCustomItems.mockResolvedValue([ci]);
 
-      const result = await service.getById(q.id, actorId);
+      const result = await service.getById(q.id, actor);
 
       expect(result.id).toBe(q.id);
       expect(result.quotationNumber).toBe('NQ-000001');
@@ -161,12 +170,12 @@ describe('QuotationsService', () => {
 
     it('throws QuotationNotFoundError when missing', async () => {
       queries.findById.mockResolvedValue(null);
-      await expect(service.getById('bad-id', actorId)).rejects.toThrow(QuotationNotFoundError);
+      await expect(service.getById('bad-id', actor)).rejects.toThrow(QuotationNotFoundError);
     });
 
     it('throws QuotationNotFoundError when deleted', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ deleted_at: '2026-07-31T00:00:00Z' }));
-      await expect(service.getById('any-id', actorId)).rejects.toThrow(QuotationNotFoundError);
+      await expect(service.getById('any-id', actor)).rejects.toThrow(QuotationNotFoundError);
     });
   });
 
@@ -187,7 +196,7 @@ describe('QuotationsService', () => {
       queries.replaceSpecValues.mockResolvedValue([createMockSpecValue()]);
       queries.replaceCustomItems.mockResolvedValue([createMockCustomItem()]);
 
-      const result = await service.create(createInput, actorId);
+      const result = await service.create(createInput, actor);
 
       expect(queries.findTemplateBasePrice).toHaveBeenCalledWith('flatbed');
       expect(queries.create).toHaveBeenCalled();
@@ -201,7 +210,7 @@ describe('QuotationsService', () => {
       queries.replaceSpecValues.mockResolvedValue([]);
       queries.replaceCustomItems.mockResolvedValue([]);
 
-      const result = await service.create({ ...createInput, manualTotal: 900000 }, actorId);
+      const result = await service.create({ ...createInput, manualTotal: 900000 }, actor);
 
       expect(queries.findTemplateBasePrice).not.toHaveBeenCalled();
       expect(result.total).toBe(900000);
@@ -209,7 +218,7 @@ describe('QuotationsService', () => {
 
     it('throws TemplatePricingNotFoundError when template missing', async () => {
       queries.findTemplateBasePrice.mockResolvedValue(null);
-      await expect(service.create(createInput, actorId)).rejects.toThrow(TemplatePricingNotFoundError);
+      await expect(service.create(createInput, actor)).rejects.toThrow(TemplatePricingNotFoundError);
     });
   });
 
@@ -222,7 +231,7 @@ describe('QuotationsService', () => {
       queries.replaceSpecValues.mockResolvedValue([]);
       queries.replaceCustomItems.mockResolvedValue([]);
 
-      const result = await service.update(q.id, { notes: 'Updated notes' }, actorId);
+      const result = await service.update(q.id, { notes: 'Updated notes' }, actor);
 
       expect(queries.update).toHaveBeenCalled();
       expect(result.version).toBe(2);
@@ -230,7 +239,7 @@ describe('QuotationsService', () => {
 
     it('throws QuotationNotDraftError when not draft', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Pending' }));
-      await expect(service.update('id', { notes: 'x' }, actorId)).rejects.toThrow(QuotationNotDraftError);
+      await expect(service.update('id', { notes: 'x' }, actor)).rejects.toThrow(QuotationNotDraftError);
     });
   });
 
@@ -240,14 +249,14 @@ describe('QuotationsService', () => {
       queries.findById.mockResolvedValue(q);
       queries.softDelete.mockResolvedValue(undefined);
 
-      await service.softDelete(q.id, actorId);
+      await service.softDelete(q.id, actor);
 
-      expect(queries.softDelete).toHaveBeenCalledWith(q.id);
+      expect(queries.softDelete).toHaveBeenCalledWith(q.id, actor);
     });
 
     it('throws QuotationNotDraftError when not draft', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
-      await expect(service.softDelete('id', actorId)).rejects.toThrow(QuotationNotDraftError);
+      await expect(service.softDelete('id', actor)).rejects.toThrow(QuotationNotDraftError);
     });
   });
 
@@ -259,15 +268,15 @@ describe('QuotationsService', () => {
       queries.findSpecValues.mockResolvedValue([]);
       queries.findCustomItems.mockResolvedValue([]);
 
-      const result = await service.submit(q.id, actorId);
+      const result = await service.submit(q.id, actor);
 
-      expect(queries.update).toHaveBeenCalledWith(q.id, { status: 'Pending' });
+      expect(queries.update).toHaveBeenCalledWith(q.id, { status: 'Pending', updated_by: actor.id }, actor);
       expect(result.status).toBe('Pending');
     });
 
     it('throws InvalidStatusTransitionError when not Draft', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
-      await expect(service.submit('id', actorId)).rejects.toThrow(InvalidStatusTransitionError);
+      await expect(service.submit('id', actor)).rejects.toThrow(InvalidStatusTransitionError);
     });
   });
 
@@ -279,24 +288,24 @@ describe('QuotationsService', () => {
       queries.findSpecValues.mockResolvedValue([]);
       queries.findCustomItems.mockResolvedValue([]);
 
-      const result = await service.approve(q.id, 'Looks good', actorId);
+      const result = await service.approve(q.id, 'Looks good', actor);
 
       expect(result.status).toBe('Approved');
     });
 
     it('throws QuotationAlreadyApprovedError', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
-      await expect(service.approve('id', undefined, actorId)).rejects.toThrow(QuotationAlreadyApprovedError);
+      await expect(service.approve('id', undefined, actor)).rejects.toThrow(QuotationAlreadyApprovedError);
     });
 
     it('throws QuotationAlreadyDeniedError', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Denied' }));
-      await expect(service.approve('id', undefined, actorId)).rejects.toThrow(QuotationAlreadyDeniedError);
+      await expect(service.approve('id', undefined, actor)).rejects.toThrow(QuotationAlreadyDeniedError);
     });
 
     it('throws QuotationNotPendingError for Draft', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Draft' }));
-      await expect(service.approve('id', undefined, actorId)).rejects.toThrow(QuotationNotPendingError);
+      await expect(service.approve('id', undefined, actor)).rejects.toThrow(QuotationNotPendingError);
     });
   });
 
@@ -310,13 +319,13 @@ describe('QuotationsService', () => {
       queries.findSpecValues.mockResolvedValue([]);
       queries.findCustomItems.mockResolvedValue([]);
 
-      const result = await service.deny(q.id, 'Wrong specs', actorId);
+      const result = await service.deny(q.id, 'Wrong specs', actor);
 
       expect(result.status).toBe('Denied');
     });
 
     it('throws DenyReasonRequiredError without reason', async () => {
-      await expect(service.deny('id', '', actorId)).rejects.toThrow(DenyReasonRequiredError);
+      await expect(service.deny('id', '', actor)).rejects.toThrow(DenyReasonRequiredError);
     });
   });
 });

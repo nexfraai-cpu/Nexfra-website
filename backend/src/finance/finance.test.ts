@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { FinanceService } from './finance.service.js';
 import { FinanceQueries } from './finance.queries.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 import {
   SaleNotFoundError,
   PaymentNotFoundError,
@@ -81,6 +82,14 @@ describe('FinanceService', () => {
   let queries: ReturnType<typeof createMockQueries>;
   let service: FinanceService;
   const actorId = 'actor-uuid-1';
+  const actor: AuthenticatedUser = {
+    id: actorId,
+    authId: 'auth-uuid-1',
+    role: 'admin',
+    email: 'admin@nexfra.in',
+    name: 'Test Admin',
+    employeeNumber: 'EMP-001',
+  };
 
   beforeEach(() => {
     queries = createMockQueries();
@@ -96,7 +105,7 @@ describe('FinanceService', () => {
         .mockResolvedValueOnce([{ amount: 425000 }])
         .mockResolvedValueOnce([{ amount: 600000 }]);
 
-      const result = await service.listSales({ page: 1, perPage: 20 }, actorId);
+      const result = await service.listSales({ page: 1, perPage: 20 }, actor);
 
       expect(result.data).toHaveLength(2);
       expect(result.meta.total).toBe(2);
@@ -112,7 +121,7 @@ describe('FinanceService', () => {
       queries.findSaleById.mockResolvedValue(sale);
       queries.findPaymentsBySale.mockResolvedValue([createMockPayment()]);
 
-      const result = await service.getSaleById(sale.id, actorId);
+      const result = await service.getSaleById(sale.id, actor);
 
       expect(result.invoiceNumber).toBe('INV-000001');
       expect(result.payments).toHaveLength(1);
@@ -121,7 +130,7 @@ describe('FinanceService', () => {
 
     it('throws SaleNotFoundError when missing', async () => {
       queries.findSaleById.mockResolvedValue(null);
-      await expect(service.getSaleById('bad', actorId)).rejects.toThrow(SaleNotFoundError);
+      await expect(service.getSaleById('bad', actor)).rejects.toThrow(SaleNotFoundError);
     });
   });
 
@@ -134,7 +143,7 @@ describe('FinanceService', () => {
         customerName: 'Tata Logistics',
         productName: 'Flat Bed Trailer',
         amount: 850000,
-      }, actorId);
+      }, actor);
 
       expect(queries.createSale).toHaveBeenCalled();
       expect(result.invoiceNumber).toBe('INV-000001');
@@ -150,9 +159,9 @@ describe('FinanceService', () => {
         productName: 'Flat Bed Trailer',
         amount: 850000,
         invoiceNumber: 'INV-CUSTOM-001',
-      }, actorId);
+      }, actor);
 
-      expect(queries.findSaleByInvoice).toHaveBeenCalledWith('INV-CUSTOM-001');
+      expect(queries.findSaleByInvoice).toHaveBeenCalledWith('INV-CUSTOM-001', actor);
       expect(result.invoiceNumber).toBe('INV-CUSTOM-001');
     });
 
@@ -164,7 +173,7 @@ describe('FinanceService', () => {
         productName: 'Trailer',
         amount: 1000,
         invoiceNumber: 'INV-EXISTING',
-      }, actorId)).rejects.toThrow(InvoiceNumberConflictError);
+      }, actor)).rejects.toThrow(InvoiceNumberConflictError);
     });
   });
 
@@ -175,7 +184,7 @@ describe('FinanceService', () => {
       queries.updateSale.mockResolvedValue({ ...sale, customer_name: 'Updated Customer' });
       queries.findPaymentsBySale.mockResolvedValue([]);
 
-      const result = await service.updateSale(sale.id, { customerName: 'Updated Customer' }, actorId);
+      const result = await service.updateSale(sale.id, { customerName: 'Updated Customer' }, actor);
 
       expect(queries.updateSale).toHaveBeenCalled();
       expect(result.customerName).toBe('Updated Customer');
@@ -183,7 +192,7 @@ describe('FinanceService', () => {
 
     it('throws SaleNotFoundError when missing', async () => {
       queries.findSaleById.mockResolvedValue(null);
-      await expect(service.updateSale('bad', {}, actorId)).rejects.toThrow(SaleNotFoundError);
+      await expect(service.updateSale('bad', {}, actor)).rejects.toThrow(SaleNotFoundError);
     });
   });
 
@@ -192,13 +201,13 @@ describe('FinanceService', () => {
       queries.findSaleById.mockResolvedValue(createMockSale());
       queries.softDeleteSale.mockResolvedValue(undefined);
 
-      await service.softDeleteSale('sale-1111-1111-1111-1111', actorId);
+      await service.softDeleteSale('sale-1111-1111-1111-1111', actor);
       expect(queries.softDeleteSale).toHaveBeenCalled();
     });
 
     it('throws SaleNotFoundError when missing', async () => {
       queries.findSaleById.mockResolvedValue(null);
-      await expect(service.softDeleteSale('bad', actorId)).rejects.toThrow(SaleNotFoundError);
+      await expect(service.softDeleteSale('bad', actor)).rejects.toThrow(SaleNotFoundError);
     });
   });
 
@@ -211,7 +220,7 @@ describe('FinanceService', () => {
       }];
       queries.findPayments.mockResolvedValue({ data: rows, total: 1 });
 
-      const result = await service.listPayments({ page: 1, perPage: 20 }, actorId);
+      const result = await service.listPayments({ page: 1, perPage: 20 }, actor);
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].invoiceNumber).toBe('INV-000001');
@@ -227,7 +236,7 @@ describe('FinanceService', () => {
       };
       queries.findPaymentById.mockResolvedValue(payment);
 
-      const result = await service.getPaymentById(payment.id, actorId);
+      const result = await service.getPaymentById(payment.id, actor);
 
       expect(result.paymentNumber).toBe('PAY-000001');
       expect(result.amount).toBe(425000);
@@ -235,7 +244,7 @@ describe('FinanceService', () => {
 
     it('throws PaymentNotFoundError when missing', async () => {
       queries.findPaymentById.mockResolvedValue(null);
-      await expect(service.getPaymentById('bad', actorId)).rejects.toThrow(PaymentNotFoundError);
+      await expect(service.getPaymentById('bad', actor)).rejects.toThrow(PaymentNotFoundError);
     });
   });
 
@@ -251,10 +260,10 @@ describe('FinanceService', () => {
         saleId: sale.id,
         amount: 425000,
         mode: 'RTGS',
-      }, actorId);
+      }, actor);
 
       expect(queries.createPayment).toHaveBeenCalled();
-      expect(queries.updateSale).toHaveBeenCalledWith(sale.id, { status: 'Partial' });
+      expect(queries.updateSale).toHaveBeenCalledWith(sale.id, { status: 'Partial' }, actor);
       expect(result.paymentNumber).toBe('PAY-000001');
     });
 
@@ -269,9 +278,9 @@ describe('FinanceService', () => {
         saleId: sale.id,
         amount: 425000,
         mode: 'UPI',
-      }, actorId);
+      }, actor);
 
-      expect(queries.updateSale).toHaveBeenCalledWith(sale.id, { status: 'Paid' });
+      expect(queries.updateSale).toHaveBeenCalledWith(sale.id, { status: 'Paid' }, actor);
       expect(result.amount).toBe(425000);
     });
 
@@ -284,7 +293,7 @@ describe('FinanceService', () => {
         saleId: sale.id,
         amount: 2000,
         mode: 'Cash',
-      }, actorId)).rejects.toThrow(PaymentExceedsOutstandingError);
+      }, actor)).rejects.toThrow(PaymentExceedsOutstandingError);
     });
 
     it('throws InvalidPaymentModeError', async () => {
@@ -296,7 +305,7 @@ describe('FinanceService', () => {
         saleId: sale.id,
         amount: 500,
         mode: 'Bitcoin',
-      }, actorId)).rejects.toThrow(InvalidPaymentModeError);
+      }, actor)).rejects.toThrow(InvalidPaymentModeError);
     });
   });
 
@@ -309,7 +318,7 @@ describe('FinanceService', () => {
       queries.findPaymentsBySale.mockResolvedValue([{ amount: 425000 }]);
       queries.findSaleById.mockResolvedValue(sale);
 
-      const result = await service.updatePayment(payment.id, { amount: 425000 }, actorId);
+      const result = await service.updatePayment(payment.id, { amount: 425000 }, actor);
 
       expect(queries.updateSale).toHaveBeenCalled();
       expect(result.amount).toBe(425000);
@@ -325,9 +334,9 @@ describe('FinanceService', () => {
       queries.findSaleById.mockResolvedValue(sale);
       queries.softDeletePayment.mockResolvedValue(undefined);
 
-      await service.softDeletePayment(payment.id, actorId);
+      await service.softDeletePayment(payment.id, actor);
       expect(queries.softDeletePayment).toHaveBeenCalled();
-      expect(queries.updateSale).toHaveBeenCalledWith('sale-1111-1111-1111-1111', { status: 'Pending' });
+      expect(queries.updateSale).toHaveBeenCalledWith('sale-1111-1111-1111-1111', { status: 'Pending' }, actor);
     });
   });
 
@@ -342,7 +351,7 @@ describe('FinanceService', () => {
         total: 2,
       });
 
-      const result = await service.getLedger({ page: 1, perPage: 20 }, actorId);
+      const result = await service.getLedger({ page: 1, perPage: 20 }, actor);
 
       expect(result.data).toHaveLength(2);
       expect(result.data[0].type).toBe('sale');
@@ -361,7 +370,7 @@ describe('FinanceService', () => {
         total: 2,
       });
 
-      const result = await service.getTransactions({ page: 1, perPage: 20 }, actorId);
+      const result = await service.getTransactions({ page: 1, perPage: 20 }, actor);
 
       expect(result.data).toHaveLength(2);
       expect(result.data[0].type).toBe('Sale');
@@ -378,7 +387,7 @@ describe('FinanceService', () => {
         total: 1,
       });
 
-      const result = await service.getAuditLogs({ page: 1, perPage: 20 }, actorId);
+      const result = await service.getAuditLogs({ page: 1, perPage: 20 }, actor);
 
       expect(result.data).toHaveLength(1);
       expect(result.data[0].action).toBe('create');
@@ -393,7 +402,7 @@ describe('FinanceService', () => {
         { month: '2026-07-01', invoice_count: 5, payment_count: 3, total_collected: 2500000 },
       ]);
 
-      const result = await service.getMonthlyStats(actorId);
+      const result = await service.getMonthlyStats(actor);
 
       expect(result).toHaveLength(1);
       expect(result[0]).toHaveProperty('total_collected');
@@ -406,7 +415,7 @@ describe('FinanceService', () => {
         { customer_id: 'cus-1', customer_number: 'CUS-000001', company: 'Tata Logistics', outstanding: 850000 },
       ]);
 
-      const result = await service.getOutstandingBalances(actorId);
+      const result = await service.getOutstandingBalances(actor);
 
       expect(result).toHaveLength(1);
       expect(result[0].company).toBe('Tata Logistics');

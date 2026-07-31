@@ -36,7 +36,7 @@ export async function auth(req: Request, _res: Response, next: NextFunction) {
 
   const { data: employee, error: empError } = await supabase
     .from('employees')
-    .select('id, role, full_name, employee_number')
+    .select('id, role, full_name, employee_number, status')
     .eq('auth_id', data.user.id)
     .is('deleted_at', null)
     .single();
@@ -46,7 +46,7 @@ export async function auth(req: Request, _res: Response, next: NextFunction) {
     return next(new AuthError('Employee record not found'));
   }
 
-  if (employee.role === 'Disabled') {
+  if (employee.status === 'Disabled') {
     return next(new AuthError('Account is disabled'));
   }
 

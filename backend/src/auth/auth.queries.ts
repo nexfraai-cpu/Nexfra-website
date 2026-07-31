@@ -1,4 +1,5 @@
 import { supabase } from '../database/client.js';
+import { config } from '../config/index.js';
 
 export class AuthQueries {
   async signIn(email: string, password: string) {
@@ -40,10 +41,9 @@ export class AuthQueries {
   }
 
   async sendPasswordResetEmail(email: string) {
-    const redirectTo =
-      process.env.NODE_ENV === 'production'
-        ? 'https://erp.nexfra.in/reset-password'
-        : 'http://localhost:3000/reset-password';
+    const redirectTo = config.isProd()
+      ? 'https://erp.nexfra.in/reset-password'
+      : 'http://localhost:3000/reset-password';
     return supabase.auth.resetPasswordForEmail(email, { redirectTo });
   }
 

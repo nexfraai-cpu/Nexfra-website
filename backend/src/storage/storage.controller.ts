@@ -27,7 +27,15 @@ export class StorageController {
 
     const { error } = await supabase
       .from('app_settings')
-      .upsert({ key, value, description: `Frontend storage: ${key}` }, { onConflict: 'key' });
+      .upsert(
+        {
+          key,
+          value,
+          description: `Frontend storage: ${key}`,
+          updated_by: req.user?.id ?? null,
+        },
+        { onConflict: 'key' },
+      );
 
     if (error) {
       logger.error({ error, key }, 'Storage set failed');

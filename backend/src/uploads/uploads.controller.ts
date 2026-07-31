@@ -9,7 +9,7 @@ export class UploadsController {
   uploadQuotationPdf = asyncWrap(async (req: Request, res: Response) => {
     const file = validateFile(req, 'quotation-pdfs');
     const result = await this.uploadsService.uploadQuotationPdf(
-      req.params.id, file, req.user!.id,
+      req.params.id, file, req.user!,
     );
     res.status(201).json({ data: result });
   });
@@ -44,7 +44,7 @@ export class UploadsController {
 
   getQuotationPdf = asyncWrap(async (req: Request, res: Response) => {
     const result = await this.uploadsService.getQuotationPdfSignedUrl(
-      req.params.id, req.user!.id,
+      req.params.id, req.user!,
     );
     if (!result) {
       res.status(404).json({ error: 'FileNotFound', message: 'No PDF found for this quotation' });

@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { CustomersService } from './customers.service.js';
 import { CustomerQueries } from './customers.queries.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 import {
   CustomerNotFoundError,
   CustomerGstConflictError,
@@ -49,7 +50,14 @@ function createMockQueries() {
 describe('CustomersService', () => {
   let queries: ReturnType<typeof createMockQueries>;
   let service: CustomersService;
-  const actorId = 'actor-uuid-1';
+  const actor: AuthenticatedUser = {
+    id: 'actor-uuid-1',
+    authId: 'auth-uuid-1',
+    role: 'admin',
+    email: 'admin@nexfra.in',
+    name: 'Test Admin',
+    employeeNumber: 'EMP-001',
+  };
 
   beforeEach(() => {
     queries = createMockQueries();
@@ -63,9 +71,9 @@ describe('CustomersService', () => {
       const customers = [createMockCustomer(), createMockCustomer({ id: 'id-2', email: 'info@test.in' })];
       queries.findAll.mockResolvedValue({ data: customers, total: 2 });
 
-      const result = await service.list(defaultOptions, actorId);
+      const result = await service.list(defaultOptions, actor);
 
-      expect(queries.findAll).toHaveBeenCalledWith(defaultOptions);
+      expect(queries.findAll).toHaveBeenCalledWith(defaultOptions, actor);
       expect(result.data).toHaveLength(2);
       expect(result.meta.total).toBe(2);
       expect(result.meta.page).toBe(1);
@@ -77,18 +85,18 @@ describe('CustomersService', () => {
 
     it('passes search and filter params to queries', async () => {
       queries.findAll.mockResolvedValue({ data: [], total: 0 });
-      await service.list({ ...defaultOptions, search: 'Sharma', company: 'Fabricators' }, actorId);
+      await service.list({ ...defaultOptions, search: 'Sharma', company: 'Fabricators' }, actor);
       expect(queries.findAll).toHaveBeenCalledWith({
         page: 1, perPage: 20, search: 'Sharma', company: 'Fabricators',
-      });
+      }, actor);
     });
 
     it('throws InvalidPaginationError for invalid page', async () => {
-      await expect(service.list({ page: 0, perPage: 20 }, actorId)).rejects.toThrow(InvalidPaginationError);
+      await expect(service.list({ page: 0, perPage: 20 }, actor)).rejects.toThrow(InvalidPaginationError);
     });
 
     it('throws InvalidPaginationError for invalid perPage', async () => {
-      await expect(service.list({ page: 1, perPage: 101 }, actorId)).rejects.toThrow(InvalidPaginationError);
+      await expect(service.list({ page: 1, perPage: 101 }, actor)).rejects.toThrow(InvalidPaginationError);
     });
   });
 
@@ -97,7 +105,7 @@ describe('CustomersService', () => {
       const c = createMockCustomer();
       queries.findById.mockResolvedValue(c);
 
-      const result = await service.getById(c.id, actorId);
+      const result = await service.getById(c.id, actor);
 
       expect(result.id).toBe(c.id);
       expect(result.name).toBe(c.name);
@@ -106,12 +114,12 @@ describe('CustomersService', () => {
 
     it('throws CustomerNotFoundError when soft-deleted', async () => {
       queries.findById.mockResolvedValue(createMockCustomer({ deleted_at: '2026-07-31T00:00:00Z' }));
-      await expect(service.getById('any-id', actorId)).rejects.toThrow(CustomerNotFoundError);
+      await expect(service.getById('any-id', actor)).rejects.toThrow(CustomerNotFoundError);
     });
 
     it('throws CustomerNotFoundError when missing', async () => {
       queries.findById.mockResolvedValue(null);
-      await expect(service.getById('bad-id', actorId)).rejects.toThrow(CustomerNotFoundError);
+      await expect(service.getById('bad-id', actor)).rejects.toThrow(CustomerNotFoundError);
     });
   });
 
@@ -128,7 +136,7 @@ describe('CustomersService', () => {
         createMockCustomer({ name: 'New Customer', company: 'New Company Pvt Ltd' }),
       );
 
-      const result = await service.create(createInput, actorId);
+      const result = await service.create(createInput, actor);
 
       expect(queries.findByGst).not.toHaveBeenCalled(); // no GST in input
       expect(queries.create).toHaveBeenCalledWith({
@@ -139,7 +147,8 @@ describe('CustomersService', () => {
         email: null,
         address: null,
         vehicles: [],
-        created_by: actorId,
+        created_by: actor.id,
+        updated_by: actor.id,
       });
       expect(result.name).toBe('New Customer');
     });
@@ -148,7 +157,7 @@ describe('CustomersService', () => {
       queries.findByGst.mockResolvedValue(createMockCustomer());
 
       await expect(
-        service.create({ ...createInput, gst: '27AABCU1234D1Z1' }, actorId),
+        service.create({ ...createInput, gst: '27AABCU1234D1Z1' }, actor),
       ).rejects.toThrow(CustomerGstConflictError);
       expect(queries.create).not.toHaveBeenCalled();
     });
@@ -160,12 +169,13 @@ describe('CustomersService', () => {
       queries.findById.mockResolvedValue(c);
       queries.update.mockResolvedValue({ ...c, name: 'Updated Name', phone: '+91-9999999999' });
 
-      const result = await service.update(c.id, { name: 'Updated Name', phone: '+91-9999999999' }, actorId);
+      const result = await service.update(c.id, { name: 'Updated Name', phone: '+91-9999999999' }, actor);
 
       expect(queries.update).toHaveBeenCalledWith(c.id, {
         name: 'Updated Name',
         phone: '+91-9999999999',
-      });
+        updated_by: actor.id,
+      }, actor);
       expect(result.name).toBe('Updated Name');
     });
 
@@ -175,7 +185,7 @@ describe('CustomersService', () => {
       queries.findByGst.mockResolvedValue(createMockCustomer());
 
       await expect(
-        service.update(c.id, { gst: '27AABCU1234D1Z1' }, actorId),
+        service.update(c.id, { gst: '27AABCU1234D1Z1' }, actor),
       ).rejects.toThrow(CustomerGstConflictError);
     });
 
@@ -183,7 +193,7 @@ describe('CustomersService', () => {
       const c = createMockCustomer();
       queries.findById.mockResolvedValue(c);
 
-      const result = await service.update(c.id, {}, actorId);
+      const result = await service.update(c.id, {}, actor);
 
       expect(result.id).toBe(c.id);
       expect(queries.update).not.toHaveBeenCalled();
@@ -191,7 +201,7 @@ describe('CustomersService', () => {
 
     it('throws CustomerNotFoundError when missing', async () => {
       queries.findById.mockResolvedValue(null);
-      await expect(service.update('bad-id', { name: 'X' }, actorId)).rejects.toThrow(CustomerNotFoundError);
+      await expect(service.update('bad-id', { name: 'X' }, actor)).rejects.toThrow(CustomerNotFoundError);
     });
   });
 
@@ -201,19 +211,19 @@ describe('CustomersService', () => {
       queries.findById.mockResolvedValue(c);
       queries.softDelete.mockResolvedValue(undefined);
 
-      await service.softDelete(c.id, actorId);
+      await service.softDelete(c.id, actor);
 
-      expect(queries.softDelete).toHaveBeenCalledWith(c.id);
+      expect(queries.softDelete).toHaveBeenCalledWith(c.id, actor);
     });
 
     it('throws CustomerNotFoundError when already deleted', async () => {
       queries.findById.mockResolvedValue(null);
-      await expect(service.softDelete('bad-id', actorId)).rejects.toThrow(CustomerNotFoundError);
+      await expect(service.softDelete('bad-id', actor)).rejects.toThrow(CustomerNotFoundError);
     });
 
     it('throws CustomerNotFoundError when already soft-deleted', async () => {
       queries.findById.mockResolvedValue(createMockCustomer({ deleted_at: '2026-07-31T00:00:00Z' }));
-      await expect(service.softDelete('any-id', actorId)).rejects.toThrow(CustomerNotFoundError);
+      await expect(service.softDelete('any-id', actor)).rejects.toThrow(CustomerNotFoundError);
     });
   });
 });

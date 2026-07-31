@@ -14,6 +14,7 @@ import {
 } from './production.types.js';
 import { logger } from '../config/logger.js';
 import { supabase } from '../database/client.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 
 const PRODUCTION_STAGES = [
   'Pending', 'Material Ordered', 'Cutting', 'Fabrication', 'Welding',
@@ -28,24 +29,24 @@ export class ProductionService {
       stage?: string; workOrderId?: string; search?: string;
       sortBy?: string; sortOrder?: string; page: number; perPage: number;
     },
-    actorId: string,
+    user: AuthenticatedUser,
   ): Promise<PaginatedResult<ProductionItemResponse>> {
-    const { data, total } = await this.queries.findAll(options as any);
-    logger.info({ actorId, page: options.page, total }, 'Production items listed');
+    const { data, total } = await this.queries.findAll(options as any, user);
+    logger.info({ actorId: user.id, page: options.page, total }, 'Production items listed');
     return {
       data: data.map(this._toResponse),
       meta: { total, page: options.page, perPage: options.perPage, totalPages: Math.ceil(total / options.perPage) || 1 },
     };
   }
 
-  async getById(id: string, actorId: string): Promise<ProductionItemDetailResponse> {
-    const item = await this.queries.findById(id);
+  async getById(id: string, user: AuthenticatedUser): Promise<ProductionItemDetailResponse> {
+    const item = await this.queries.findById(id, user);
     if (!item || (item as any).deleted_at) throw new ProductionItemNotFoundError(id);
 
-    const stageRecords = await this.queries.findStageRecords(id);
-    const chassisRecords = await this.queries.findChassisRecordsByItem(id);
+    const stageRecords = await this.queries.findStageRecords(id, user);
+    const chassisRecords = await this.queries.findChassisRecordsByItem(id, user);
 
-    logger.info({ actorId, productionItemId: id }, 'Production item retrieved');
+    logger.info({ actorId: user.id, productionItemId: id }, 'Production item retrieved');
     return {
       ...this._toResponse(item),
       stageRecords: stageRecords.map(this._toStageRecordResponse),
@@ -53,27 +54,27 @@ export class ProductionService {
     };
   }
 
-  async update(id: string, input: { dispatchFields?: Record<string, unknown>; stageProgress?: Record<string, unknown> }, actorId: string): Promise<ProductionItemResponse> {
-    const item = await this.queries.findById(id);
+  async update(id: string, input: { dispatchFields?: Record<string, unknown>; stageProgress?: Record<string, unknown> }, user: AuthenticatedUser): Promise<ProductionItemResponse> {
+    const item = await this.queries.findById(id, user);
     if (!item || (item as any).deleted_at) throw new ProductionItemNotFoundError(id);
 
     const oldData = { ...item };
-    const updates: Record<string, unknown> = {};
+    const updates: Record<string, unknown> = { updated_by: user.id };
 
     if (input.dispatchFields !== undefined) updates.dispatch_fields = input.dispatchFields;
     if (input.stageProgress !== undefined) updates.stage_progress = input.stageProgress;
 
-    if (Object.keys(updates).length === 0) return this._toResponse(item);
+    if (Object.keys(updates).length === 1) return this._toResponse(item);
 
-    const updated = await this.queries.update(id, updates as any);
+    const updated = await this.queries.update(id, updates as any, user);
 
-    await this._logAudit(actorId, 'update', 'production_item', id, oldData, updated);
-    logger.info({ actorId, productionItemId: id }, 'Production item updated');
+    await this._logAudit(user.id, 'update', 'production_item', id, oldData, updated);
+    logger.info({ actorId: user.id, productionItemId: id }, 'Production item updated');
     return this._toResponse(updated);
   }
 
-  async advanceStage(id: string, input: { stageKey?: string; remark?: string | null }, actorId: string): Promise<ProductionItemDetailResponse> {
-    const item = await this.queries.findById(id);
+  async advanceStage(id: string, input: { stageKey?: string; remark?: string | null }, user: AuthenticatedUser): Promise<ProductionItemDetailResponse> {
+    const item = await this.queries.findById(id, user);
     if (!item || (item as any).deleted_at) throw new ProductionItemNotFoundError(id);
 
     const currentStage = (item as any).current_stage;
@@ -106,15 +107,17 @@ export class ProductionService {
       stage_key: nextStage,
       stage_name: nextStage,
       is_completed: nextStage === 'Delivered',
-      completed_by: nextStage === 'Delivered' ? actorId : null,
+      completed_by: nextStage === 'Delivered' ? user.id : null,
       completed_at: nextStage === 'Delivered' ? new Date().toISOString() : null,
       remark: input.remark ?? null,
+      created_by: user.id,
     });
 
     const timeNow = new Date().toISOString();
     const updates: Record<string, unknown> = {
       current_stage: nextStage,
       stage_progress: { ...((item as any).stage_progress as Record<string, unknown> ?? {}), [nextStage]: timeNow },
+      updated_by: user.id,
     };
 
     if (nextStage !== 'Pending' && !(item as any).started_at) {
@@ -124,14 +127,14 @@ export class ProductionService {
       updates.completed_at = timeNow;
     }
 
-    const updated = await this.queries.update(id, updates as any);
-    const stageRecords = await this.queries.findStageRecords(id);
-    const chassisRecords = await this.queries.findChassisRecordsByItem(id);
+    const updated = await this.queries.update(id, updates as any, user);
+    const stageRecords = await this.queries.findStageRecords(id, user);
+    const chassisRecords = await this.queries.findChassisRecordsByItem(id, user);
 
-    await this._logAudit(actorId, 'advance-stage', 'production_item', id,
+    await this._logAudit(user.id, 'advance-stage', 'production_item', id,
       { current_stage: currentStage }, { current_stage: nextStage, remark: input.remark });
 
-    logger.info({ actorId, productionItemId: id, from: currentStage, to: nextStage }, 'Stage advanced');
+    logger.info({ actorId: user.id, productionItemId: id, from: currentStage, to: nextStage }, 'Stage advanced');
     return {
       ...this._toResponse(updated),
       stageRecords: stageRecords.map(this._toStageRecordResponse),
@@ -139,12 +142,12 @@ export class ProductionService {
     };
   }
 
-  async addChassis(id: string, input: Record<string, unknown>, actorId: string): Promise<ChassisRecordResponse> {
-    const item = await this.queries.findById(id);
+  async addChassis(id: string, input: Record<string, unknown>, user: AuthenticatedUser): Promise<ChassisRecordResponse> {
+    const item = await this.queries.findById(id, user);
     if (!item || (item as any).deleted_at) throw new ProductionItemNotFoundError(id);
 
     const woId = (item as any).work_order_id;
-    const wo = woId ? await this.queries.findWorkOrderById(woId as string) : null;
+    const wo = woId ? await this.queries.findWorkOrderById(woId as string, user) : null;
 
     const record = await this.queries.createChassisRecord({
       work_order_id: woId ?? null,
@@ -157,24 +160,25 @@ export class ProductionService {
       customer_name: input.customerName ?? (wo ? (wo as any).customer_name : null),
       product_name: input.productName ?? (wo ? (wo as any).product_name : null),
       notes: input.notes ?? null,
-      created_by: actorId,
+      created_by: user.id,
+      updated_by: user.id,
     } as any);
 
-    await this._logAudit(actorId, 'add-chassis', 'chassis_record', record.id as string, null, {
+    await this._logAudit(user.id, 'add-chassis', 'chassis_record', record.id as string, null, {
       chassis_number: input.chassisNumber,
       production_item_id: id,
     });
 
-    logger.info({ actorId, productionItemId: id, chassisId: record.id }, 'Chassis record added');
+    logger.info({ actorId: user.id, productionItemId: id, chassisId: record.id }, 'Chassis record added');
     return this._toChassisResponse(record);
   }
 
-  async updateChassis(_id: string, chassisId: string, input: Record<string, unknown>, actorId: string): Promise<ChassisRecordResponse> {
-    const record = await this.queries.findChassisRecordById(chassisId);
+  async updateChassis(_id: string, chassisId: string, input: Record<string, unknown>, user: AuthenticatedUser): Promise<ChassisRecordResponse> {
+    const record = await this.queries.findChassisRecordById(chassisId, user);
     if (!record || (record as any).deleted_at) throw new ChassisRecordNotFoundError(chassisId);
 
     const oldData = { ...record };
-    const updates: Record<string, unknown> = {};
+    const updates: Record<string, unknown> = { updated_by: user.id };
     const fieldMap: Record<string, string> = {
       field: 'field', brand: 'brand', model: 'model',
       chassisNumber: 'chassis_number', arrivalDate: 'arrival_date', notes: 'notes',
@@ -184,21 +188,21 @@ export class ProductionService {
       if (input[ik] !== undefined) updates[dbk] = input[ik];
     }
 
-    if (Object.keys(updates).length === 0) return this._toChassisResponse(record);
+    if (Object.keys(updates).length === 1) return this._toChassisResponse(record);
 
-    const updated = await this.queries.updateChassisRecord(chassisId, updates as any);
+    const updated = await this.queries.updateChassisRecord(chassisId, updates as any, user);
 
-    await this._logAudit(actorId, 'update-chassis', 'chassis_record', chassisId, oldData, updated);
-    logger.info({ actorId, chassisId }, 'Chassis record updated');
+    await this._logAudit(user.id, 'update-chassis', 'chassis_record', chassisId, oldData, updated);
+    logger.info({ actorId: user.id, chassisId }, 'Chassis record updated');
     return this._toChassisResponse(updated);
   }
 
-  async getChassisRecords(id: string, actorId: string): Promise<ChassisRecordResponse[]> {
-    const item = await this.queries.findById(id);
+  async getChassisRecords(id: string, user: AuthenticatedUser): Promise<ChassisRecordResponse[]> {
+    const item = await this.queries.findById(id, user);
     if (!item || (item as any).deleted_at) throw new ProductionItemNotFoundError(id);
 
-    const records = await this.queries.findChassisRecordsByItem(id);
-    logger.info({ actorId, productionItemId: id, count: records.length }, 'Chassis records listed');
+    const records = await this.queries.findChassisRecordsByItem(id, user);
+    logger.info({ actorId: user.id, productionItemId: id, count: records.length }, 'Chassis records listed');
     return records.map(this._toChassisResponse);
   }
 

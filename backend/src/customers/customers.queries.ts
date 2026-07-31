@@ -1,5 +1,7 @@
 import { supabase } from '../database/client.js';
 import { CustomerRow } from '../database/types.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
+import { applyOwnershipScope, OwnershipRule } from '../middleware/ownership.js';
 
 export interface FindAllParams {
   search?: string;
@@ -15,23 +17,37 @@ export interface FindAllResult {
   total: number;
 }
 
+const CUSTOMER_RULE: OwnershipRule = {
+  table: 'customers',
+  fullAccessRoles: ['admin'],
+  allowSales: true,
+};
+
 export class CustomerQueries {
-  async findAll(params: FindAllParams): Promise<FindAllResult> {
+  async findAll(params: FindAllParams, user: AuthenticatedUser): Promise<FindAllResult> {
     const { search, company, sortBy = 'created_at', sortOrder = 'desc', page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let countQuery = supabase
-      .from('customers')
-      .select('id', { count: 'exact', head: true })
-      .is('deleted_at', null);
+    let countQuery = applyOwnershipScope(
+      supabase
+        .from('customers')
+        .select('id', { count: 'exact', head: true })
+        .is('deleted_at', null),
+      user,
+      CUSTOMER_RULE,
+    );
 
-    let dataQuery = supabase
-      .from('customers')
-      .select('*')
-      .is('deleted_at', null)
-      .order(sortBy, { ascending: sortOrder === 'asc' })
-      .range(from, to);
+    let dataQuery = applyOwnershipScope(
+      supabase
+        .from('customers')
+        .select('*')
+        .is('deleted_at', null)
+        .order(sortBy, { ascending: sortOrder === 'asc' })
+        .range(from, to),
+      user,
+      CUSTOMER_RULE,
+    );
 
     if (company) {
       const companyFilter = `%${company}%`;
@@ -62,12 +78,16 @@ export class CustomerQueries {
     };
   }
 
-  async findById(id: string): Promise<CustomerRow | null> {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('id', id)
-      .single();
+  async findById(id: string, user: AuthenticatedUser): Promise<CustomerRow | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('customers')
+        .select('*')
+        .eq('id', id)
+        .single(),
+      user,
+      CUSTOMER_RULE,
+    );
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -76,13 +96,17 @@ export class CustomerQueries {
     return data as CustomerRow;
   }
 
-  async findByGst(gst: string, excludeId?: string): Promise<CustomerRow | null> {
-    let query = supabase
-      .from('customers')
-      .select('*')
-      .eq('gst', gst)
-      .is('deleted_at', null)
-      .maybeSingle();
+  async findByGst(gst: string, excludeId?: string, user?: AuthenticatedUser): Promise<CustomerRow | null> {
+    let query = applyOwnershipScope(
+      supabase
+        .from('customers')
+        .select('*')
+        .eq('gst', gst)
+        .is('deleted_at', null)
+        .maybeSingle(),
+      user!,
+      CUSTOMER_RULE,
+    );
 
     const { data, error } = await query;
     if (error) throw error;
@@ -111,13 +135,17 @@ export class CustomerQueries {
     return data as CustomerRow;
   }
 
-  async update(id: string, updates: Partial<CustomerRow>): Promise<CustomerRow> {
-    const { data, error } = await supabase
-      .from('customers')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+  async update(id: string, updates: Partial<CustomerRow>, user?: AuthenticatedUser): Promise<CustomerRow> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('customers')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single(),
+      user!,
+      CUSTOMER_RULE,
+    );
 
     if (error) {
       if (error.code === '23505') {
@@ -132,11 +160,15 @@ export class CustomerQueries {
     return data as CustomerRow;
   }
 
-  async softDelete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('customers')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id);
+  async softDelete(id: string, user?: AuthenticatedUser): Promise<void> {
+    const { error } = await applyOwnershipScope(
+      supabase
+        .from('customers')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id),
+      user!,
+      CUSTOMER_RULE,
+    );
 
     if (error) throw error;
   }

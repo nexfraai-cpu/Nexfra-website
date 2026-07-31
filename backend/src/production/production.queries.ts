@@ -1,6 +1,33 @@
 import { supabase } from '../database/client.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
+import { applyOwnershipScope, OwnershipRule } from '../middleware/ownership.js';
 
 type RowData = Record<string, unknown>;
+
+const PRODUCTION_ITEM_RULE: OwnershipRule = {
+  table: 'production_items',
+  fullAccessRoles: ['admin', 'manager'],
+  allowSales: true,
+};
+
+const STAGE_RECORD_RULE: OwnershipRule = {
+  table: 'production_stage_records',
+  column: 'created_by',
+  fullAccessRoles: ['admin', 'manager'],
+  allowSales: true,
+};
+
+const CHASSIS_RULE: OwnershipRule = {
+  table: 'chassis_records',
+  fullAccessRoles: ['admin', 'manager'],
+  allowSales: true,
+};
+
+const WORK_ORDER_RULE: OwnershipRule = {
+  table: 'work_orders',
+  fullAccessRoles: ['admin', 'manager'],
+  allowSales: true,
+};
 
 export interface FindAllParams {
   stage?: string;
@@ -18,22 +45,30 @@ export interface FindAllResult {
 }
 
 export class ProductionQueries {
-  async findAll(params: FindAllParams): Promise<FindAllResult> {
+  async findAll(params: FindAllParams, user: AuthenticatedUser): Promise<FindAllResult> {
     const { stage, workOrderId, search, sortBy = 'created_at', sortOrder = 'desc', page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let countQuery = supabase
-      .from('production_items')
-      .select('id', { count: 'exact', head: true })
-      .is('deleted_at', null);
+    let countQuery = applyOwnershipScope(
+      supabase
+        .from('production_items')
+        .select('id', { count: 'exact', head: true })
+        .is('deleted_at', null),
+      user,
+      PRODUCTION_ITEM_RULE,
+    );
 
-    let dataQuery = supabase
-      .from('production_items')
-      .select('*, work_orders!inner(customer_name, product_name, work_order_number)')
-      .is('deleted_at', null)
-      .order(sortBy as any, { ascending: sortOrder === 'asc' })
-      .range(from, to);
+    let dataQuery = applyOwnershipScope(
+      supabase
+        .from('production_items')
+        .select('*, work_orders!inner(customer_name, product_name, work_order_number)')
+        .is('deleted_at', null)
+        .order(sortBy as any, { ascending: sortOrder === 'asc' })
+        .range(from, to),
+      user,
+      PRODUCTION_ITEM_RULE,
+    );
 
     if (stage) {
       countQuery = countQuery.eq('current_stage', stage);
@@ -57,12 +92,16 @@ export class ProductionQueries {
     return { data: data ?? [], total: count ?? 0 };
   }
 
-  async findById(id: string): Promise<RowData | null> {
-    const { data, error } = await supabase
-      .from('production_items')
-      .select('*, work_orders!inner(customer_name, product_name, work_order_number)')
-      .eq('id', id)
-      .single();
+  async findById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('production_items')
+        .select('*, work_orders!inner(customer_name, product_name, work_order_number)')
+        .eq('id', id)
+        .single(),
+      user,
+      PRODUCTION_ITEM_RULE,
+    );
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -71,24 +110,32 @@ export class ProductionQueries {
     return data;
   }
 
-  async update(id: string, updates: RowData): Promise<RowData> {
-    const { data, error } = await supabase
-      .from('production_items')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+  async update(id: string, updates: RowData, user: AuthenticatedUser): Promise<RowData> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('production_items')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single(),
+      user,
+      PRODUCTION_ITEM_RULE,
+    );
 
     if (error) throw error;
     return data;
   }
 
-  async findStageRecords(productionItemId: string): Promise<RowData[]> {
-    const { data, error } = await supabase
-      .from('production_stage_records')
-      .select('*')
-      .eq('production_item_id', productionItemId)
-      .order('created_at', { ascending: true });
+  async findStageRecords(productionItemId: string, user: AuthenticatedUser): Promise<RowData[]> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('production_stage_records')
+        .select('*')
+        .eq('production_item_id', productionItemId)
+        .order('created_at', { ascending: true }),
+      user,
+      STAGE_RECORD_RULE,
+    );
 
     if (error) throw error;
     return data ?? [];
@@ -116,12 +163,16 @@ export class ProductionQueries {
     return data;
   }
 
-  async findChassisRecords(workOrderId?: string, customerId?: string): Promise<RowData[]> {
-    let query = supabase
-      .from('chassis_records')
-      .select('*')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false });
+  async findChassisRecords(user: AuthenticatedUser, workOrderId?: string, customerId?: string): Promise<RowData[]> {
+    let query = applyOwnershipScope(
+      supabase
+        .from('chassis_records')
+        .select('*')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false }),
+      user,
+      CHASSIS_RULE,
+    );
 
     if (workOrderId) query = query.eq('work_order_id', workOrderId);
     if (customerId) query = query.eq('customer_id', customerId);
@@ -131,12 +182,12 @@ export class ProductionQueries {
     return data ?? [];
   }
 
-  async findChassisRecordsByItem(productionItemId: string): Promise<RowData[]> {
-    const item = await this.findById(productionItemId);
+  async findChassisRecordsByItem(productionItemId: string, user: AuthenticatedUser): Promise<RowData[]> {
+    const item = await this.findById(productionItemId, user);
     if (!item) return [];
     const woId = (item as any).work_order_id;
     if (!woId) return [];
-    return this.findChassisRecords(woId as string);
+    return this.findChassisRecords(user, woId as string);
   }
 
   async createChassisRecord(input: RowData): Promise<RowData> {
@@ -150,12 +201,16 @@ export class ProductionQueries {
     return data;
   }
 
-  async findChassisRecordById(id: string): Promise<RowData | null> {
-    const { data, error } = await supabase
-      .from('chassis_records')
-      .select('*')
-      .eq('id', id)
-      .single();
+  async findChassisRecordById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('chassis_records')
+        .select('*')
+        .eq('id', id)
+        .single(),
+      user,
+      CHASSIS_RULE,
+    );
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -164,24 +219,32 @@ export class ProductionQueries {
     return data;
   }
 
-  async updateChassisRecord(id: string, updates: RowData): Promise<RowData> {
-    const { data, error } = await supabase
-      .from('chassis_records')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+  async updateChassisRecord(id: string, updates: RowData, user: AuthenticatedUser): Promise<RowData> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('chassis_records')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single(),
+      user,
+      CHASSIS_RULE,
+    );
 
     if (error) throw error;
     return data;
   }
 
-  async findWorkOrderById(id: string): Promise<RowData | null> {
-    const { data, error } = await supabase
-      .from('work_orders')
-      .select('customer_name, product_name')
-      .eq('id', id)
-      .single();
+  async findWorkOrderById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('work_orders')
+        .select('customer_name, product_name')
+        .eq('id', id)
+        .single(),
+      user,
+      WORK_ORDER_RULE,
+    );
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -190,12 +253,16 @@ export class ProductionQueries {
     return data;
   }
 
-  async findCustomerById(id: string): Promise<RowData | null> {
-    const { data, error } = await supabase
-      .from('customers')
-      .select('id, name, company')
-      .eq('id', id)
-      .single();
+  async findCustomerById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('customers')
+        .select('id, name, company')
+        .eq('id', id)
+        .single(),
+      user,
+      { table: 'customers', fullAccessRoles: ['admin'], allowSales: true },
+    );
 
     if (error) {
       if (error.code === 'PGRST116') return null;

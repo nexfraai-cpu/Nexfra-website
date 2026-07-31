@@ -16,6 +16,7 @@ import {
 } from './quotations.types.js';
 import { logger } from '../config/logger.js';
 import { supabase } from '../database/client.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 
 type RowData = Record<string, unknown>;
 
@@ -38,11 +39,11 @@ export class QuotationsService {
       page: number;
       perPage: number;
     },
-    actorId: string,
+    user: AuthenticatedUser,
   ): Promise<PaginatedResult<QuotationSummaryResponse>> {
-    const { data, total } = await this.queries.findAll(options as any);
+    const { data, total } = await this.queries.findAll(options as any, user);
 
-    logger.info({ actorId, page: options.page, total }, 'Quotations listed');
+    logger.info({ actorId: user.id, page: options.page, total }, 'Quotations listed');
 
     return {
       data: data.map(this._toSummaryResponse),
@@ -55,20 +56,20 @@ export class QuotationsService {
     };
   }
 
-  async getById(id: string, actorId: string): Promise<QuotationResponse> {
-    const quotation = await this.queries.findById(id);
+  async getById(id: string, user: AuthenticatedUser): Promise<QuotationResponse> {
+    const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) {
       throw new QuotationNotFoundError(id);
     }
 
-    const specValues = await this.queries.findSpecValues(id);
-    const customItems = await this.queries.findCustomItems(id);
+    const specValues = await this.queries.findSpecValues(id, user);
+    const customItems = await this.queries.findCustomItems(id, user);
 
-    logger.info({ actorId, quotationId: id }, 'Quotation retrieved');
+    logger.info({ actorId: user.id, quotationId: id }, 'Quotation retrieved');
     return this._toDetailResponse(quotation, specValues, customItems);
   }
 
-  async create(input: Record<string, unknown>, actorId: string): Promise<QuotationResponse> {
+  async create(input: Record<string, unknown>, user: AuthenticatedUser): Promise<QuotationResponse> {
     const pricing = input.manualTotal != null
       ? { specTotal: 0, customItemsTotal: 0, total: Number(input.manualTotal) }
       : await this._calculatePricing(
@@ -96,7 +97,8 @@ export class QuotationsService {
       notes: input.notes ?? null,
       status: 'Draft',
       version: 1,
-      created_by: actorId,
+      created_by: user.id,
+      updated_by: user.id,
     } as any);
 
     const specValues = await this.queries.replaceSpecValues(
@@ -109,17 +111,17 @@ export class QuotationsService {
       this._buildCustomItemRows(input.customItems as any[] | undefined),
     );
 
-    await this._logAudit(actorId, 'create', 'quotation', quotation.id as string, null, {
+    await this._logAudit(user.id, 'create', 'quotation', quotation.id as string, null, {
       quotationNumber: (quotation as any).quotation_number,
       total: pricing.total,
     });
 
-    logger.info({ actorId, quotationId: quotation.id, total: pricing.total }, 'Quotation created');
+    logger.info({ actorId: user.id, quotationId: quotation.id, total: pricing.total }, 'Quotation created');
     return this._toDetailResponse(quotation, specValues, customItems);
   }
 
-  async update(id: string, input: Record<string, unknown>, actorId: string): Promise<QuotationResponse> {
-    const quotation = await this.queries.findById(id);
+  async update(id: string, input: Record<string, unknown>, user: AuthenticatedUser): Promise<QuotationResponse> {
+    const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
     if ((quotation as any).status !== 'Draft') {
       throw new QuotationNotDraftError((quotation as any).status);
@@ -142,6 +144,7 @@ export class QuotationsService {
       total: pricing.total,
       version: ((quotation as any).version || 0) + 1,
       updated_at: new Date().toISOString(),
+      updated_by: user.id,
     };
 
     const fieldMap: Record<string, string> = {
@@ -167,56 +170,56 @@ export class QuotationsService {
       }
     }
 
-    const updated = await this.queries.update(id, updates as any);
+    const updated = await this.queries.update(id, updates as any, user);
 
     const specRows = this._buildSpecValueRows(id, input.specValues as any[] | undefined, pricing);
     const specValues = input.specValues !== undefined
       ? await this.queries.replaceSpecValues(id, specRows)
-      : await this.queries.findSpecValues(id);
+      : await this.queries.findSpecValues(id, user);
 
     const customItems = input.customItems !== undefined
       ? await this.queries.replaceCustomItems(id, this._buildCustomItemRows(input.customItems as any[] | undefined))
-      : await this.queries.findCustomItems(id);
+      : await this.queries.findCustomItems(id, user);
 
-    await this._logAudit(actorId, 'update', 'quotation', id, oldData, updated);
+    await this._logAudit(user.id, 'update', 'quotation', id, oldData, updated);
 
-    logger.info({ actorId, quotationId: id, version: updates.version }, 'Quotation updated');
+    logger.info({ actorId: user.id, quotationId: id, version: updates.version }, 'Quotation updated');
     return this._toDetailResponse(updated, specValues, customItems);
   }
 
-  async softDelete(id: string, actorId: string): Promise<void> {
-    const quotation = await this.queries.findById(id);
+  async softDelete(id: string, user: AuthenticatedUser): Promise<void> {
+    const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
     if ((quotation as any).status !== 'Draft') {
       throw new QuotationNotDraftError((quotation as any).status);
     }
 
-    await this.queries.softDelete(id);
+    await this.queries.softDelete(id, user);
 
-    await this._logAudit(actorId, 'delete', 'quotation', id, quotation, { deleted: true });
+    await this._logAudit(user.id, 'delete', 'quotation', id, quotation, { deleted: true });
 
-    logger.info({ actorId, quotationId: id }, 'Quotation soft-deleted');
+    logger.info({ actorId: user.id, quotationId: id }, 'Quotation soft-deleted');
   }
 
-  async submit(id: string, actorId: string): Promise<QuotationResponse> {
-    const quotation = await this.queries.findById(id);
+  async submit(id: string, user: AuthenticatedUser): Promise<QuotationResponse> {
+    const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
     if ((quotation as any).status !== 'Draft') {
       throw new InvalidStatusTransitionError((quotation as any).status, 'Pending');
     }
 
-    const updated = await this.queries.update(id, { status: 'Pending' } as any);
-    const specValues = await this.queries.findSpecValues(id);
-    const customItems = await this.queries.findCustomItems(id);
+    const updated = await this.queries.update(id, { status: 'Pending', updated_by: user.id } as any, user);
+    const specValues = await this.queries.findSpecValues(id, user);
+    const customItems = await this.queries.findCustomItems(id, user);
 
-    await this._logAudit(actorId, 'submit', 'quotation', id, { status: 'Draft' }, { status: 'Pending' });
+    await this._logAudit(user.id, 'submit', 'quotation', id, { status: 'Draft' }, { status: 'Pending' });
 
-    logger.info({ actorId, quotationId: id }, 'Quotation submitted for approval');
+    logger.info({ actorId: user.id, quotationId: id }, 'Quotation submitted for approval');
     return this._toDetailResponse(updated, specValues, customItems);
   }
 
-  async approve(id: string, _comment: string | undefined, actorId: string): Promise<QuotationResponse> {
-    const quotation = await this.queries.findById(id);
+  async approve(id: string, _comment: string | undefined, user: AuthenticatedUser): Promise<QuotationResponse> {
+    const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
 
     const status = (quotation as any).status;
@@ -226,23 +229,24 @@ export class QuotationsService {
 
     const updated = await this.queries.update(id, {
       status: 'Approved',
-      approved_by: actorId,
+      approved_by: user.id,
       approved_at: new Date().toISOString(),
-    } as any);
+      updated_by: user.id,
+    } as any, user);
 
-    const specValues = await this.queries.findSpecValues(id);
-    const customItems = await this.queries.findCustomItems(id);
+    const specValues = await this.queries.findSpecValues(id, user);
+    const customItems = await this.queries.findCustomItems(id, user);
 
-    await this._logAudit(actorId, 'approve', 'quotation', id, { status: 'Pending' }, { status: 'Approved' });
+    await this._logAudit(user.id, 'approve', 'quotation', id, { status: 'Pending' }, { status: 'Approved' });
 
-    logger.info({ actorId, quotationId: id }, 'Quotation approved');
+    logger.info({ actorId: user.id, quotationId: id }, 'Quotation approved');
     return this._toDetailResponse(updated, specValues, customItems);
   }
 
-  async deny(id: string, reason: string, actorId: string): Promise<QuotationResponse> {
+  async deny(id: string, reason: string, user: AuthenticatedUser): Promise<QuotationResponse> {
     if (!reason) throw new DenyReasonRequiredError();
 
-    const quotation = await this.queries.findById(id);
+    const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
 
     const status = (quotation as any).status;
@@ -252,17 +256,18 @@ export class QuotationsService {
 
     const updated = await this.queries.update(id, {
       status: 'Denied',
-      denied_by: actorId,
+      denied_by: user.id,
       denied_at: new Date().toISOString(),
       denied_reason: reason,
-    } as any);
+      updated_by: user.id,
+    } as any, user);
 
-    const specValues = await this.queries.findSpecValues(id);
-    const customItems = await this.queries.findCustomItems(id);
+    const specValues = await this.queries.findSpecValues(id, user);
+    const customItems = await this.queries.findCustomItems(id, user);
 
-    await this._logAudit(actorId, 'deny', 'quotation', id, { status: 'Pending' }, { status: 'Denied', reason });
+    await this._logAudit(user.id, 'deny', 'quotation', id, { status: 'Pending' }, { status: 'Denied', reason });
 
-    logger.info({ actorId, quotationId: id }, 'Quotation denied');
+    logger.info({ actorId: user.id, quotationId: id }, 'Quotation denied');
     return this._toDetailResponse(updated, specValues, customItems);
   }
 

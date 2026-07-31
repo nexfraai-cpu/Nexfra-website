@@ -1,6 +1,32 @@
 import { supabase } from '../database/client.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
+import { applyOwnershipScope, OwnershipRule } from '../middleware/ownership.js';
 
 type RowData = Record<string, unknown>;
+
+const SALES_RULE: OwnershipRule = {
+  table: 'sales',
+  fullAccessRoles: ['admin', 'finance'],
+  allowSales: false,
+};
+
+const PAYMENT_RULE: OwnershipRule = {
+  table: 'payments',
+  fullAccessRoles: ['admin', 'finance'],
+  allowSales: false,
+};
+
+const AUDIT_LOG_RULE: OwnershipRule = {
+  table: 'audit_logs',
+  fullAccessRoles: ['admin', 'finance'],
+  allowSales: false,
+};
+
+const CUSTOMER_FINANCE_RULE: OwnershipRule = {
+  table: 'customers',
+  fullAccessRoles: ['admin', 'finance'],
+  allowSales: false,
+};
 
 export interface FindSalesParams {
   status?: string; search?: string;
@@ -29,14 +55,22 @@ export interface CountResult {
 export class FinanceQueries {
   /*** Sales ***/
 
-  async findSales(params: FindSalesParams): Promise<CountResult> {
+  async findSales(params: FindSalesParams, user: AuthenticatedUser): Promise<CountResult> {
     const { status, search, sortBy = 'created_at', sortOrder = 'desc', page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let countQuery = supabase.from('sales').select('id', { count: 'exact', head: true }).is('deleted_at', null);
-    let dataQuery = supabase.from('sales').select('*').is('deleted_at', null)
-      .order(sortBy as any, { ascending: sortOrder === 'asc' }).range(from, to);
+    let countQuery = applyOwnershipScope(
+      supabase.from('sales').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+      user,
+      SALES_RULE,
+    );
+    let dataQuery = applyOwnershipScope(
+      supabase.from('sales').select('*').is('deleted_at', null)
+        .order(sortBy as any, { ascending: sortOrder === 'asc' }).range(from, to),
+      user,
+      SALES_RULE,
+    );
 
     if (status) { countQuery = countQuery.eq('status', status); dataQuery = dataQuery.eq('status', status); }
     if (search) {
@@ -51,25 +85,37 @@ export class FinanceQueries {
     return { data: data ?? [], total: count ?? 0 };
   }
 
-  async findSaleById(id: string): Promise<RowData | null> {
-    const { data, error } = await supabase.from('sales').select('*').eq('id', id).single();
+  async findSaleById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase.from('sales').select('*').eq('id', id).single(),
+      user,
+      SALES_RULE,
+    );
     if (error) { if (error.code === 'PGRST116') return null; throw error; }
     return data;
   }
 
-  async findSaleByInvoice(invoiceNumber: string): Promise<RowData | null> {
-    const { data, error } = await supabase.from('sales').select('id').eq('invoice_number', invoiceNumber).is('deleted_at', null).maybeSingle();
+  async findSaleByInvoice(invoiceNumber: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase.from('sales').select('id').eq('invoice_number', invoiceNumber).is('deleted_at', null).maybeSingle(),
+      user,
+      SALES_RULE,
+    );
     if (error) { if (error.code === 'PGRST116') return null; throw error; }
     return data ?? null;
   }
 
-  async getNextInvoiceNumber(): Promise<string> {
-    const { data, error } = await supabase
-      .from('sales')
-      .select('invoice_number')
-      .is('deleted_at', null)
-      .order('created_at', { ascending: false })
-      .limit(1);
+  async getNextInvoiceNumber(user: AuthenticatedUser): Promise<string> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('sales')
+        .select('invoice_number')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(1),
+      user,
+      SALES_RULE,
+    );
 
     if (error) throw error;
     const lastNum = data && data.length > 0 ? parseInt((data[0] as any).invoice_number.replace('INV-', ''), 10) : 0;
@@ -87,34 +133,54 @@ export class FinanceQueries {
     return data;
   }
 
-  async updateSale(id: string, updates: RowData): Promise<RowData> {
-    const { data, error } = await supabase.from('sales').update(updates).eq('id', id).select().single();
+  async updateSale(id: string, updates: RowData, user: AuthenticatedUser): Promise<RowData> {
+    const { data, error } = await applyOwnershipScope(
+      supabase.from('sales').update(updates).eq('id', id).select().single(),
+      user,
+      SALES_RULE,
+    );
     if (error) throw error;
     return data;
   }
 
-  async softDeleteSale(id: string): Promise<void> {
-    const { error } = await supabase.from('sales').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  async softDeleteSale(id: string, user: AuthenticatedUser): Promise<void> {
+    const { error } = await applyOwnershipScope(
+      supabase.from('sales').update({ deleted_at: new Date().toISOString() }).eq('id', id),
+      user,
+      SALES_RULE,
+    );
     if (error) throw error;
   }
 
   /*** Payments ***/
 
-  async findPaymentsBySale(saleId: string): Promise<RowData[]> {
-    const { data, error } = await supabase.from('payments').select('*')
-      .eq('sale_id', saleId).is('deleted_at', null).order('created_at', { ascending: true });
+  async findPaymentsBySale(saleId: string, user: AuthenticatedUser): Promise<RowData[]> {
+    const { data, error } = await applyOwnershipScope(
+      supabase.from('payments').select('*')
+        .eq('sale_id', saleId).is('deleted_at', null).order('created_at', { ascending: true }),
+      user,
+      PAYMENT_RULE,
+    );
     if (error) throw error;
     return data ?? [];
   }
 
-  async findPayments(params: FindPaymentsParams): Promise<CountResult> {
+  async findPayments(params: FindPaymentsParams, user: AuthenticatedUser): Promise<CountResult> {
     const { saleId, mode, startDate, endDate, sortBy = 'created_at', sortOrder = 'desc', page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let countQuery = supabase.from('payments').select('id', { count: 'exact', head: true }).is('deleted_at', null);
-    let dataQuery = supabase.from('payments').select('*, sales!inner(invoice_number, customer_name)').is('deleted_at', null)
-      .order(sortBy as any, { ascending: sortOrder === 'asc' }).range(from, to);
+    let countQuery = applyOwnershipScope(
+      supabase.from('payments').select('id', { count: 'exact', head: true }).is('deleted_at', null),
+      user,
+      PAYMENT_RULE,
+    );
+    let dataQuery = applyOwnershipScope(
+      supabase.from('payments').select('*, sales!inner(invoice_number, customer_name)').is('deleted_at', null)
+        .order(sortBy as any, { ascending: sortOrder === 'asc' }).range(from, to),
+      user,
+      PAYMENT_RULE,
+    );
 
     if (saleId) { countQuery = countQuery.eq('sale_id', saleId); dataQuery = dataQuery.eq('sale_id', saleId); }
     if (mode) { countQuery = countQuery.eq('mode', mode); dataQuery = dataQuery.eq('mode', mode); }
@@ -133,8 +199,12 @@ export class FinanceQueries {
     return { data: data ?? [], total: count ?? 0 };
   }
 
-  async findPaymentById(id: string): Promise<RowData | null> {
-    const { data, error } = await supabase.from('payments').select('*, sales!inner(invoice_number, customer_name)').eq('id', id).single();
+  async findPaymentById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase.from('payments').select('*, sales!inner(invoice_number, customer_name)').eq('id', id).single(),
+      user,
+      PAYMENT_RULE,
+    );
     if (error) { if (error.code === 'PGRST116') return null; throw error; }
     return data;
   }
@@ -145,28 +215,44 @@ export class FinanceQueries {
     return data;
   }
 
-  async updatePayment(id: string, updates: RowData): Promise<RowData> {
-    const { data, error } = await supabase.from('payments').update(updates).eq('id', id).select().single();
+  async updatePayment(id: string, updates: RowData, user: AuthenticatedUser): Promise<RowData> {
+    const { data, error } = await applyOwnershipScope(
+      supabase.from('payments').update(updates).eq('id', id).select().single(),
+      user,
+      PAYMENT_RULE,
+    );
     if (error) throw error;
     return data;
   }
 
-  async softDeletePayment(id: string): Promise<void> {
-    const { error } = await supabase.from('payments').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  async softDeletePayment(id: string, user: AuthenticatedUser): Promise<void> {
+    const { error } = await applyOwnershipScope(
+      supabase.from('payments').update({ deleted_at: new Date().toISOString() }).eq('id', id),
+      user,
+      PAYMENT_RULE,
+    );
     if (error) throw error;
   }
 
   /*** Ledger (unified sales + payments) ***/
 
-  async getLedgerEntries(params: FindLedgerParams): Promise<CountResult> {
+  async getLedgerEntries(params: FindLedgerParams, user: AuthenticatedUser): Promise<CountResult> {
     const { startDate, endDate, customerName, page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let salesQuery = supabase.from('sales').select('id, created_at, invoice_number, customer_name, product_name, amount, notes, status')
-      .is('deleted_at', null);
-    let paymentsQuery = supabase.from('payments').select('id, payment_date, payment_number, sales!inner(customer_name, product_name), amount, notes, sale_id')
-      .is('deleted_at', null);
+    let salesQuery = applyOwnershipScope(
+      supabase.from('sales').select('id, created_at, invoice_number, customer_name, product_name, amount, notes, status')
+        .is('deleted_at', null),
+      user,
+      SALES_RULE,
+    );
+    let paymentsQuery = applyOwnershipScope(
+      supabase.from('payments').select('id, payment_date, payment_number, sales!inner(customer_name, product_name), amount, notes, sale_id')
+        .is('deleted_at', null),
+      user,
+      PAYMENT_RULE,
+    );
 
     if (startDate) {
       salesQuery = salesQuery.gte('created_at', startDate);
@@ -217,7 +303,7 @@ export class FinanceQueries {
 
   /*** Transactions (unified view) ***/
 
-  async getTransactions(params: FindLedgerParams & { type?: string }): Promise<CountResult> {
+  async getTransactions(params: FindLedgerParams & { type?: string }, user: AuthenticatedUser): Promise<CountResult> {
     const { type, startDate, endDate, customerName, page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
@@ -229,16 +315,24 @@ export class FinanceQueries {
     let paymentsQuery: any = null;
 
     if (!paymentsOnly) {
-      salesQuery = supabase.from('sales').select('id, created_at, invoice_number, customer_name, product_name, amount, status, notes')
-        .is('deleted_at', null);
+      salesQuery = applyOwnershipScope(
+        supabase.from('sales').select('id, created_at, invoice_number, customer_name, product_name, amount, status, notes')
+          .is('deleted_at', null),
+        user,
+        SALES_RULE,
+      );
       if (startDate) salesQuery = salesQuery.gte('created_at', startDate);
       if (endDate) salesQuery = salesQuery.lte('created_at', endDate);
       if (customerName) salesQuery = salesQuery.ilike('customer_name', `%${customerName}%`);
     }
 
     if (!salesOnly) {
-      paymentsQuery = supabase.from('payments').select('id, payment_date, payment_number, mode, sales!inner(customer_name, product_name), amount, notes')
-        .is('deleted_at', null);
+      paymentsQuery = applyOwnershipScope(
+        supabase.from('payments').select('id, payment_date, payment_number, mode, sales!inner(customer_name, product_name), amount, notes')
+          .is('deleted_at', null),
+        user,
+        PAYMENT_RULE,
+      );
       if (startDate) paymentsQuery = paymentsQuery.gte('payment_date', startDate);
       if (endDate) paymentsQuery = paymentsQuery.lte('payment_date', endDate);
       if (customerName) paymentsQuery = paymentsQuery.ilike('sales.customer_name', `%${customerName}%`);
@@ -278,16 +372,24 @@ export class FinanceQueries {
 
   /*** Audit Logs ***/
 
-  async findAuditLogs(params: FindAuditLogsParams): Promise<CountResult> {
+  async findAuditLogs(params: FindAuditLogsParams, user: AuthenticatedUser): Promise<CountResult> {
     const { entityType, entityId, action, page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let countQuery = supabase.from('audit_logs').select('id', { count: 'exact', head: true });
-    let dataQuery = supabase.from('audit_logs')
-      .select('*, employees!left(full_name)')
-      .order('created_at', { ascending: false })
-      .range(from, to);
+    let countQuery = applyOwnershipScope(
+      supabase.from('audit_logs').select('id', { count: 'exact', head: true }),
+      user,
+      AUDIT_LOG_RULE,
+    );
+    let dataQuery = applyOwnershipScope(
+      supabase.from('audit_logs')
+        .select('*, employees!left(full_name)')
+        .order('created_at', { ascending: false })
+        .range(from, to),
+      user,
+      AUDIT_LOG_RULE,
+    );
 
     if (entityType) {
       countQuery = countQuery.eq('entity_type', entityType);
@@ -310,12 +412,16 @@ export class FinanceQueries {
 
   /*** Aggregations ***/
 
-  async getSaleTotalPayments(saleId: string): Promise<number> {
-    const { data, error } = await supabase
-      .from('payments')
-      .select('amount', { count: 'exact', head: false })
-      .eq('sale_id', saleId)
-      .is('deleted_at', null);
+  async getSaleTotalPayments(saleId: string, user: AuthenticatedUser): Promise<number> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('payments')
+        .select('amount', { count: 'exact', head: false })
+        .eq('sale_id', saleId)
+        .is('deleted_at', null),
+      user,
+      PAYMENT_RULE,
+    );
 
     if (error) throw error;
     return (data ?? []).reduce((sum: number, r: any) => sum + Number(r.amount), 0);
@@ -341,8 +447,12 @@ export class FinanceQueries {
     }
   }
 
-  async findCustomerByCompany(company: string): Promise<RowData | null> {
-    const { data, error } = await supabase.from('customers').select('id').eq('company', company).is('deleted_at', null).maybeSingle();
+  async findCustomerByCompany(company: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase.from('customers').select('id').eq('company', company).is('deleted_at', null).maybeSingle(),
+      user,
+      CUSTOMER_FINANCE_RULE,
+    );
     if (error) { if (error.code === 'PGRST116') return null; throw error; }
     return data ?? null;
   }

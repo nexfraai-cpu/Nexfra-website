@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { WorkordersService } from './workorders.service.js';
 import { WorkOrderQueries } from './workorders.queries.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 import {
   WorkOrderNotFoundError,
   WorkOrderNotOpenError,
@@ -70,7 +71,15 @@ function createMockQueries() {
 describe('WorkordersService', () => {
   let queries: ReturnType<typeof createMockQueries>;
   let service: WorkordersService;
-  const actorId = 'actor-uuid-1';
+  const actor: AuthenticatedUser = {
+    id: 'actor-uuid-1',
+    authId: 'auth-uuid-1',
+    role: 'admin',
+    email: 'admin@nexfra.in',
+    name: 'Test Admin',
+    employeeNumber: 'EMP-001',
+  };
+  const otherActor: AuthenticatedUser = { ...actor, id: 'other-actor' };
 
   beforeEach(() => {
     queries = createMockQueries();
@@ -82,7 +91,7 @@ describe('WorkordersService', () => {
       const rows = [createMockWO(), createMockWO({ id: 'id-2', work_order_number: 'WO-000002' })];
       queries.findAll.mockResolvedValue({ data: rows, total: 2 });
 
-      const result = await service.list({ page: 1, perPage: 20 }, actorId);
+      const result = await service.list({ page: 1, perPage: 20 }, actor);
 
       expect(result.data).toHaveLength(2);
       expect(result.meta.total).toBe(2);
@@ -98,7 +107,7 @@ describe('WorkordersService', () => {
         { id: 'pi-1', current_stage: 'Pending', started_at: null, completed_at: null },
       ]);
 
-      const result = await service.getById(wo.id, actorId);
+      const result = await service.getById(wo.id, actor);
 
       expect(result.workOrderNumber).toBe('WO-000001');
       expect(result.productionItems).toHaveLength(1);
@@ -107,7 +116,7 @@ describe('WorkordersService', () => {
 
     it('throws WorkOrderNotFoundError when missing', async () => {
       queries.findById.mockResolvedValue(null);
-      await expect(service.getById('bad', actorId)).rejects.toThrow(WorkOrderNotFoundError);
+      await expect(service.getById('bad', actor)).rejects.toThrow(WorkOrderNotFoundError);
     });
   });
 
@@ -124,7 +133,7 @@ describe('WorkordersService', () => {
         { id: 'pi-1', current_stage: 'Pending', started_at: null, completed_at: null },
       ]);
 
-      const result = await service.create(input, actorId);
+      const result = await service.create(input, actor);
 
       expect(queries.create).toHaveBeenCalled();
       expect(queries.createProductionItem).toHaveBeenCalledTimes(2); // order_qty = 2
@@ -133,13 +142,13 @@ describe('WorkordersService', () => {
 
     it('throws QuotationNotApprovedError', async () => {
       queries.findQuotationById.mockResolvedValue(createMockQuotation({ status: 'Draft' }));
-      await expect(service.create(input, actorId)).rejects.toThrow(QuotationNotApprovedError);
+      await expect(service.create(input, actor)).rejects.toThrow(QuotationNotApprovedError);
     });
 
     it('throws WorkOrderAlreadyExistsError', async () => {
       queries.findQuotationById.mockResolvedValue(createMockQuotation());
       queries.findExistingByQuotation.mockResolvedValue({ id: 'existing-wo' });
-      await expect(service.create(input, actorId)).rejects.toThrow(WorkOrderAlreadyExistsError);
+      await expect(service.create(input, actor)).rejects.toThrow(WorkOrderAlreadyExistsError);
     });
   });
 
@@ -150,13 +159,13 @@ describe('WorkordersService', () => {
       queries.update.mockResolvedValue({ ...wo, factory_notes: 'Updated notes' });
       queries.findProductionItems.mockResolvedValue([]);
 
-      const result = await service.update(wo.id, { factoryNotes: 'Updated notes' }, actorId);
+      const result = await service.update(wo.id, { factoryNotes: 'Updated notes' }, actor);
       expect(result.factoryNotes).toBe('Updated notes');
     });
 
     it('throws WorkOrderNotOpenError', async () => {
       queries.findById.mockResolvedValue(createMockWO({ status: 'Completed' }));
-      await expect(service.update('id', {}, actorId)).rejects.toThrow(WorkOrderNotOpenError);
+      await expect(service.update('id', {}, actor)).rejects.toThrow(WorkOrderNotOpenError);
     });
   });
 
@@ -167,7 +176,7 @@ describe('WorkordersService', () => {
       queries.update.mockResolvedValue({ ...wo, due_date: '2026-09-01' });
       queries.findProductionItems.mockResolvedValue([]);
 
-      const result = await service.setDueDate(wo.id, '2026-09-01', actorId);
+      const result = await service.setDueDate(wo.id, '2026-09-01', actor);
       expect(result.dueDate).toBe('2026-09-01');
     });
   });
@@ -179,7 +188,7 @@ describe('WorkordersService', () => {
       queries.update.mockResolvedValue({ ...wo, is_urgent: true });
       queries.findProductionItems.mockResolvedValue([]);
 
-      const result = await service.toggleUrgent(wo.id, actorId);
+      const result = await service.toggleUrgent(wo.id, actor);
       expect(result.isUrgent).toBe(true);
     });
   });
@@ -190,13 +199,13 @@ describe('WorkordersService', () => {
       queries.findById.mockResolvedValue(wo);
       queries.softDelete.mockResolvedValue(undefined);
 
-      await service.softDelete(wo.id, 'other-actor');
-      expect(queries.softDelete).toHaveBeenCalledWith(wo.id);
+      await service.softDelete(wo.id, otherActor);
+      expect(queries.softDelete).toHaveBeenCalledWith(wo.id, otherActor);
     });
 
     it('throws WorkOrderNotOpenError', async () => {
       queries.findById.mockResolvedValue(createMockWO({ status: 'Completed' }));
-      await expect(service.softDelete('id', actorId)).rejects.toThrow(WorkOrderNotOpenError);
+      await expect(service.softDelete('id', actor)).rejects.toThrow(WorkOrderNotOpenError);
     });
   });
 });

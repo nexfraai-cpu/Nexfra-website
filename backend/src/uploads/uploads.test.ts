@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { UploadsService } from './uploads.service.js';
 import { StorageService } from './storage.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 import { QuotationNotFoundError } from './uploads.errors.js';
 
 function mockAuditLogInsert() {
@@ -53,6 +54,14 @@ describe('UploadsService', () => {
   let storage: ReturnType<typeof createMockStorage>;
   let service: UploadsService;
   const actorId = 'actor-uuid-1';
+  const actor: AuthenticatedUser = {
+    id: actorId,
+    authId: 'auth-uuid-1',
+    role: 'admin',
+    email: 'admin@nexfra.in',
+    name: 'Admin',
+    employeeNumber: 'EMP-0001',
+  };
 
   beforeEach(() => {
     storage = createMockStorage();
@@ -69,7 +78,7 @@ describe('UploadsService', () => {
         mimeType: 'application/pdf',
       });
 
-      const result = await service.uploadQuotationPdf('q-1111', createMockFile(), actorId);
+      const result = await service.uploadQuotationPdf('q-1111', createMockFile(), actor);
 
       expect(storage.upload).toHaveBeenCalled();
       expect(result.path).toBe('quotations/q-1111.pdf');
@@ -89,7 +98,7 @@ describe('UploadsService', () => {
       });
 
       await expect(
-        service.uploadQuotationPdf('bad-id', createMockFile(), actorId),
+        service.uploadQuotationPdf('bad-id', createMockFile(), actor),
       ).rejects.toThrow(QuotationNotFoundError);
     });
   });
@@ -203,7 +212,7 @@ describe('UploadsService', () => {
         expiresIn: 3600,
       });
 
-      const result = await service.getQuotationPdfSignedUrl('q-1111', actorId);
+      const result = await service.getQuotationPdfSignedUrl('q-1111', actor);
 
       expect(result).not.toBeNull();
       expect(result!.path).toBe('quotations/q-1111.pdf');
@@ -212,7 +221,7 @@ describe('UploadsService', () => {
     it('returns null when no PDF exists', async () => {
       storage.getQuotationPdfPath.mockResolvedValue(null);
 
-      const result = await service.getQuotationPdfSignedUrl('q-1111', actorId);
+      const result = await service.getQuotationPdfSignedUrl('q-1111', actor);
 
       expect(result).toBeNull();
     });

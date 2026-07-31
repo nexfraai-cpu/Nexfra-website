@@ -1,6 +1,27 @@
 import { supabase } from '../database/client.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
+import { applyOwnershipScope, OwnershipRule } from '../middleware/ownership.js';
 
 type RowData = Record<string, unknown>;
+
+const QUOTATION_RULE: OwnershipRule = {
+  table: 'quotations',
+  fullAccessRoles: ['admin', 'manager'],
+  allowSales: true,
+  includeAssignedTo: true,
+};
+
+const SPEC_VALUE_RULE: OwnershipRule = {
+  table: 'quotation_spec_values',
+  fullAccessRoles: ['admin', 'manager'],
+  allowSales: true,
+};
+
+const CUSTOM_ITEM_RULE: OwnershipRule = {
+  table: 'quotation_custom_items',
+  fullAccessRoles: ['admin', 'manager'],
+  allowSales: true,
+};
 
 export interface FindAllParams {
   status?: string;
@@ -20,22 +41,30 @@ export interface FindAllResult {
 export class QuotationQueries {
   /*** Quotations ***/
 
-  async findAll(params: FindAllParams): Promise<FindAllResult> {
+  async findAll(params: FindAllParams, user: AuthenticatedUser): Promise<FindAllResult> {
     const { status, search, customerName, sortBy = 'created_at', sortOrder = 'desc', page, perPage } = params;
     const from = (page - 1) * perPage;
     const to = from + perPage - 1;
 
-    let countQuery = supabase
-      .from('quotations')
-      .select('id', { count: 'exact', head: true })
-      .is('deleted_at', null);
+    let countQuery = applyOwnershipScope(
+      supabase
+        .from('quotations')
+        .select('id', { count: 'exact', head: true })
+        .is('deleted_at', null),
+      user,
+      QUOTATION_RULE,
+    );
 
-    let dataQuery = supabase
-      .from('quotations')
-      .select('id, quotation_number, version, customer_name, product_key, template_key, total, status, order_qty, created_by, created_at, updated_at')
-      .is('deleted_at', null)
-      .order(sortBy as any, { ascending: sortOrder === 'asc' })
-      .range(from, to);
+    let dataQuery = applyOwnershipScope(
+      supabase
+        .from('quotations')
+        .select('id, quotation_number, version, customer_name, product_key, template_key, total, status, order_qty, created_by, created_at, updated_at')
+        .is('deleted_at', null)
+        .order(sortBy as any, { ascending: sortOrder === 'asc' })
+        .range(from, to),
+      user,
+      QUOTATION_RULE,
+    );
 
     if (status) {
       countQuery = countQuery.eq('status', status);
@@ -66,12 +95,16 @@ export class QuotationQueries {
     return { data: data ?? [], total: count ?? 0 };
   }
 
-  async findById(id: string): Promise<RowData | null> {
-    const { data, error } = await supabase
-      .from('quotations')
-      .select('*')
-      .eq('id', id)
-      .single();
+  async findById(id: string, user: AuthenticatedUser): Promise<RowData | null> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('quotations')
+        .select('*')
+        .eq('id', id)
+        .single(),
+      user,
+      QUOTATION_RULE,
+    );
 
     if (error) {
       if (error.code === 'PGRST116') return null;
@@ -91,34 +124,46 @@ export class QuotationQueries {
     return data;
   }
 
-  async update(id: string, updates: RowData): Promise<RowData> {
-    const { data, error } = await supabase
-      .from('quotations')
-      .update(updates)
-      .eq('id', id)
-      .select()
-      .single();
+  async update(id: string, updates: RowData, user: AuthenticatedUser): Promise<RowData> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('quotations')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single(),
+      user,
+      QUOTATION_RULE,
+    );
 
     if (error) throw error;
     return data;
   }
 
-  async softDelete(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('quotations')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id);
+  async softDelete(id: string, user: AuthenticatedUser): Promise<void> {
+    const { error } = await applyOwnershipScope(
+      supabase
+        .from('quotations')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', id),
+      user,
+      QUOTATION_RULE,
+    );
 
     if (error) throw error;
   }
 
   /*** Spec Values ***/
 
-  async findSpecValues(quotationId: string): Promise<RowData[]> {
-    const { data, error } = await supabase
-      .from('quotation_spec_values')
-      .select('*')
-      .eq('quotation_id', quotationId);
+  async findSpecValues(quotationId: string, user: AuthenticatedUser): Promise<RowData[]> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('quotation_spec_values')
+        .select('*')
+        .eq('quotation_id', quotationId),
+      user,
+      SPEC_VALUE_RULE,
+    );
 
     if (error) throw error;
     return data ?? [];
@@ -144,12 +189,16 @@ export class QuotationQueries {
 
   /*** Custom Items ***/
 
-  async findCustomItems(quotationId: string): Promise<RowData[]> {
-    const { data, error } = await supabase
-      .from('quotation_custom_items')
-      .select('*')
-      .eq('quotation_id', quotationId)
-      .order('sort_order', { ascending: true });
+  async findCustomItems(quotationId: string, user: AuthenticatedUser): Promise<RowData[]> {
+    const { data, error } = await applyOwnershipScope(
+      supabase
+        .from('quotation_custom_items')
+        .select('*')
+        .eq('quotation_id', quotationId)
+        .order('sort_order', { ascending: true }),
+      user,
+      CUSTOM_ITEM_RULE,
+    );
 
     if (error) throw error;
     return data ?? [];

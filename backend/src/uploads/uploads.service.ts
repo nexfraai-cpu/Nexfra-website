@@ -3,6 +3,8 @@ import { supabase } from '../database/client.js';
 import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
 import { StorageService } from './storage.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
+import { applyOwnershipScope, OwnershipRule } from '../middleware/ownership.js';
 import {
   UploadResult,
   SignedUrlResult,
@@ -11,20 +13,38 @@ import {
 } from './uploads.types.js';
 import { QuotationNotFoundError } from './uploads.errors.js';
 
+const PDF_WRITE_RULE: OwnershipRule = {
+  table: 'quotations',
+  fullAccessRoles: ['admin'],
+  allowSales: true,
+  includeAssignedTo: true,
+};
+
+const PDF_READ_RULE: OwnershipRule = {
+  table: 'quotations',
+  fullAccessRoles: ['admin', 'finance', 'manager'],
+  allowSales: true,
+  includeAssignedTo: true,
+};
+
 export class UploadsService {
   constructor(private storage: StorageService) {}
 
   async uploadQuotationPdf(
     quotationId: string,
     file: { buffer: Buffer; originalname: string; mimetype: string; size: number },
-    actorId: string,
+    user: AuthenticatedUser,
   ): Promise<UploadResult> {
-    const { data: quotation } = await supabase
-      .from('quotations')
-      .select('id')
-      .eq('id', quotationId)
-      .is('deleted_at', null)
-      .maybeSingle();
+    const { data: quotation } = await applyOwnershipScope(
+      supabase
+        .from('quotations')
+        .select('id')
+        .eq('id', quotationId)
+        .is('deleted_at', null)
+        .maybeSingle(),
+      user,
+      PDF_WRITE_RULE,
+    );
 
     if (!quotation) throw new QuotationNotFoundError(quotationId);
 
@@ -34,11 +54,11 @@ export class UploadsService {
 
     const result = await this.storage.upload(bucket, path, file);
 
-    await this._logAudit(actorId, 'create', 'quotation-pdf', path, null, {
+    await this._logAudit(user.id, 'create', 'quotation-pdf', path, null, {
       quotationId, bucket, path, size: file.size,
     });
 
-    logger.info({ actorId, quotationId, path }, 'Quotation PDF uploaded');
+    logger.info({ actorId: user.id, quotationId, path }, 'Quotation PDF uploaded');
     return result;
   }
 
@@ -118,11 +138,23 @@ export class UploadsService {
 
   async getQuotationPdfSignedUrl(
     quotationId: string,
-    actorId: string,
+    user: AuthenticatedUser,
   ): Promise<SignedUrlResult | null> {
+    const { data: quotation } = await applyOwnershipScope(
+      supabase
+        .from('quotations')
+        .select('id')
+        .eq('id', quotationId)
+        .is('deleted_at', null)
+        .maybeSingle(),
+      user,
+      PDF_READ_RULE,
+    );
+    if (!quotation) return null;
+
     const path = await this.storage.getQuotationPdfPath(quotationId);
     if (!path) return null;
-    return this.getSignedUrl(config.storageBucketQuotations, path, actorId);
+    return this.getSignedUrl(config.storageBucketQuotations, path, user.id);
   }
 
   private async _logAudit(actorId: string, action: string, entityType: string, entityId: string, oldValue: unknown, newValue: unknown) {

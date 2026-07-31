@@ -1,6 +1,7 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { ProductionService } from './production.service.js';
 import { ProductionQueries } from './production.queries.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 import {
   ProductionItemNotFoundError,
   InvalidStageTransitionError,
@@ -87,7 +88,14 @@ function createMockQueries() {
 describe('ProductionService', () => {
   let queries: ReturnType<typeof createMockQueries>;
   let service: ProductionService;
-  const actorId = 'actor-uuid-1';
+  const actor: AuthenticatedUser = {
+    id: 'actor-uuid-1',
+    authId: 'auth-uuid-1',
+    role: 'admin',
+    email: 'admin@nexfra.in',
+    name: 'Test Admin',
+    employeeNumber: 'EMP-001',
+  };
 
   beforeEach(() => {
     queries = createMockQueries();
@@ -99,7 +107,7 @@ describe('ProductionService', () => {
       const rows = [createMockItem(), createMockItem({ id: 'pi-2' })];
       queries.findAll.mockResolvedValue({ data: rows, total: 2 });
 
-      const result = await service.list({ page: 1, perPage: 20 }, actorId);
+      const result = await service.list({ page: 1, perPage: 20 }, actor);
 
       expect(result.data).toHaveLength(2);
       expect(result.meta.total).toBe(2);
@@ -115,7 +123,7 @@ describe('ProductionService', () => {
       queries.findStageRecords.mockResolvedValue([createMockStageRecord()]);
       queries.findChassisRecordsByItem.mockResolvedValue([createMockChassis()]);
 
-      const result = await service.getById(item.id, actorId);
+      const result = await service.getById(item.id, actor);
 
       expect(result.currentStage).toBe('Pending');
       expect(result.stageRecords).toHaveLength(1);
@@ -125,7 +133,7 @@ describe('ProductionService', () => {
 
     it('throws ProductionItemNotFoundError', async () => {
       queries.findById.mockResolvedValue(null);
-      await expect(service.getById('bad', actorId)).rejects.toThrow(ProductionItemNotFoundError);
+      await expect(service.getById('bad', actor)).rejects.toThrow(ProductionItemNotFoundError);
     });
   });
 
@@ -138,7 +146,7 @@ describe('ProductionService', () => {
       queries.findStageRecords.mockResolvedValue([createMockStageRecord(), createMockStageRecord({ stage_key: 'Material Ordered' })]);
       queries.findChassisRecordsByItem.mockResolvedValue([]);
 
-      const result = await service.advanceStage(item.id, {}, actorId);
+      const result = await service.advanceStage(item.id, {}, actor);
 
       expect(result.currentStage).toBe('Material Ordered');
     });
@@ -151,25 +159,25 @@ describe('ProductionService', () => {
       queries.findStageRecords.mockResolvedValue([]);
       queries.findChassisRecordsByItem.mockResolvedValue([]);
 
-      const result = await service.advanceStage(item.id, { stageKey: 'Cutting' }, actorId);
+      const result = await service.advanceStage(item.id, { stageKey: 'Cutting' }, actor);
 
       expect(result.currentStage).toBe('Cutting');
     });
 
     it('throws ProductionItemAlreadyCompletedError when Delivered', async () => {
       queries.findById.mockResolvedValue(createMockItem({ current_stage: 'Delivered' }));
-      await expect(service.advanceStage('id', {}, actorId)).rejects.toThrow(ProductionItemAlreadyCompletedError);
+      await expect(service.advanceStage('id', {}, actor)).rejects.toThrow(ProductionItemAlreadyCompletedError);
     });
 
     it('throws InvalidStageTransitionError for non-existent stage', async () => {
       queries.findById.mockResolvedValue(createMockItem());
-      await expect(service.advanceStage('id', { stageKey: 'NonExistent' }, actorId)).rejects.toThrow(InvalidStageTransitionError);
+      await expect(service.advanceStage('id', { stageKey: 'NonExistent' }, actor)).rejects.toThrow(InvalidStageTransitionError);
     });
 
     it('throws InvalidStageTransitionError for previous stage', async () => {
       const item = createMockItem({ current_stage: 'Cutting' });
       queries.findById.mockResolvedValue(item);
-      await expect(service.advanceStage('id', { stageKey: 'Pending' }, actorId)).rejects.toThrow(InvalidStageTransitionError);
+      await expect(service.advanceStage('id', { stageKey: 'Pending' }, actor)).rejects.toThrow(InvalidStageTransitionError);
     });
   });
 
@@ -180,7 +188,7 @@ describe('ProductionService', () => {
       queries.findWorkOrderById.mockResolvedValue({ customer_name: 'Sharma Fabricators', product_name: 'trailer flatbed' });
       queries.createChassisRecord.mockResolvedValue(createMockChassis());
 
-      const result = await service.addChassis(item.id, { chassisNumber: 'TATA12345', brand: 'Tata' }, actorId);
+      const result = await service.addChassis(item.id, { chassisNumber: 'TATA12345', brand: 'Tata' }, actor);
 
       expect(result.chassisNumber).toBe('TATA12345');
       expect(result.brand).toBe('Tata');
@@ -193,14 +201,14 @@ describe('ProductionService', () => {
       queries.findChassisRecordById.mockResolvedValue(chassis);
       queries.updateChassisRecord.mockResolvedValue({ ...chassis, chassis_number: 'NEW123' });
 
-      const result = await service.updateChassis('pi-id', chassis.id, { chassisNumber: 'NEW123' }, actorId);
+      const result = await service.updateChassis('pi-id', chassis.id, { chassisNumber: 'NEW123' }, actor);
 
       expect(result.chassisNumber).toBe('NEW123');
     });
 
     it('throws ChassisRecordNotFoundError', async () => {
       queries.findChassisRecordById.mockResolvedValue(null);
-      await expect(service.updateChassis('pi-id', 'bad', {}, actorId)).rejects.toThrow(ChassisRecordNotFoundError);
+      await expect(service.updateChassis('pi-id', 'bad', {}, actor)).rejects.toThrow(ChassisRecordNotFoundError);
     });
   });
 
@@ -210,7 +218,7 @@ describe('ProductionService', () => {
       queries.findById.mockResolvedValue(item);
       queries.findChassisRecordsByItem.mockResolvedValue([createMockChassis()]);
 
-      const result = await service.getChassisRecords(item.id, actorId);
+      const result = await service.getChassisRecords(item.id, actor);
 
       expect(result).toHaveLength(1);
       expect(result[0].chassisNumber).toBe('TATA12345');
@@ -223,7 +231,7 @@ describe('ProductionService', () => {
       queries.findById.mockResolvedValue(item);
       queries.update.mockResolvedValue({ ...item, dispatch_fields: { driver: 'Raj' } });
 
-      const result = await service.update(item.id, { dispatchFields: { driver: 'Raj' } }, actorId);
+      const result = await service.update(item.id, { dispatchFields: { driver: 'Raj' } }, actor);
 
       expect(result.dispatchFields).toEqual({ driver: 'Raj' });
     });

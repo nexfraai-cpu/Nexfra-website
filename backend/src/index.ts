@@ -19,6 +19,7 @@ import { financeRouter } from './finance/finance.routes.js';
 import { adminRouter } from './admin/admin.routes.js';
 import { uploadsRouter } from './uploads/uploads.routes.js';
 import { storageRouter } from './storage/storage.routes.js';
+import { publicLeadsRouter } from './public-leads/public-leads.routes.js';
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use('/api/finance', financeRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/uploads', uploadsRouter);
 app.use('/api/storage', storageRouter);
+app.use('/api/public', publicLeadsRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

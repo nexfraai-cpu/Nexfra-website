@@ -6,12 +6,7 @@ import {
   SessionExpiredError,
   RefreshTokenInvalidError,
 } from './auth.errors.js';
-import {
-  LoginResult,
-  RefreshResponse,
-  UserProfile,
-  AuthTokens,
-} from './auth.types.js';
+import { LoginResult, RefreshResponse, UserProfile, AuthTokens } from './auth.types.js';
 import { logger } from '../config/logger.js';
 
 export class AuthService {
@@ -129,6 +124,11 @@ export class AuthService {
 
   private async _getEmployeeByAuthId(authId: string) {
     const { data, error } = await this.queries.getEmployeeByAuthId(authId);
+
+    console.log('AUTH ID:', authId);
+    console.log('EMPLOYEE DATA:', data);
+    console.log('EMPLOYEE ERROR:', error);
+
     if (error || !data) return null;
     return data;
   }

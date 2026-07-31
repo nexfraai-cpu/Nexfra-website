@@ -14,27 +14,27 @@ export class FinanceController {
       sortOrder: req.query.sortOrder as 'asc' | 'desc' | undefined,
       page: Number(req.query.page) || 1,
       perPage: Number(req.query.perPage) || 20,
-    }, req.user!.id);
+    }, req.user!);
     res.status(200).json(result);
   });
 
   getSaleById = asyncWrap(async (req: Request, res: Response) => {
-    const sale = await this.financeService.getSaleById(req.params.id, req.user!.id);
+    const sale = await this.financeService.getSaleById(req.params.id, req.user!);
     res.status(200).json({ data: sale });
   });
 
   createSale = asyncWrap(async (req: Request, res: Response) => {
-    const sale = await this.financeService.createSale(req.body, req.user!.id);
+    const sale = await this.financeService.createSale(req.body, req.user!);
     res.status(201).json({ data: sale });
   });
 
   updateSale = asyncWrap(async (req: Request, res: Response) => {
-    const sale = await this.financeService.updateSale(req.params.id, req.body, req.user!.id);
+    const sale = await this.financeService.updateSale(req.params.id, req.body, req.user!);
     res.status(200).json({ data: sale });
   });
 
   deleteSale = asyncWrap(async (req: Request, res: Response) => {
-    await this.financeService.softDeleteSale(req.params.id, req.user!.id);
+    await this.financeService.softDeleteSale(req.params.id, req.user!);
     res.status(200).json({ data: { message: 'Sale deleted successfully' } });
   });
 
@@ -49,27 +49,27 @@ export class FinanceController {
       sortOrder: req.query.sortOrder as 'asc' | 'desc' | undefined,
       page: Number(req.query.page) || 1,
       perPage: Number(req.query.perPage) || 20,
-    }, req.user!.id);
+    }, req.user!);
     res.status(200).json(result);
   });
 
   getPaymentById = asyncWrap(async (req: Request, res: Response) => {
-    const payment = await this.financeService.getPaymentById(req.params.id, req.user!.id);
+    const payment = await this.financeService.getPaymentById(req.params.id, req.user!);
     res.status(200).json({ data: payment });
   });
 
   createPayment = asyncWrap(async (req: Request, res: Response) => {
-    const payment = await this.financeService.createPayment(req.body, req.user!.id);
+    const payment = await this.financeService.createPayment(req.body, req.user!);
     res.status(201).json({ data: payment });
   });
 
   updatePayment = asyncWrap(async (req: Request, res: Response) => {
-    const payment = await this.financeService.updatePayment(req.params.id, req.body, req.user!.id);
+    const payment = await this.financeService.updatePayment(req.params.id, req.body, req.user!);
     res.status(200).json({ data: payment });
   });
 
   deletePayment = asyncWrap(async (req: Request, res: Response) => {
-    await this.financeService.softDeletePayment(req.params.id, req.user!.id);
+    await this.financeService.softDeletePayment(req.params.id, req.user!);
     res.status(200).json({ data: { message: 'Payment deleted successfully' } });
   });
 
@@ -81,7 +81,7 @@ export class FinanceController {
       customerName: req.query.customerName as string | undefined,
       page: Number(req.query.page) || 1,
       perPage: Number(req.query.perPage) || 20,
-    }, req.user!.id);
+    }, req.user!);
     res.status(200).json(result);
   });
 
@@ -93,7 +93,7 @@ export class FinanceController {
       customerName: req.query.customerName as string | undefined,
       page: Number(req.query.page) || 1,
       perPage: Number(req.query.perPage) || 20,
-    }, req.user!.id);
+    }, req.user!);
     res.status(200).json(result);
   });
 
@@ -105,18 +105,18 @@ export class FinanceController {
       action: req.query.action as string | undefined,
       page: Number(req.query.page) || 1,
       perPage: Number(req.query.perPage) || 20,
-    }, req.user!.id);
+    }, req.user!);
     res.status(200).json(result);
   });
 
   /*** Stats ***/
   getMonthlyStats = asyncWrap(async (_req: Request, res: Response) => {
-    const stats = await this.financeService.getMonthlyStats(_req.user!.id);
+    const stats = await this.financeService.getMonthlyStats(_req.user!);
     res.status(200).json({ data: stats });
   });
 
   getOutstandingBalances = asyncWrap(async (_req: Request, res: Response) => {
-    const balances = await this.financeService.getOutstandingBalances(_req.user!.id);
+    const balances = await this.financeService.getOutstandingBalances(_req.user!);
     res.status(200).json({ data: balances });
   });
 }

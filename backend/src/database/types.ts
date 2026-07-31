@@ -56,6 +56,7 @@ export interface CustomerRow {
   created_at: string;
   created_by: string | null;
   updated_at: string;
+  updated_by: string | null;
   deleted_at: string | null;
 }
 
@@ -66,7 +67,9 @@ export interface ProductRow {
   description: string | null;
   sort_order: number;
   created_at: string;
+  created_by: string | null;
   updated_at: string;
+  updated_by: string | null;
 }
 
 export interface ProductTemplateRow {
@@ -131,8 +134,10 @@ export interface QuotationRow {
   denied_at: string | null;
   denied_reason: string | null;
   created_by: string | null;
+  assigned_to_employee_id: string | null;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
   deleted_at: string | null;
 }
 
@@ -177,8 +182,10 @@ export interface WorkOrderRow {
   status: string;
   booked_by: string | null;
   approved_by: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
   deleted_at: string | null;
 }
 
@@ -191,8 +198,10 @@ export interface ProductionItemRow {
   dispatch_fields: unknown;
   started_at: string | null;
   completed_at: string | null;
+  created_by: string | null;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
   deleted_at: string | null;
 }
 
@@ -205,7 +214,42 @@ export interface ProductionStageRecordRow {
   completed_by: string | null;
   completed_at: string | null;
   remark: string | null;
+  created_by: string | null;
   created_at: string;
+}
+
+export interface SaleRow {
+  id: string;
+  invoice_number: string;
+  quotation_id: string | null;
+  customer_name: string;
+  product_name: string;
+  amount: number;
+  status: 'Pending' | 'Partial' | 'Paid';
+  delivery_date: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+  deleted_at: string | null;
+}
+
+export interface PaymentRow {
+  id: string;
+  payment_number: string;
+  sale_id: string;
+  amount: number;
+  mode: 'Cash' | 'RTGS' | 'Cheque' | 'UPI' | 'Card' | 'Other';
+  reference: string | null;
+  payment_date: string;
+  notes: string | null;
+  received_by: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+  deleted_at: string | null;
 }
 
 export interface ChassisRecordRow {
@@ -223,37 +267,7 @@ export interface ChassisRecordRow {
   created_by: string | null;
   created_at: string;
   updated_at: string;
-  deleted_at: string | null;
-}
-
-export interface SaleRow {
-  id: string;
-  invoice_number: string;
-  quotation_id: string | null;
-  customer_name: string;
-  product_name: string;
-  amount: number;
-  status: 'Pending' | 'Partial' | 'Paid';
-  delivery_date: string | null;
-  notes: string | null;
-  created_by: string | null;
-  created_at: string;
-  updated_at: string;
-  deleted_at: string | null;
-}
-
-export interface PaymentRow {
-  id: string;
-  payment_number: string;
-  sale_id: string;
-  amount: number;
-  mode: 'Cash' | 'RTGS' | 'Cheque' | 'UPI' | 'Card' | 'Other';
-  reference: string | null;
-  payment_date: string;
-  notes: string | null;
-  received_by: string | null;
-  created_at: string;
-  updated_at: string;
+  updated_by: string | null;
   deleted_at: string | null;
 }
 

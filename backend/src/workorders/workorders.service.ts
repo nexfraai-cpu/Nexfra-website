@@ -12,6 +12,7 @@ import {
 } from './workorders.types.js';
 import { logger } from '../config/logger.js';
 import { supabase } from '../database/client.js';
+import { AuthenticatedUser } from '../middleware/auth.js';
 
 export class WorkordersService {
   constructor(private queries: WorkOrderQueries) {}
@@ -21,33 +22,33 @@ export class WorkordersService {
       status?: string; search?: string; urgent?: boolean;
       sortBy?: string; sortOrder?: string; page: number; perPage: number;
     },
-    actorId: string,
+    user: AuthenticatedUser,
   ): Promise<PaginatedResult<WorkOrderSummaryResponse>> {
-    const { data, total } = await this.queries.findAll(options as any);
-    logger.info({ actorId, page: options.page, total }, 'Work orders listed');
+    const { data, total } = await this.queries.findAll(options as any, user);
+    logger.info({ actorId: user.id, page: options.page, total }, 'Work orders listed');
     return {
       data: data.map(this._toSummaryResponse),
       meta: { total, page: options.page, perPage: options.perPage, totalPages: Math.ceil(total / options.perPage) || 1 },
     };
   }
 
-  async getById(id: string, actorId: string): Promise<WorkOrderResponse> {
-    const wo = await this.queries.findById(id);
+  async getById(id: string, user: AuthenticatedUser): Promise<WorkOrderResponse> {
+    const wo = await this.queries.findById(id, user);
     if (!wo || (wo as any).deleted_at) throw new WorkOrderNotFoundError(id);
 
-    const productionItems = await this.queries.findProductionItems(id);
-    logger.info({ actorId, workOrderId: id }, 'Work order retrieved');
+    const productionItems = await this.queries.findProductionItems(id, user);
+    logger.info({ actorId: user.id, workOrderId: id }, 'Work order retrieved');
     return this._toDetailResponse(wo, productionItems);
   }
 
-  async create(input: { quotationId: string; factoryNotes?: string | null; dueDate?: string | null; isUrgent?: boolean }, actorId: string): Promise<WorkOrderResponse> {
-    const quotation = await this.queries.findQuotationById(input.quotationId);
+  async create(input: { quotationId: string; factoryNotes?: string | null; dueDate?: string | null; isUrgent?: boolean }, user: AuthenticatedUser): Promise<WorkOrderResponse> {
+    const quotation = await this.queries.findQuotationById(input.quotationId, user);
     if (!quotation) throw new WorkOrderNotFoundError(input.quotationId);
     if ((quotation as any).status !== 'Approved') {
       throw new QuotationNotApprovedError(input.quotationId);
     }
 
-    const existing = await this.queries.findExistingByQuotation(input.quotationId);
+    const existing = await this.queries.findExistingByQuotation(input.quotationId, user);
     if (existing) throw new WorkOrderAlreadyExistsError(input.quotationId);
 
     const q = quotation as any;
@@ -68,7 +69,9 @@ export class WorkordersService {
       is_urgent: input.isUrgent ?? false,
       status: 'Open',
       version: 1,
-      booked_by: actorId,
+      booked_by: user.id,
+      created_by: user.id,
+      updated_by: user.id,
     } as any);
 
     for (let i = 0; i < (q.order_qty ?? 1); i++) {
@@ -85,29 +88,30 @@ export class WorkordersService {
         stage_key: 'Pending',
         stage_name: 'Pending',
         is_completed: false,
-        completed_by: null,
-        completed_at: null,
+        completed_by: user.id,
+        completed_at: new Date().toISOString(),
         remark: null,
+        created_by: user.id,
       } as any);
     }
 
-    await this._logAudit(actorId, 'create', 'work_order', wo.id as string, null, {
+    await this._logAudit(user.id, 'create', 'work_order', wo.id as string, null, {
       workOrderNumber: (wo as any).work_order_number,
       quotationId: q.id,
     });
 
-    const productionItems = await this.queries.findProductionItems(wo.id as string);
-    logger.info({ actorId, workOrderId: wo.id, items: productionItems.length }, 'Work order created');
+    const productionItems = await this.queries.findProductionItems(wo.id as string, user);
+    logger.info({ actorId: user.id, workOrderId: wo.id, items: productionItems.length }, 'Work order created');
     return this._toDetailResponse(wo, productionItems);
   }
 
-  async update(id: string, input: Record<string, unknown>, actorId: string): Promise<WorkOrderResponse> {
-    const wo = await this.queries.findById(id);
+  async update(id: string, input: Record<string, unknown>, user: AuthenticatedUser): Promise<WorkOrderResponse> {
+    const wo = await this.queries.findById(id, user);
     if (!wo || (wo as any).deleted_at) throw new WorkOrderNotFoundError(id);
     if ((wo as any).status !== 'Open') throw new WorkOrderNotOpenError((wo as any).status);
 
     const oldData = { ...wo };
-    const updates: Record<string, unknown> = { version: ((wo as any).version || 0) + 1 };
+    const updates: Record<string, unknown> = { version: ((wo as any).version || 0) + 1, updated_by: user.id };
 
     const fieldMap: Record<string, string> = {
       factoryNotes: 'factory_notes', dueDate: 'due_date', isUrgent: 'is_urgent', status: 'status',
@@ -116,47 +120,47 @@ export class WorkordersService {
       if (input[ik] !== undefined) updates[dbk] = input[ik];
     }
 
-    const updated = await this.queries.update(id, updates as any);
-    const productionItems = await this.queries.findProductionItems(id);
+    const updated = await this.queries.update(id, updates as any, user);
+    const productionItems = await this.queries.findProductionItems(id, user);
 
-    await this._logAudit(actorId, 'update', 'work_order', id, oldData, updated);
-    logger.info({ actorId, workOrderId: id }, 'Work order updated');
+    await this._logAudit(user.id, 'update', 'work_order', id, oldData, updated);
+    logger.info({ actorId: user.id, workOrderId: id }, 'Work order updated');
     return this._toDetailResponse(updated, productionItems);
   }
 
-  async setDueDate(id: string, dueDate: string | null, actorId: string): Promise<WorkOrderResponse> {
-    const wo = await this.queries.findById(id);
+  async setDueDate(id: string, dueDate: string | null, user: AuthenticatedUser): Promise<WorkOrderResponse> {
+    const wo = await this.queries.findById(id, user);
     if (!wo || (wo as any).deleted_at) throw new WorkOrderNotFoundError(id);
 
-    const updated = await this.queries.update(id, { due_date: dueDate } as any);
-    const productionItems = await this.queries.findProductionItems(id);
+    const updated = await this.queries.update(id, { due_date: dueDate, updated_by: user.id } as any, user);
+    const productionItems = await this.queries.findProductionItems(id, user);
 
-    await this._logAudit(actorId, 'set-due-date', 'work_order', id, { due_date: (wo as any).due_date }, { due_date: dueDate });
-    logger.info({ actorId, workOrderId: id, dueDate }, 'Work order due date set');
+    await this._logAudit(user.id, 'set-due-date', 'work_order', id, { due_date: (wo as any).due_date }, { due_date: dueDate });
+    logger.info({ actorId: user.id, workOrderId: id, dueDate }, 'Work order due date set');
     return this._toDetailResponse(updated, productionItems);
   }
 
-  async toggleUrgent(id: string, actorId: string): Promise<WorkOrderResponse> {
-    const wo = await this.queries.findById(id);
+  async toggleUrgent(id: string, user: AuthenticatedUser): Promise<WorkOrderResponse> {
+    const wo = await this.queries.findById(id, user);
     if (!wo || (wo as any).deleted_at) throw new WorkOrderNotFoundError(id);
 
     const newUrgent = !(wo as any).is_urgent;
-    const updated = await this.queries.update(id, { is_urgent: newUrgent } as any);
-    const productionItems = await this.queries.findProductionItems(id);
+    const updated = await this.queries.update(id, { is_urgent: newUrgent, updated_by: user.id } as any, user);
+    const productionItems = await this.queries.findProductionItems(id, user);
 
-    await this._logAudit(actorId, 'toggle-urgent', 'work_order', id, { is_urgent: (wo as any).is_urgent }, { is_urgent: newUrgent });
-    logger.info({ actorId, workOrderId: id, isUrgent: newUrgent }, 'Work order urgent toggled');
+    await this._logAudit(user.id, 'toggle-urgent', 'work_order', id, { is_urgent: (wo as any).is_urgent }, { is_urgent: newUrgent });
+    logger.info({ actorId: user.id, workOrderId: id, isUrgent: newUrgent }, 'Work order urgent toggled');
     return this._toDetailResponse(updated, productionItems);
   }
 
-  async softDelete(id: string, actorId: string): Promise<void> {
-    const wo = await this.queries.findById(id);
+  async softDelete(id: string, user: AuthenticatedUser): Promise<void> {
+    const wo = await this.queries.findById(id, user);
     if (!wo || (wo as any).deleted_at) throw new WorkOrderNotFoundError(id);
     if ((wo as any).status !== 'Open') throw new WorkOrderNotOpenError((wo as any).status);
 
-    await this.queries.softDelete(id);
-    await this._logAudit(actorId, 'delete', 'work_order', id, wo, { deleted: true });
-    logger.info({ actorId, workOrderId: id }, 'Work order soft-deleted');
+    await this.queries.softDelete(id, user);
+    await this._logAudit(user.id, 'delete', 'work_order', id, wo, { deleted: true });
+    logger.info({ actorId: user.id, workOrderId: id }, 'Work order soft-deleted');
   }
 
   private async _logAudit(actorId: string, action: string, entityType: string, entityId: string, oldValue: unknown, newValue: unknown) {
