@@ -15,6 +15,7 @@ export const config = {
   nodeEnv: optional('NODE_ENV', 'development'),
   port: Number(optional('PORT', '4000')),
   host: optional('HOST', '0.0.0.0'),
+  trustProxy: (optional('TRUST_PROXY', '') || (process.env.NODE_ENV === 'production' ? '1' : '0')) as boolean | string,
   isDev: () => config.nodeEnv === 'development',
   isProd: () => config.nodeEnv === 'production',
 

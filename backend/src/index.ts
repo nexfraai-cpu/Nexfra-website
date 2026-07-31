@@ -2,6 +2,7 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import morgan from 'morgan';
 import { config } from './config/index.js';
 import { logger } from './config/logger.js';
@@ -21,11 +22,15 @@ import { storageRouter } from './storage/storage.routes.js';
 
 const app = express();
 
+app.set('trust proxy', config.trustProxy);
+
 app.use(
   helmet({
     contentSecurityPolicy: config.isProd() ? undefined : false,
+    hsts: config.isProd() ? { maxAge: 31536000, includeSubDomains: true } : false,
   }),
 );
+app.use(compression());
 app.use(cors({ origin: config.corsOrigins, credentials: true }));
 app.use(
   rateLimit({

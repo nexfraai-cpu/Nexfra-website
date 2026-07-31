@@ -301,6 +301,23 @@
 
 ---
 
+## Phase 15: Production Readiness ✅
+
+**Objective:** Prepare the full system for production deployment — Vercel (frontend), Railway (backend), Supabase (database + storage), with docs, CI/CD, and verification.
+
+### Deliverables
+
+- [x] Backend production hardening: `compression` middleware, `trust proxy` for real client IPs, HSTS via helmet
+- [x] `backend/railway.json` (Dockerfile builder, healthcheck path, restart policy) + Dockerfile HEALTHCHECK
+- [x] `vercel.json` production headers (HSTS, nosniff, X-Frame-Options, immutable asset caching, SPA rewrites)
+- [x] `.env.example` corrected to production domain `https://api.nexfra.in`
+- [x] CI/CD: `.github/workflows/ci.yml` (typecheck + tests + build) and `.github/workflows/deploy.yml` (Railway + Vercel)
+- [x] Docs: `deployment.md` (rewritten), `rollback.md`, `backup.md`, `monitoring.md`, `production-checklist.md`
+- [x] Final Production Readiness Report (`production-readiness.md`)
+- [x] Verification: backend `tsc` clean, 162/162 tests pass, frontend production build OK, live prod-mode smoke test (HSTS/compression/health)
+
+---
+
 ## Future Improvements 🔮
 
 ### Q4 2026
