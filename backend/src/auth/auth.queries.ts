@@ -6,8 +6,8 @@ export class AuthQueries {
     return authSupabase.auth.signInWithPassword({ email, password });
   }
 
-  async signOut() {
-    return authSupabase.auth.signOut();
+  async signOut(accessToken: string) {
+    return supabase.auth.admin.signOut(accessToken);
   }
 
   async refreshSession(refreshToken: string) {
