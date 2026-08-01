@@ -32,6 +32,7 @@ app.use(
   }),
 );
 app.use(compression());
+console.log('CORS_ORIGINS:', config.corsOrigins);
 app.use(cors({ origin: config.corsOrigins, credentials: true }));
 app.use(
   rateLimit({
