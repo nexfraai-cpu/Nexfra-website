@@ -755,10 +755,6 @@ HOST=0.0.0.0
 # Supabase
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_KEY=your-service-role-key
-SUPABASE_ANON_KEY=your-anon-key
-
-# JWT (managed by Supabase — use service key for admin ops)
-JWT_SECRET=your-jwt-secret  # Only if custom JWT; Supabase manages by default
 
 # CORS
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173

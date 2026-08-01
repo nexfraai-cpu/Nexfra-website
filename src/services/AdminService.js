@@ -1,48 +1,52 @@
-import { BaseService } from './BaseService.js';
+import { apiClient } from '../api/client.js';
 
-export class AdminService extends BaseService {
+const PRICING_KEY = 'pricing_coefficients';
+const METAL_PRICE_KEY = 'metal_price_per_kg';
+
+const DEFAULT_PRICING = {
+  floor6: -15000,
+  floor10: 30000,
+  steelHardox: 150000,
+  axle2: -100000,
+  axle3_16: 80000,
+};
+
+function parseValue(raw, fallback) {
+  if (raw == null) return fallback;
+  try {
+    return typeof raw === 'string' ? JSON.parse(raw) : raw;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+export class AdminService {
   async getPricing() {
-    const state = await this.loadState();
-    return state.adminPricing || {};
+    const { value } = await apiClient.get(`/api/storage/${PRICING_KEY}`);
+    return { ...DEFAULT_PRICING, ...(parseValue(value, {}) || {}) };
   }
 
   async updatePricing(pricing) {
-    const state = await this.loadState();
-    state.adminPricing = { ...(state.adminPricing || {}), ...pricing };
-    await this.saveState(state);
-    await this.logActivity('Admin pricing updated.');
+    const current = await this.getPricing();
+    const next = { ...current, ...pricing };
+    await apiClient.post(`/api/storage/${PRICING_KEY}`, { value: next });
+    return next;
   }
 
   async getMetalPrice() {
-    const state = await this.loadState();
-    return state.metalPricePerKg || 100;
+    const { value } = await apiClient.get(`/api/storage/${METAL_PRICE_KEY}`);
+    const parsed = parseValue(value, 100);
+    return typeof parsed === 'number' ? parsed : 100;
   }
 
   async setMetalPrice(price) {
-    const state = await this.loadState();
-    state.metalPricePerKg = parseFloat(price) || 100;
-    await this.saveState(state);
+    await apiClient.post(`/api/storage/${METAL_PRICE_KEY}`, {
+      value: parseFloat(price) || 100,
+    });
   }
 
   async resetAllSystemData() {
-    const state = await this.loadState();
-    state.quotations = [];
-    state.productionItems = [];
-    state.workOrders = [];
-    state.sales = [];
-    state.payments = [];
-    state.chassisRecords = [];
-    state.logs = [
-      { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), message: 'System database reset to production baseline.' }
-    ];
-    if (state.customers) {
-      state.customers.forEach(c => { c.outstanding = 0; c.vehicles = []; });
-    }
-    state.productSpecOverrides = {};
-    state.customItemDefinitions = [];
-    delete state.metalPricePerKg;
-    await this.saveState(state);
-    await this.logActivity('System data reset performed.');
-    return state;
+    const res = await apiClient.post('/api/admin/reset');
+    return res.data || { reset: true };
   }
 }

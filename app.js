@@ -1,24 +1,26 @@
-import { CONFIG, isDevelopment, isQuickLoginEnabled, isResetDataEnabled } from './src/config.js';
+import { CONFIG, isQuickLoginEnabled } from './src/config.js';
 import { getStorageProvider } from './src/storage/index.js';
+import { sessionStore } from './src/api/session.js';
+import { apiClient } from './src/api/client.js';
 import { AuthenticationService } from './src/services/AuthenticationService.js';
-import { CustomerService } from './src/services/CustomerService.js';
-import { EmployeeService } from './src/services/EmployeeService.js';
-import { AdminService } from './src/services/AdminService.js';
 import { Logger } from './src/utils/Logger.js';
 import { getDefaultState } from './src/dev-data.js';
 
 const storage = getStorageProvider();
-const customerService = new CustomerService();
-const employeeService = new EmployeeService();
-const adminService = new AdminService();
 
 let STATE = {};
 
+const APP_CONFIG_KEY = 'NEXFRA_ERP_APP_CONFIG';
+
 async function loadState() {
-  let state = await storage.getJSON(CONFIG.STORAGE_KEYS.ERP_STATE);
+  let state = null;
+  try {
+    state = await storage.getJSON(CONFIG.STORAGE_KEYS.ERP_STATE);
+  } catch (e) {
+    state = null;
+  }
   if (!state) {
     state = getDefaultState();
-    await storage.setJSON(CONFIG.STORAGE_KEYS.ERP_STATE, state);
   }
   STATE = state;
   await syncStateCalculations();
@@ -27,7 +29,16 @@ async function loadState() {
 
 async function saveState() {
   await syncStateCalculations();
-  await storage.setJSON(CONFIG.STORAGE_KEYS.ERP_STATE, STATE);
+  // Entities are written through their services; only the activity log
+  // is persisted here (app config key) so the legacy ERP_STATE blob is
+  // never recreated on the public site. Merge instead of overwrite so
+  // the shared app-config (custom fields, pricing, schemas) is preserved.
+  try {
+    const existing = (await storage.getJSON(APP_CONFIG_KEY).catch(() => ({}))) || {};
+    await storage.setJSON(APP_CONFIG_KEY, { ...existing, logs: STATE.logs || [] });
+  } catch (e) {
+    Logger.warn('App config sync failed', e);
+  }
 }
 
 async function syncStateCalculations() {
@@ -165,8 +176,7 @@ function initEnquiryForm() {
       const company = document.getElementById('contact-company').value;
       const productVal = document.getElementById('contact-product').value;
       const message = document.getElementById('contact-message').value;
-      await loadState();
-      await customerService.create({ name, company, phone, email, address: 'Lead via Web Form' });
+      await apiClient.post('/api/public/leads', { name, company, phone, email, message });
       await logSystemActivity(`Lead created: ${company} (${name}) submitted website enquiry.`);
       form.reset();
       successAlert.style.display = 'block';
@@ -239,7 +249,7 @@ async function initPortalLogin() {
         else { openErpPage(); }
       } catch (err) {
         Logger.warn('Quick login fallback', err);
-        await fallbackQuickLogin(role, openErpPage);
+        await fallbackQuickLogin(role);
       }
     });
   } else if (roleSelector) {
@@ -280,20 +290,14 @@ async function initPortalLogin() {
   }
 }
 
-async function fallbackQuickLogin(role, openErpPage) {
-  await storage.set('NEXFRA_AUTH_TOKEN', 'true');
-  await storage.set('NEXFRA_USER_ROLE', role);
-  await storage.set('NEXFRA_USER_NAME', role.charAt(0).toUpperCase() + role.slice(1));
+async function fallbackQuickLogin(role) {
+  Logger.error('Quick login failed', { role });
+  alert(`Quick login failed for role "${role}". Run \`npm run seed\` in the backend to create development accounts.`);
   await checkLoginState();
-  const redirectTarget = await storage.get(CONFIG.STORAGE_KEYS.REDIRECT_AFTER_LOGIN);
-  if (redirectTarget) { await storage.remove(CONFIG.STORAGE_KEYS.REDIRECT_AFTER_LOGIN); openErpPage(redirectTarget); }
-  else { openErpPage(); }
 }
 
 async function persistSession() {
-  await storage.set('NEXFRA_AUTH_TOKEN', 'true');
-  await storage.set('NEXFRA_USER_ROLE', AuthenticationService.userRole);
-  await storage.set('NEXFRA_USER_NAME', AuthenticationService.userName);
+  sessionStore.setUser(AuthenticationService.currentUser);
   await AuthenticationService.persistSession();
 }
 
@@ -304,8 +308,7 @@ async function checkLoginState() {
     document.getElementById('open-portal-mobile-btn'),
     document.getElementById('open-portal-footer-btn')
   ];
-  const token = await storage.get(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
-  const isLoggedIn = token === 'true' || AuthenticationService.isLoggedIn;
+  const isLoggedIn = !!sessionStore.getToken() || AuthenticationService.isLoggedIn;
   if (isLoggedIn) {
     document.body.classList.add('admin-logged-in');
     if (adminBar) adminBar.style.display = 'flex';

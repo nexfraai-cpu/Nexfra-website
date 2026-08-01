@@ -38,8 +38,6 @@ Copy `.env.example` to `.env` — the defaults work for local development:
 ```
 VITE_STORAGE_PROVIDER=localStorage
 VITE_API_BASE_URL=http://localhost:4000
-VITE_APP_NAME=Nexfra ERP
-VITE_APP_VERSION=1.0.0
 ```
 
 ### Build

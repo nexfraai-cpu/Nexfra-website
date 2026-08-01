@@ -139,20 +139,30 @@ This runs a full Supabase stack locally (PostgreSQL, Auth, Storage, etc.).
 
 ## Environment Variables
 
-Add these to your `.env` file:
+The frontend talks to the backend API and never needs Supabase keys. Only the
+backend connects to Supabase directly.
+
+**Backend** (`backend/.env` — required):
+
+```bash
+# backend/.env
+SUPABASE_URL=https://<your-project>.supabase.co
+SUPABASE_SERVICE_KEY=<your-service-role-key>
+```
+
+**Frontend** (`.env` — no Supabase values):
 
 ```bash
 # .env
-VITE_APP_ENV=production
-VITE_SUPABASE_URL=https://<your-project>.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-anon-key>
+VITE_APP_ENV=development
 VITE_STORAGE_PROVIDER=api
-VITE_API_BASE_URL=
+VITE_API_BASE_URL=http://localhost:4000
 ```
 
-Find these values in Supabase Dashboard → **Project Settings → API**:
-- **Project URL** → `VITE_SUPABASE_URL`
-- **anon public** → `VITE_SUPABASE_ANON_KEY`
+Find `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in Supabase Dashboard →
+**Project Settings → API**:
+- **Project URL** → `SUPABASE_URL`
+- **service_role** → `SUPABASE_SERVICE_KEY` (secret — server-side only, never in the browser)
 
 ---
 
@@ -188,7 +198,7 @@ Find these values in Supabase Dashboard → **Project Settings → API**:
 |--------|-------|--------|---------|----------|
 | EMP | `employees` | `employee_number` | EMP-000001 | `seq_employees` |
 | CUS | `customers` | `customer_number` | CUS-000001 | `seq_customers` |
-| NQ | `quotations` | `quotation_number` | NQ-000001 | `seq_quotations` |
+| Initials/year | `quotations` | `quotation_number` | JP/2026/000001 | `quotation_yearly_sequences` |
 | WO | `work_orders` | `work_order_number` | WO-000001 | `seq_work_orders` |
 | PAY | `payments` | `payment_number` | PAY-000001 | `seq_payments` |
 

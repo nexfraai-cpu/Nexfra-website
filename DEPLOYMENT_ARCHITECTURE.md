@@ -65,25 +65,21 @@ VITE_STORAGE_PROVIDER=localStorage
 # Backend API URL (only used when STORAGE_PROVIDER = 'api')
 VITE_API_BASE_URL=http://localhost:4000
 
-# Application metadata
-VITE_APP_NAME=Nexfra ERP
-VITE_APP_VERSION=1.0.0
-
-# Supabase (for future ApiProvider integration)
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
+# Application environment: development | test | production
+VITE_APP_ENV=development
 ```
 
 ### Production `.env` (Vercel Environment Variables)
 
 ```
+VITE_APP_ENV=production
 VITE_STORAGE_PROVIDER=api
 VITE_API_BASE_URL=https://api.nexfra.in
-VITE_APP_NAME=Nexfra ERP
-VITE_APP_VERSION=1.0.0
-VITE_SUPABASE_URL=https://your-production-project.supabase.co
-VITE_SUPABASE_ANON_KEY=prod-anon-key
 ```
+
+Supabase is only ever reached by the backend (via `SUPABASE_URL` +
+`SUPABASE_SERVICE_KEY` in the Railway env). The frontend talks to the backend
+API and never holds Supabase keys.
 
 ---
 

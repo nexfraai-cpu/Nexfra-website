@@ -2,41 +2,243 @@
    Nexfra ERP Control Panel Core Script
    ========================================== */
 
-import { CONFIG, isDevelopment, isQuickLoginEnabled, isResetDataEnabled } from './src/config.js';
+import { CONFIG, isQuickLoginEnabled, isResetDataEnabled } from './src/config.js';
 import { getStorageProvider } from './src/storage/index.js';
+import { apiClient } from './src/api/client.js';
+import { sessionStore } from './src/api/session.js';
 import { AuthenticationService } from './src/services/AuthenticationService.js';
 import { EmployeeService } from './src/services/EmployeeService.js';
+import { CustomerService } from './src/services/CustomerService.js';
+import { QuotationService } from './src/services/QuotationService.js';
+import { WorkOrderService } from './src/services/WorkOrderService.js';
+import { ProductionService } from './src/services/ProductionService.js';
+import { FinanceService } from './src/services/FinanceService.js';
+import { AdminService } from './src/services/AdminService.js';
 import { Logger } from './src/utils/Logger.js';
-import { getDefaultState } from './src/dev-data.js';
 
 const storage = getStorageProvider();
 const employeeService = new EmployeeService();
+const customerService = new CustomerService();
+const quotationService = new QuotationService();
+const workOrderService = new WorkOrderService();
+const productionService = new ProductionService();
+const financeService = new FinanceService();
+const adminService = new AdminService();
 
 let _sessionRole = 'admin';
 let _sessionUser = 'Admin';
+let _sessionEmployeeId = null;
+
+window.sanitizeDisplayId = function(val, fallbackLabel = '') {
+  if (!val) return fallbackLabel || '—';
+  const str = String(val);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(str)) {
+    console.warn(`[DEFENSIVE WARNING] Internal UUID '${str}' was blocked from rendering in user-facing UI component.`);
+    return fallbackLabel || '—';
+  }
+  return str;
+};
+
+window.resolveQuotationDisplayNumber = function(source, fallbackSources = []) {
+  const candidates = [
+    source && source.quotationNumber,
+    source && source.quotation_number,
+    source && source.quoteNumber,
+    ...fallbackSources,
+  ];
+  for (const candidate of candidates) {
+    if (!candidate) continue;
+    const displayId = sanitizeDisplayId(candidate, '');
+    if (displayId) return displayId;
+  }
+  const context = source && (source.id || source.quoteId || source.quotationId || source._backendId);
+  console.warn('[Quotation Number Missing] quotation_number was not available for UI display.', { context, source });
+  return 'Quotation number unavailable';
+};
 
 // In-memory state cache for synchronous loadState/saveState access
 let _stateCache = {};
 
+// Frontend-only configuration persisted separately from entity data.
+const APP_CONFIG_KEY = 'NEXFRA_ERP_APP_CONFIG';
+const AUX_STATE_KEYS = [
+  'logs',
+  'customItemDefinitions',
+  'productSpecOverrides',
+  'metalPricePerKg',
+  'progressionSchema',
+  'dispatchFields',
+  'quotationCounter',
+  'employeeCounter',
+];
+
+// Signatures of the last-successfully-synced entity collections.
+const _syncSignatures = {};
+
+function _entitySig(value) {
+  return JSON.stringify(value || []);
+}
+
 async function initSession() {
   try {
-    const token = await storage.get(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
-    if (token !== 'true') {
+    const token = sessionStore.getToken();
+    if (!token) {
       alert('Access Denied: Please log in first.');
       window.location.href = 'index.html';
       return false;
     }
-    _sessionRole = await storage.get(CONFIG.STORAGE_KEYS.USER_ROLE) || 'admin';
-    _sessionUser = await storage.get(CONFIG.STORAGE_KEYS.USER_NAME) || 'Admin';
+    sessionStore.setToken(token);
 
-    // Pre-populate in-memory state cache from API
-    _stateCache = await storage.getJSON(CONFIG.STORAGE_KEYS.ERP_STATE) || {};
+    const me = await apiClient.get('/api/auth/me');
+    const profile = (me && me.data) || {};
+    _sessionRole = profile.role || 'admin';
+    _sessionUser = profile.name || 'Admin';
+    _sessionEmployeeId = profile.id || null;
+
+    await migrateLegacyBlobIfNeeded();
+    await hydrateStateFromApi();
     return true;
   } catch (e) {
     console.error('Session init failed', e);
+    if (e && (e.status === 401 || e.status === 403)) {
+      sessionStore.clear();
+    }
     alert('Access Denied: Please log in first.');
     window.location.href = 'index.html';
     return false;
+  }
+}
+
+async function loadAppConfig() {
+  let config = {};
+  try {
+    config = await storage.getJSON(APP_CONFIG_KEY) || {};
+  } catch (e) {
+    config = {};
+  }
+  return config;
+}
+
+async function persistAppConfig(config) {
+  try {
+    await storage.setJSON(APP_CONFIG_KEY, config);
+  } catch (e) {
+    Logger.error('App config sync failed', e);
+  }
+}
+
+function pickAuxState(state) {
+  const aux = {};
+  AUX_STATE_KEYS.forEach((key) => {
+    if (state[key] !== undefined) aux[key] = state[key];
+  });
+  return aux;
+}
+
+async function hydrateStateFromApi() {
+  const [customers, quotations, workOrders, { sales, payments }, employees, appConfig] =
+    await Promise.all([
+      customerService.getAll().catch((e) => { Logger.warn('Customers hydrate failed', e); return []; }),
+      quotationService.getAll(_sessionRole === 'finance' ? { financeView: 'mine' } : undefined)
+        .catch((e) => { Logger.warn('Quotations hydrate failed', e); return []; }),
+      workOrderService.getAll().catch((e) => { Logger.warn('Work orders hydrate failed', e); return []; }),
+      financeService.hydrate().catch((e) => { Logger.warn('Finance hydrate failed', e); return { sales: [], payments: [] }; }),
+      employeeService.getAll().catch((e) => { Logger.warn('Employees hydrate failed', e); return []; }),
+      loadAppConfig().catch(() => ({})),
+    ]);
+
+  const productionItems = await productionService.hydrate(quotations)
+    .catch((e) => { Logger.warn('Production hydrate failed', e); return []; });
+
+  const pricing = await adminService.getPricing()
+    .catch((e) => { Logger.warn('Admin pricing hydrate failed', e); return null; });
+
+  const metalPrice = await adminService.getMetalPrice()
+    .catch((e) => { Logger.warn('Metal price hydrate failed', e); return null; });
+
+  console.log('[hydrateStateFromApi] Hydrated quotations count:', quotations ? quotations.length : 0, quotations ? quotations.map(q => q.id) : []);
+
+  _stateCache = {
+    ...(appConfig || {}),
+    customers,
+    quotations,
+    workOrders,
+    productionItems,
+    sales,
+    payments,
+    employees,
+    adminPricing: pricing || _stateCache.adminPricing || {},
+    metalPricePerKg: metalPrice != null ? metalPrice : _stateCache.metalPricePerKg,
+  };
+
+  _syncSignatures.customers = _entitySig(customers);
+  _syncSignatures.quotations = _entitySig(quotations);
+  _syncSignatures.workOrders = _entitySig(workOrders);
+  _syncSignatures.productionItems = _entitySig(productionItems);
+  _syncSignatures.sales = _entitySig(sales);
+  _syncSignatures.payments = _entitySig(payments);
+}
+
+async function flushStateToApi() {
+  if (_entitySig(STATE.customers) !== _syncSignatures.customers) {
+    await customerService.syncAll(STATE.customers);
+    _syncSignatures.customers = _entitySig(STATE.customers);
+  }
+  if (_entitySig(STATE.quotations) !== _syncSignatures.quotations) {
+    await quotationService.syncAll(STATE.quotations);
+    _syncSignatures.quotations = _entitySig(STATE.quotations);
+  }
+  if (_entitySig(STATE.workOrders) !== _syncSignatures.workOrders) {
+    await workOrderService.syncAll(STATE.workOrders, STATE.quotations);
+    _syncSignatures.workOrders = _entitySig(STATE.workOrders);
+  }
+  if (_entitySig(STATE.productionItems) !== _syncSignatures.productionItems) {
+    for (const item of STATE.productionItems || []) {
+      await productionService.syncItem(item, STATE.quotations);
+    }
+    _syncSignatures.productionItems = _entitySig(STATE.productionItems);
+  }
+  // Sales and payments are backend-authoritative; local edits stay in-session.
+  if (_entitySig(STATE.sales) !== _syncSignatures.sales) {
+    _syncSignatures.sales = _entitySig(STATE.sales);
+  }
+  if (_entitySig(STATE.payments) !== _syncSignatures.payments) {
+    _syncSignatures.payments = _entitySig(STATE.payments);
+  }
+}
+
+async function migrateLegacyBlobIfNeeded() {
+  let legacy = null;
+  try {
+    legacy = await storage.getJSON(CONFIG.STORAGE_KEYS.ERP_STATE);
+  } catch (e) {
+    legacy = null;
+  }
+  if (!legacy || typeof legacy !== 'object') return;
+
+  const hasEntityData =
+    (legacy.customers && legacy.customers.length) ||
+    (legacy.quotations && legacy.quotations.length) ||
+    (legacy.workOrders && legacy.workOrders.length);
+
+  try {
+    if (hasEntityData) {
+      if (legacy.customers?.length) await customerService.syncAll(legacy.customers);
+      if (legacy.quotations?.length) await quotationService.syncAll(legacy.quotations);
+      if (legacy.workOrders?.length) {
+        await workOrderService.syncAll(legacy.workOrders, legacy.quotations || []);
+      }
+      Logger.info('Legacy NEXFRA_ERP_STATE migrated to REST APIs');
+    }
+
+    const aux = pickAuxState(legacy);
+    if (Object.keys(aux).length) {
+      await storage.setJSON(APP_CONFIG_KEY, aux);
+    }
+    await storage.remove(CONFIG.STORAGE_KEYS.ERP_STATE);
+  } catch (e) {
+    Logger.error('Legacy blob migration failed (state retained)', e);
   }
 }
 
@@ -371,35 +573,43 @@ function loadState() {
 function saveState() {
   syncStateCalculations();
   _stateCache = Object.assign({}, STATE);
-  storage.setJSON(CONFIG.STORAGE_KEYS.ERP_STATE, STATE).catch(e =>
+  flushStateToApi().catch(e =>
     Logger.error('Background state sync failed', e)
   );
+  const aux = pickAuxState(STATE);
+  const auxSig = _entitySig(aux);
+  if (auxSig !== _lastAuxConfigSig) {
+    _lastAuxConfigSig = auxSig;
+    persistAppConfig(aux);
+  }
 }
 
-window.resetAllSystemData = function(silent = false) {
+let _lastAuxConfigSig = _entitySig(pickAuxState(_stateCache));
+
+window.resetAllSystemData = async function(silent = false) {
   if (!isResetDataEnabled()) {
-    alert("This feature is not available in production mode.");
+    alert("This feature is only available in development mode.");
     return;
   }
-  if (silent || confirm("Are you sure you want to clear all test quotations and reset the system pipeline? This will make the application completely fresh and production-ready.")) {
-    STATE.quotations = [];
-    STATE.productionItems = [];
-    STATE.workOrders = [];
-    STATE.sales = [];
-    STATE.payments = [];
-    STATE.logs = [
-      { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), message: 'System database cleared and reset to production baseline.' }
-    ];
-    if (STATE.customers) {
-      STATE.customers.forEach(c => {
-        c.outstanding = 0;
-        c.vehicles = [];
-      });
-    }
-    saveState();
-    if (!silent) {
-      alert("All test quotations and pipeline data have been completely cleared! The system is now fresh and production-ready.");
-      window.location.reload();
+  if (silent || confirm("Are you sure you want to clear all test quotations, work orders, payments, sales, and test customers? Sequence counters will restart from 1.")) {
+    try {
+      await adminService.resetAllSystemData();
+      STATE.quotations = [];
+      STATE.productionItems = [];
+      STATE.workOrders = [];
+      STATE.sales = [];
+      STATE.payments = [];
+      STATE.customers = [];
+      STATE.logs = [
+        { time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), message: 'Transactional database reset to production baseline. Sequences restarted from 1.' }
+      ];
+      saveState();
+      if (!silent) {
+        alert("Transactional test data reset successfully! All sequence counters restarted from 1.");
+        window.location.reload();
+      }
+    } catch (err) {
+      alert("Failed to reset test data: " + (err.response?.data?.error?.message || err.message || err));
     }
   }
 };
@@ -420,15 +630,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (!authed) return;
 
   await loadState();
-  if (!STATE.employees || STATE.employees.length === 0) {
-    const defaults = getDefaultState();
-    STATE.employees = defaults.employees || [];
-    STATE.employeeCounter = defaults.employeeCounter || 0;
-  }
-  if (!STATE.customers || STATE.customers.length === 0) {
-    const defaults = getDefaultState();
-    STATE.customers = defaults.customers || [];
-  }
   if (!isResetDataEnabled()) {
     document.querySelectorAll('.reset-data-btn').forEach(el => {
       el.style.display = 'none';
@@ -445,6 +646,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPdfPreviewControls();
 
   await handleUrlRouting();
+  startVisibilityPoll();
 
   // Delegated employee action buttons
   document.addEventListener('click', (e) => {
@@ -568,7 +770,7 @@ function switchModule(moduleName) {
     if (moduleName === 'sales') renderChassisTable();
     if (moduleName === 'workorders') renderWorkOrders();
     if (moduleName === 'status') renderProductionBoard();
-    if (moduleName === 'accounts') renderFinanceLedger();
+    if (moduleName === 'accounts') refreshFinanceModule();
     if (moduleName === 'admin') renderAdminSettings();
     if (moduleName === 'quotations') startNewQuotationWizard();
     if (moduleName === 'allquotations') renderAllQuotations();
@@ -588,10 +790,18 @@ function initDashboardShortcuts() {
 
 function initLogout() {
   document.getElementById('portal-logout-btn').addEventListener('click', async () => {
-    AuthenticationService.logout();
-    await storage.remove(CONFIG.STORAGE_KEYS.AUTH_TOKEN);
-    await storage.remove(CONFIG.STORAGE_KEYS.USER_ROLE);
-    await storage.remove(CONFIG.STORAGE_KEYS.USER_NAME);
+    await AuthenticationService.logout().catch(() => {});
+    for (const key of [
+      CONFIG.STORAGE_KEYS.AUTH_TOKEN,
+      CONFIG.STORAGE_KEYS.USER_ROLE,
+      CONFIG.STORAGE_KEYS.USER_NAME,
+    ]) {
+      await storage.remove(key).catch(() => {});
+    }
+    if (CONFIG.STORAGE_PROVIDER !== 'api') {
+      await storage.remove(APP_CONFIG_KEY).catch(() => {});
+    }
+    stopVisibilityPoll();
     alert("Signed out from Control Panel.");
     window.location.href = 'index.html';
   });
@@ -2208,6 +2418,7 @@ window.saveEditComponentsModal = function() {
   const metalPriceInput = document.getElementById('ec-metal-price');
   if (metalPriceInput) {
     STATE.metalPricePerKg = parseFloat(metalPriceInput.value) || 100;
+    adminService.setMetalPrice(STATE.metalPricePerKg).catch((e) => Logger.warn('Metal price sync failed', e));
   }
 
   // Save to STATE
@@ -2279,6 +2490,7 @@ window.saveCurrentBasePriceAsDefault = function() {
 
   STATE.adminPricing.basePrices[wizardState.subtype] = currentBase;
   saveState();
+  adminService.updatePricing({ ...STATE.adminPricing }).catch((e) => Logger.warn('Base price sync failed', e));
   logSystemActivity(`Admin set market base price for ${wizardState.subtype} to ₹${currentBase.toLocaleString('en-IN')}.`);
   alert(`₹${currentBase.toLocaleString('en-IN')} saved as market baseline default price for ${template.name}!`);
 };
@@ -2960,70 +3172,47 @@ window.cancelEditQuotation = function() {
   renderApprovalsList(_approvalsFilter || 'pending');
 };
 
-window.saveEditQuotation = function(showPdf) {
+window.saveEditQuotation = async function(showPdf) {
   loadState();
   const e = _editState;
   if (!e || !e.quoteId) return;
 
-  const q = STATE.quotations.find(x => x.id === e.quoteId);
+  const q = STATE.quotations.find(x => x.id === e.quoteId || x._backendId === e.quoteId);
   if (!q) return;
 
-  const template = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : null;
+  const backendId = q._backendId || q.id;
 
-  q.customerName = e.customerName || q.customerName;
-  q.model = e.model || q.model;
-  q.date = e.date || q.date;
-  q.productName = template ? template.name : q.productName;
-  q.total = e.manualTotal !== null ? e.manualTotal : (e.total || q.total);
-  q.specs = JSON.parse(JSON.stringify(e.specs || {}));
-  q.notRequired = JSON.parse(JSON.stringify(e.notRequired || {}));
-  q.dimensions = JSON.parse(JSON.stringify(e.dimensions || q.dimensions));
-  q.scopeOfWork = e.scopeOfWork || q.scopeOfWork;
-  q.terms = e.terms || q.terms;
-  q.gstRate = e.gstRate || 18;
-  q.orderQty = e.orderQty || 1;
-
-  // Sync linked work orders
-  if (q.workOrderIds) {
-    q.workOrderIds.forEach(woId => {
-      const wo = STATE.workOrders ? STATE.workOrders.find(w => w.id === woId) : null;
-      if (wo) {
-        wo.customer = q.customerName;
-        wo.product = q.productName;
-        wo.total = q.total;
-        wo.specs = Object.entries(q.specs || {}).filter(([k]) => !q.notRequired[k] && !k.endsWith('_custom_desc') && !k.endsWith('_custom_price')).map(([k, v]) => {
-          return resolveSpecName(k, template) + ': ' + v;
-        });
-      }
+  try {
+    const updated = await quotationService.update(backendId, {
+      customerName: e.customerName || q.customerName,
+      manualTotal: e.manualTotal,
+      gstRate: e.gstRate || 18,
+      orderQty: e.orderQty || 1,
+      scopeOfWork: e.scopeOfWork || q.scopeOfWork,
+      terms: e.terms || q.terms,
+      dimensions: e.dimensions || q.dimensions,
+      specs: e.specs || q.specs,
     });
-  }
 
-  // Sync production items
-  if (STATE.productionItems) {
-    STATE.productionItems.forEach(p => {
-      if (p.quoteId === e.quoteId || p.id === e.quoteId) {
-        p.customerName = q.customerName;
-        p.product = q.productName;
-      }
-    });
-  }
+    const idx = STATE.quotations.findIndex(x => x._backendId === backendId || x.id === q.id);
+    if (idx >= 0) {
+      STATE.quotations[idx] = updated;
+    }
 
-  logSystemActivity('Quotation ' + e.quoteId + ' details updated via inline edit.');
-  saveState();
+    saveState();
+    _editState = null;
 
-  _editState = null;
-
-  // Look up client for address/gst
-  var editClient = STATE.customers ? STATE.customers.find(function(c) { return c.id === q.customerId || (c.company && c.company === q.customerName); }) : null;
-
-  if (showPdf) {
-    showToastNotification('Quotation ' + q.id + ' updated! Opening PDF preview.');
-    renderApprovalsList(_approvalsFilter || 'pending');
-    setTimeout(function() { renderPdfFromQuote(q, editClient); }, 200);
-  } else {
-    showToastNotification('Quotation ' + q.id + ' updated successfully!');
-    switchModule('approvals');
-    renderApprovalsList(_approvalsFilter || 'pending');
+    showToastNotification(`Quotation ${updated.id} updated successfully!`);
+    if (showPdf) {
+      setTimeout(function() { renderPdfFromQuote(updated, null); }, 200);
+    } else {
+      renderApprovalsList(_approvalsFilter || 'pending');
+    }
+  } catch (err) {
+    Logger.error("Save edit quotation error:", err);
+    const msg = err.response?.data?.error?.message || err.message || 'Failed to update quotation on server';
+    showToastNotification(`Failed to update quotation: ${msg}`, 'error');
+    alert(`Failed to update quotation on server: ${msg}\n\nEdits were NOT saved.`);
   }
 };
 
@@ -3126,7 +3315,7 @@ function renderPdfFromQuote(quote, client) {
   document.getElementById('pdf-preview-modal').classList.add('active');
 }
 
-window.saveWizardQuotation = function() {
+window.saveWizardQuotation = async function() {
   try {
     loadState();
 
@@ -3166,60 +3355,76 @@ window.saveWizardQuotation = function() {
     if (!STATE.customers) STATE.customers = [];
     let client = STATE.customers.find(x => x.company && x.company.toLowerCase() === (c.company || '').toLowerCase());
     if (!client) {
-      client = {
-        id: `CUST-00${STATE.customers.length + 1}`,
-        name: c.name,
-        company: c.company,
-        gst: c.gst || 'Pending',
-        phone: c.phone,
-        email: c.email,
-        address: c.address,
-        vehicles: [],
-        outstanding: 0
-      };
-      STATE.customers.push(client);
+      try {
+        client = await customerService.create({
+          name: c.name,
+          company: c.company,
+          phone: c.phone,
+          email: c.email,
+          address: c.address,
+        });
+        STATE.customers.push(client);
+      } catch (custErr) {
+        client = {
+          id: null,
+          name: c.name,
+          company: c.company,
+          phone: c.phone,
+          email: c.email,
+          address: c.address,
+        };
+      }
     }
 
-    // 2. Save quote record with status: 'Pending Approval'
-    const newQuote = {
-      id: quoteId,
-      subtype: subtype,
-      customerId: client.id,
+    // 2. Build quotation payload
+    const quotePayload = {
+      customerId: client.id || null,
       customerName: client.company || client.name,
       model: wizardState.customer.model || 'Commercial Vehicle',
       productName: template ? template.name : 'Custom Trailer',
+      productKey: wizardState.category || 'trailer',
+      templateKey: subtype,
       date: c.date,
-      createdAt: new Date().toISOString(),
       total: wizardState.total || (template ? template.basePrice : 520000),
       status: 'Pending Approval',
       specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
       notRequired: JSON.parse(JSON.stringify(wizardState.notRequired || {})),
       capacity: wizardState.capacity || 'NA',
       dimensions: {
-        length: document.getElementById('w-dim-length')?.value || template.dimensions.length,
-        height: document.getElementById('w-dim-height')?.value || template.dimensions.height,
-        width: document.getElementById('w-dim-width')?.value || template.dimensions.width
+        length: document.getElementById('w-dim-length')?.value || template?.dimensions?.length,
+        height: document.getElementById('w-dim-height')?.value || template?.dimensions?.height,
+        width: document.getElementById('w-dim-width')?.value || template?.dimensions?.width
       },
       scopeOfWork: wizardState.scopeOfWork || 'As Mentioned above',
       terms: wizardState.terms || [],
       orderQty: wizardState.orderQty || 1,
       bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {}))
     };
-    
-    if (!STATE.quotations) STATE.quotations = [];
-    STATE.quotations.push(newQuote);
 
-    logSystemActivity(`Quotation ${quoteId} generated & sent to Approval.`);
+    // 3. Synchronous REST API creation call to Supabase backend
+    const createdQuote = await quotationService.create(quotePayload);
+
+    // 4. Update STATE only upon API SUCCESS
+    if (!STATE.quotations) STATE.quotations = [];
+    const idx = STATE.quotations.findIndex(q => q._backendId === createdQuote._backendId || q.id === createdQuote.id);
+    if (idx >= 0) {
+      STATE.quotations[idx] = createdQuote;
+    } else {
+      STATE.quotations.push(createdQuote);
+    }
+
+    logSystemActivity(`Quotation ${createdQuote.id} created & saved to database.`);
     saveState();
-    
-    showToastNotification(`Quotation ${quoteId} saved! Sent to Approval page.`);
+
+    showToastNotification(`Quotation ${createdQuote.id} saved! Sent to Approval page.`);
     switchModule('approvals');
     if (window.renderApprovalsList) renderApprovalsList('pending');
   } catch(err) {
     Logger.error("Save quotation error:", err);
-    showToastNotification("Quotation saved! Sent to Approval page.", "success");
-    switchModule('approvals');
-    if (window.renderApprovalsList) renderApprovalsList('pending');
+    const errorMsg = err.response?.data?.error?.message || err.message || 'Failed to save quotation to server.';
+    showToastNotification(`Failed to save quotation: ${errorMsg}`, "error");
+    alert(`Failed to save quotation to server: ${errorMsg}\n\nThe quotation was NOT saved.`);
+    // DO NOT PUSH TO STATE.quotations! DO NOT RENDER STALE LOCAL DATA!
   }
 };
 
@@ -3549,8 +3754,14 @@ function renderWorkOrders() {
       dueStatus = daysUntil <= 3 ? 'URGENT' : 'ON SCHEDULE';
     }
     var woProdHtml = '';
+    var woStage = wo.stage;
+    var woProgress = wo.progress;
     (function(){
       var pi = STATE.productionItems ? STATE.productionItems.find(function(p){ return p.quoteId === wo.quoteId; }) : null;
+      if (pi) {
+        woStage = pi.columnStatus || wo.stage;
+        woProgress = (typeof pi.progressPct === 'number' ? pi.progressPct : wo.progress);
+      }
       if (!pi) return;
       var schema = getProgressionSchema();
       var map = pi.progressionMap || {};
@@ -3578,18 +3789,22 @@ function renderWorkOrders() {
         + '<h4 style="margin:0 0 8px 0;font-size:0.8rem;font-weight:800;color:#1E293B;">PRODUCTION</h4>'
         + '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:0;">' + lineHtml + '</div></div>';
     })();
-    var woQuote = (STATE.quotations || []).find(function(q) { return q.id === wo.quoteId; });
+    var woQuote = (STATE.quotations || []).find(function(q) {
+      return q.id === wo.quoteId || q._backendId === wo.quoteId || q.id === wo._backendQuoteId;
+    });
     var woQty = woQuote ? (woQuote.orderQty || 1) : 1;
+    var displayWoId = sanitizeDisplayId(wo.workOrderNumber || wo.id, 'WO-000000');
+    var displayQuoteId = resolveQuotationDisplayNumber(wo, [woQuote ? woQuote.id : null]);
     return `
       <div class="wo-card" style="margin-bottom:10px; border:1.5px solid #CBD5E1; border-radius:8px; overflow:hidden; background:#ffffff; box-shadow:0 1px 4px rgba(0,0,0,0.04);">
         <div class="wo-header" onclick="toggleWorkOrder('${wo.id}')" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; background:#F8FAFC; cursor:pointer; border-bottom:${collapsed ? 'none' : '1px solid #E2E8F0'}; transition:background 0.15s;">
           <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px;">${wo.id}</span>
-            <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${wo.quoteId}</span>
+            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px;">${displayWoId}</span>
+            <span style="font-weight:700; font-size:0.85rem; color:#1E293B;">${displayQuoteId}</span>
             <span style="font-size:0.75rem; font-weight:600; color:var(--color-primary);">${wo.product}</span>
             <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Qty: ${woQty}</span>
-            <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Stage: ${wo.stage}</span>
-            <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:60px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; display:inline-block;"><span style="display:block; width:${Math.min(parseInt(wo.progress) || 0, 100)}%; height:100%; background:${parseInt(wo.progress) >= 100 ? '#10B981' : '#3B82F6'}; border-radius:3px; transition:width 0.3s;"></span></span><span style="font-size:0.7rem; font-weight:700; color:${parseInt(wo.progress) >= 100 ? '#059669' : '#2563EB'};">${wo.progress}% Complete</span></span>
+            <span style="font-size:0.7rem; font-weight:600; color:#64748B;">Stage: ${woStage}</span>
+            <span style="display:inline-flex; align-items:center; gap:6px;"><span style="width:60px; height:6px; background:#E2E8F0; border-radius:3px; overflow:hidden; display:inline-block;"><span style="display:block; width:${Math.min(parseInt(woProgress) || 0, 100)}%; height:100%; background:${parseInt(woProgress) >= 100 ? '#10B981' : '#3B82F6'}; border-radius:3px; transition:width 0.3s;"></span></span><span style="font-size:0.7rem; font-weight:700; color:${parseInt(woProgress) >= 100 ? '#059669' : '#2563EB'};">${woProgress}% Complete</span></span>
           </div>
           <div style="display:flex; align-items:center; gap:8px;">
             ${wo.approvedDate ? `<span style="font-size:0.7rem; font-weight:600; color:#475569;">Approved: ${wo.approvedDate}</span>` : ''}
@@ -3752,7 +3967,11 @@ window.clearWorkOrderDueDate = function(id) {
 
 function ensureProductionItem(quoteId, dueDate) {
   if (!STATE.productionItems) STATE.productionItems = [];
-  if (STATE.productionItems.find(p => p.quoteId === quoteId)) return;
+  const existing = STATE.productionItems.find(p => p.quoteId === quoteId);
+  if (existing) {
+    existing.dueDate = dueDate;
+    return;
+  }
   const quote = STATE.quotations.find(q => q.id === quoteId);
   const wo = STATE.workOrders.find(w => w.quoteId === quoteId);
   STATE.productionItems.push({
@@ -4304,21 +4523,21 @@ window.renderApprovalsList = function(filter = 'pending') {
 
           <div style="display:flex; gap:10px; padding-bottom:16px;">
             ${isPending ? `
-              <button onclick="approveQuotation('${q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
+              <button onclick="approveQuotation('${q._backendId || q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
                 ✓ Approve
               </button>
-              <button onclick="denyQuotation('${q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
+              <button onclick="denyQuotation('${q._backendId || q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
                 ✕ Deny
               </button>
             ` : `
-              <button onclick="setQuotationPending('${q.id}')" class="btn" style="flex:1; background:#D97706; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.85rem; box-shadow:0 2px 4px rgba(217,119,6,0.2);">
+              <button onclick="setQuotationPending('${q._backendId || q.id}')" class="btn" style="flex:1; background:#D97706; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.85rem; box-shadow:0 2px 4px rgba(217,119,6,0.2);">
                 ↺ Set Pending
               </button>
             `}
-            <button onclick="editQuotation('${q.id}')" class="btn" style="flex:0; background:#F59E0B; color:white; font-weight:700; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.85rem; box-shadow:0 2px 4px rgba(245,158,11,0.2);" title="Edit Quotation Details">
+            <button onclick="editQuotation('${q._backendId || q.id}')" class="btn" style="flex:0; background:#F59E0B; color:white; font-weight:700; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.85rem; box-shadow:0 2px 4px rgba(245,158,11,0.2);" title="Edit Quotation Details">
               ✏️ Edit
             </button>
-            <button onclick="showQuotationFromBoard('${q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
+            <button onclick="showQuotationFromBoard('${q._backendId || q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
               📄 Show PDF
             </button>
           </div>
@@ -4362,53 +4581,56 @@ window.toggleBoardCard = function(quoteId) {
   }
 };
 
-window.approveQuotation = function(quoteId) {
+window.approveQuotation = async function(quoteId, comment = '') {
   loadState();
-  const q = STATE.quotations.find(x => x.id === quoteId);
-  if (!q) return;
-
-  q.status = 'Approved';
-
-  // 1. Move to Work Orders List
-  if (!STATE.workOrders) STATE.workOrders = [];
-  let wo = STATE.workOrders.find(w => w.quoteId === quoteId);
-  if (!wo) {
-    var qCounter = (q.id || '').split('/')[1] || '001';
-    const woId = `WO-2026-${qCounter}`;
-    STATE.workOrders.push({
-      id: woId,
-      quoteId: quoteId,
-      customerName: q.customerName || 'Valued Client',
-      product: q.productName || 'Commercial Body',
-      date: q.date || new Date().toISOString().split('T')[0],
-      approvedDate: new Date().toISOString().split('T')[0],
-      stage: 'Pending',
-      progress: 0,
-      specs: (() => {
-        const raw = typeof q.specs === 'object' && !Array.isArray(q.specs) ? q.specs : {};
-        const nr = q.notRequired || {};
-        const t = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : Object.values(WIZARD_PRODUCT_TEMPLATES).find(t => t.name === q.productName);
-        return Object.entries(raw).filter(([k]) => !nr[k] && !k.endsWith('_custom_desc') && !k.endsWith('_custom_price')).map(([k, v]) => {
-          return resolveSpecName(k, t) + ': ' + v;
-        });
-      })(),
-      notes: `Approved quotation ${quoteId} dispatched to production shop floor.`,
-      dueDate: null,
-      urgent: false
-    });
-  }
-
-  // 3. Update Client Outstanding & Vehicle history
-  if (STATE.customers) {
-    let client = STATE.customers.find(x => x.id === q.customerId || (x.company && x.company.toLowerCase() === (q.customerName || '').toLowerCase()));
-    if (client) {
-      client.outstanding = (client.outstanding || 0) + (q.total || 0);
+  const q = (STATE.quotations || []).find(x => x.id === quoteId || x._backendId === quoteId);
+  if (q && !q._backendId) {
+    try {
+      await quotationService._syncOne(q);
+      saveState();
+    } catch (syncErr) {
+      console.warn('[approveQuotation] Auto-sync before approve notice:', syncErr);
     }
   }
+  const backendId = q?._backendId || quoteId;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(backendId);
+
+  if (!backendId || !isUuid) {
+    alert('Quotation cannot be approved because backend database record is missing. Please refresh or re-save the quotation.');
+    return;
+  }
+
+  // Transactional Step 1: Send approval PATCH to API and await response
+  try {
+    await quotationService.approve(backendId, comment || '');
+    if (q) {
+      q.status = 'Approved';
+      q._backendStatus = 'Approved';
+    }
+  } catch (err) {
+    console.error('[approveQuotation] Approval API call failed:', err);
+    const msg = err.message || 'Approval request failed';
+    alert(`Failed to approve quotation: ${msg}`);
+    if (typeof showToastNotification === 'function') {
+      showToastNotification(`Approval failed: ${msg}`, 'error');
+    }
+    // STOP IMMEDIATELY! Do NOT create work order, do NOT sync, do NOT continue.
+    return;
+  }
+
+  // Transactional Step 2: Create work order for the approved quotation
+  try {
+    await workOrderService.createFromQuotation(backendId);
+  } catch (err) {
+    console.warn('[approveQuotation] Work order creation notice:', err.message);
+  }
+
+  // Transactional Step 3: Refresh state from API and update UI
+  await refreshQuotationsFromApi().catch(() => {});
+  const refreshedWO = await workOrderService.getAll().catch(() => []);
+  if (refreshedWO && refreshedWO.length) STATE.workOrders = refreshedWO;
 
   logSystemActivity(`Quotation ${quoteId} approved and dispatched to Work Orders.`);
-  saveState();
-
   showToastNotification(`Quotation ${quoteId} Approved! Dispatched to Work Orders List.`);
   renderApprovalsList('pending');
   if (typeof renderWorkOrders === 'function') renderWorkOrders();
@@ -4436,6 +4658,8 @@ window.denyQuotation = function(quoteId) {
 
   alert(`Quotation ${quoteId} Denied.`);
   renderApprovalsList('pending');
+  if (typeof renderWorkOrders === 'function') renderWorkOrders();
+  if (typeof renderProductionBoard === 'function') renderProductionBoard();
 };
 
 window.setQuotationPending = function(quoteId) {
@@ -4482,7 +4706,12 @@ function renderProductionBoard() {
   const container = document.getElementById('production-board-container');
   if (!container) return;
 
-  const filteredItems = applyModuleFilter('production', STATE.productionItems, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
+  const boardItems = (STATE.productionItems || []).filter(item => {
+    if (item.dueDate) return true;
+    const wo = (STATE.workOrders || []).find(w => w.quoteId === item.quoteId || w._backendQuoteId === item.quoteId || w.quoteNumber === item.quoteId);
+    return !!(wo && wo.dueDate);
+  });
+  const filteredItems = applyModuleFilter('production', boardItems, 'date', 'product', ['id', 'quoteId', 'customerName', 'product']);
   const urgentOnly = _moduleFilters && _moduleFilters.production && _moduleFilters.production.urgent === '1';
   const displayItems = urgentOnly ? filteredItems.filter(item => item.urgent) : filteredItems;
 
@@ -4499,12 +4728,16 @@ function renderProductionBoard() {
 
     const cardsHtml = items.map(item => {
       const pct = item.progressPct || 0;
-      const isOverdue = item.dueDate ? (() => { const d = new Date(item.dueDate + 'T00:00:00'); const t = new Date(); t.setHours(0,0,0,0); return d < t; })() : false;
-      const woForItem = STATE.workOrders.find(w => w.quoteId === item.quoteId);
+      const woForItem = STATE.workOrders ? STATE.workOrders.find(w => w.quoteId === item.quoteId || w._backendQuoteId === item.quoteId || w.quoteNumber === item.quoteId) : null;
+      const itemDueDate = item.dueDate || (woForItem && woForItem.dueDate) || null;
+      const isOverdue = itemDueDate ? (() => { const d = new Date(itemDueDate + 'T00:00:00'); const t = new Date(); t.setHours(0,0,0,0); return d < t; })() : false;
+      const itemQuote = STATE.quotations ? STATE.quotations.find(q => q.id === item.quoteId || q._backendId === item.quoteId) : null;
+      const displayQuoteId = resolveQuotationDisplayNumber(item, [itemQuote ? itemQuote.id : null]);
+      const displayWoId = woForItem ? sanitizeDisplayId(woForItem.workOrderNumber || woForItem.id, 'WO-000000') : '';
       return `
         <div class="board-card" data-quote-id="${item.quoteId}" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; margin-bottom:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
           <div onclick="toggleBoardCard('${item.quoteId}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; cursor:pointer; user-select:none;">
-            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; font-family:'Outfit',sans-serif;">${item.quoteId}</span>
+            <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; font-family:'Outfit',sans-serif;">${displayQuoteId}</span>
             <div style="display:flex; align-items:center; gap:6px;">
               <span style="font-size:0.7rem; font-weight:800; color:${col.status === 'Finished' ? '#059669' : (col.status === 'Work in Progress' ? '#2563EB' : '#64748B')};">${pct}% Complete</span>
               <span class="board-chevron" style="font-size:0.75rem; color:#94A3B8; transition:transform 0.2s;">▾</span>
@@ -4513,8 +4746,8 @@ function renderProductionBoard() {
 
           <div class="board-card-body" style="max-height:0; overflow:hidden; transition:max-height 0.3s ease, padding 0.3s ease; padding:0 10px;">
             <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              ${woForItem ? `<span style="background:#0F172A; color:#fff; font-weight:800; font-size:0.7rem; padding:2px 8px; border-radius:4px;">${woForItem.id}</span>` : ''}
-              <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${isOverdue ? '<span style="color:#DC2626;">Due date passed</span>' : (item.dueDate ? `Due: ${item.dueDate}` : 'No due date')}</div>
+              ${woForItem ? `<span style="background:#0F172A; color:#fff; font-weight:800; font-size:0.7rem; padding:2px 8px; border-radius:4px;">${displayWoId}</span>` : ''}
+              <div style="font-weight:700; font-size:0.875rem; color:#1E293B;">${isOverdue ? '<span style="color:#DC2626;">Due date passed</span>' : (itemDueDate ? `Due: ${itemDueDate}` : 'No due date')}</div>
               ${item.urgent ? '<span style="font-size:0.6rem; font-weight:800; padding:2px 7px; border-radius:4px; background:#FEE2E2; color:#DC2626; letter-spacing:0.5px;">URGENT</span>' : ''}
             </div>
             <div style="font-size:0.775rem; font-weight:600; color:var(--color-primary); margin-bottom:10px; text-transform:uppercase;">${item.product}</div>
@@ -4555,11 +4788,12 @@ window.openOrderProgressionModal = function(quoteId) {
   const prodItem = STATE.productionItems.find(p => p.quoteId === quoteId || p.id === quoteId);
   if (!prodItem) return;
 
-  const quote = STATE.quotations.find(q => q.id === quoteId);
+  const quote = STATE.quotations.find(q => q.id === quoteId || q._backendId === quoteId);
   const subtitleText = `${quote ? quote.customerName || 'Client' : prodItem.customerName} • ${prodItem.product} • Order Date: ${new Date(prodItem.date).toLocaleDateString('en-GB')}`;
+  const displayQuoteId = resolveQuotationDisplayNumber(prodItem, [quote ? quote.id : null]);
 
   document.getElementById('opm-title').innerHTML = `
-    <span style="background:#3B82F6; color:white; padding:2px 10px; border-radius:6px; font-size:0.85rem; font-weight:800;">${prodItem.quoteId}</span>
+    <span style="background:#3B82F6; color:white; padding:2px 10px; border-radius:6px; font-size:0.85rem; font-weight:800;">${displayQuoteId}</span>
     Order Progression Tracker
   `;
   document.getElementById('opm-subtitle').innerText = subtitleText;
@@ -4794,6 +5028,7 @@ window.toggleEntireSectionDone = function(quoteId, secId, markDone) {
   saveState();
   renderOrderProgressionBody(prodItem);
   renderProductionBoard();
+  productionService.updateItem(prodItem);
   if (typeof renderWorkOrders === 'function') renderWorkOrders();
 };
 
@@ -4808,6 +5043,7 @@ window.toggleProgressionMapKey = function(quoteId, key, isChecked) {
   saveState();
   renderOrderProgressionBody(prodItem);
   renderProductionBoard();
+  productionService.updateItem(prodItem);
   if (typeof renderWorkOrders === 'function') renderWorkOrders();
 };
 
@@ -4818,6 +5054,7 @@ window.updateDispatchedData = function(quoteId, field, value) {
   if (!prodItem.dispatchedData) prodItem.dispatchedData = {};
   prodItem.dispatchedData[field] = value;
   saveState();
+  productionService.updateItem(prodItem);
 };
 
 // ------------------------------------------
@@ -4825,8 +5062,155 @@ window.updateDispatchedData = function(quoteId, field, value) {
 // ------------------------------------------
 
 function initAccountsModule() {
+  switchFinanceTab('inbox');
   renderFinanceLedger();
 }
+
+// Active finance ledger tab: 'inbox' (All Quotations) or 'mine' (My Quotations).
+var financeTab = 'inbox';
+
+function refreshFinanceModule() {
+  if (financeTab === 'inbox') renderFinanceInbox();
+  else renderFinanceLedger();
+}
+
+window.switchFinanceTab = function(tab) {
+  financeTab = tab === 'mine' ? 'mine' : 'inbox';
+  var buttons = document.querySelectorAll('[data-finance-tab]');
+  buttons.forEach(function(b) {
+    b.classList.toggle('active', b.getAttribute('data-finance-tab') === financeTab);
+  });
+  var inboxPanel = document.getElementById('finance-tab-inbox');
+  var minePanel = document.getElementById('finance-tab-mine');
+  if (inboxPanel) inboxPanel.style.display = financeTab === 'inbox' ? 'block' : 'none';
+  if (minePanel) minePanel.style.display = financeTab === 'mine' ? 'block' : 'none';
+  refreshFinanceModule();
+};
+
+window.renderFinanceInbox = async function() {
+  var container = document.getElementById('finance-inbox-container');
+  if (!container) return;
+  container.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#94A3B8;font-size:0.9rem;font-weight:600;">Loading quotations…</div>';
+
+  var quotes = [];
+  try {
+    quotes = await quotationService.getAll({ financeView: 'inbox' });
+  } catch (e) {
+    Logger.warn('Finance inbox load failed', e);
+    container.innerHTML = '<div style="text-align:center;padding:48px 20px;color:#DC2626;font-size:0.9rem;font-weight:600;">Failed to load quotations.</div>';
+    return;
+  }
+
+  if (quotes.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:60px 20px;color:#94A3B8;font-size:0.9rem;font-weight:600;">No approved quotations awaiting finance.</div>';
+    return;
+  }
+
+  var html = '';
+  quotes.forEach(function(q) {
+    var ownerName = '';
+    var claimedBadge = '';
+    if (q.financeOwner) {
+      var emp = (STATE.employees || []).find(function(e) {
+        return e._backendId === q.financeOwner || e.id === q.financeOwner;
+      });
+      ownerName = emp ? (emp.name || 'Finance') : 'Finance';
+      claimedBadge = '<span style="background:#ECFDF5;color:#059669;font-size:0.6rem;font-weight:800;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:0.3px;">Claimed by ' + ownerName + '</span>';
+    }
+    var canClaim = !q.financeOwner;
+    html += '' +
+      '<div style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);">' +
+        '<div class="finance-bar" onclick="toggleFinanceInboxDetails(\'' + q.id + '\')" style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;user-select:none;transition:background 0.15s;">' +
+          '<div style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">' +
+            '<span style="background:#0F172A;color:#fff;font-weight:800;font-size:0.75rem;padding:3px 8px;border-radius:4px;">' + q.id + '</span>' +
+            '<span style="font-weight:600;font-size:0.85rem;color:#1E293B;min-width:140px;">' + (q.customerName || 'Valued Client') + '</span>' +
+            '<span class="tbl-status-badge status-pending" style="font-size:0.65rem;padding:3px 8px;">APPROVED</span>' +
+            claimedBadge +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:16px;">' +
+            '<span style="font-size:0.75rem;font-weight:700;color:#475569;">Total: ₹' + (q.total || 0).toLocaleString('en-IN') + '</span>' +
+            '<svg style="width:16px;height:16px;color:#94A3B8;transition:transform 0.2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>' +
+          '</div>' +
+        '</div>' +
+        '<div class="finance-details" id="finance-inbox-details-' + q.id + '" style="display:none;border-top:1px solid #E2E8F0;padding:20px 24px;background:#FAFBFC;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">' +
+            '<div style="display:flex;flex-direction:column;gap:6px;">' +
+              '<span style="font-size:0.8rem;color:#475569;"><strong>Customer:</strong> ' + (q.customerName || 'Valued Client') + '</span>' +
+              '<span style="font-size:0.8rem;color:#475569;"><strong>Quotation:</strong> ' + q.id + '</span>' +
+              '<span style="font-size:0.8rem;color:#475569;"><strong>Approved:</strong> ' + (q.date || '—') + '</span>' +
+            '</div>' +
+            (canClaim
+              ? '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
+                  '<label style="font-size:0.7rem;font-weight:700;color:#475569;">Payment Due:</label>' +
+                  '<input type="date" id="inbox-due-date-' + (q._backendId || q.id) + '" data-quote-id="' + (q._backendId || q.id) + '" class="form-control form-control-sm" style="font-size:0.7rem;padding:4px 8px;width:140px;">' +
+                  '<button class="btn btn-primary btn-sm" onclick="claimFinanceQuotation(\'' + (q._backendId || q.id) + '\', this)" style="padding:6px 16px;font-size:0.72rem;white-space:nowrap;font-weight:700;">Claim</button>' +
+                '</div>'
+              : '<span style="font-size:0.75rem;color:#64748B;">This quotation is already claimed.</span>') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  });
+
+  container.innerHTML = html;
+};
+
+window.toggleFinanceInboxDetails = function(quoteId) {
+  var el = document.getElementById('finance-inbox-details-' + quoteId);
+  if (!el) return;
+  el.style.display = el.style.display !== 'none' ? 'none' : 'block';
+};
+
+window.claimFinanceQuotation = async function(quoteId, btnEl) {
+  loadState();
+
+  var inputEl = document.getElementById('inbox-due-date-' + quoteId);
+  if (!inputEl && btnEl && btnEl.parentElement) {
+    inputEl = btnEl.parentElement.querySelector('input[type="date"]');
+  }
+
+  if (!inputEl) {
+    var q = (STATE.quotations || []).find(function(x) {
+      return x.id === quoteId || x._backendId === quoteId;
+    });
+    if (q) {
+      inputEl = document.getElementById('inbox-due-date-' + q.id) ||
+                document.getElementById('inbox-due-date-' + q._backendId);
+    }
+  }
+
+  var paymentDueDate = inputEl ? inputEl.value.trim() : '';
+
+  // Log quotationId and paymentDueDate before validation as required
+  console.log({ quotationId: quoteId, paymentDueDate: paymentDueDate });
+
+  if (!paymentDueDate) {
+    alert('Please set a payment due date to claim this quotation.');
+    return;
+  }
+
+  try {
+    var updated = await quotationService.claim(quoteId, paymentDueDate);
+    if (!STATE.quotations) STATE.quotations = [];
+    var idx = STATE.quotations.findIndex(function(x) {
+      return x._backendId === quoteId || x.id === quoteId;
+    });
+    if (idx >= 0) STATE.quotations[idx] = updated;
+    else STATE.quotations.push(updated);
+
+    saveState();
+    logSystemActivity('Quotation ' + (updated.id || quoteId) + ' claimed by ' + (_sessionUser || 'finance') + ' with due date ' + paymentDueDate + '.');
+    if (typeof showToastNotification === 'function') {
+      showToastNotification('Quotation claimed successfully.');
+    }
+    renderFinanceInbox();
+    renderFinanceLedger();
+    switchFinanceTab('mine');
+  } catch (e) {
+    console.error('[claimFinanceQuotation] Claim failed:', e);
+    alert('Claim failed: ' + (e.message || 'Unknown error'));
+    renderFinanceInbox();
+  }
+};
 
 // Finance ledger filter state
 var financeFilters = {};
@@ -4982,6 +5366,7 @@ window.saveEditPayment = function(paymentId) {
   logSystemActivity('Payment ' + paymentId + ' updated to ₹' + amount.toLocaleString('en-IN') + '.');
   saveState();
   renderPaymentsList(payment.quoteId);
+  renderFinanceLedger();
 };
 
 window.cancelEditPayment = function(paymentId) {
@@ -5322,7 +5707,7 @@ window.logQuotationPayment = function(quoteId) {
   if (detailEl) detailEl.style.display = 'block';
 };
 
-window.setPaymentDueDate = function(quoteId) {
+window.setPaymentDueDate = async function(quoteId) {
   loadState();
   var quote = (STATE.quotations || []).find(function(q) { return q.id === quoteId; });
   if (!quote) return;
@@ -5330,6 +5715,15 @@ window.setPaymentDueDate = function(quoteId) {
   quote.paymentDueDate = dateVal;
   saveState();
   logSystemActivity('Payment due date set to ' + (dateVal || 'none') + ' for ' + quoteId);
+  // Persist to the backend so the due date survives reloads. Finance ownership
+  // is claimed when a finance employee sets the due date on their quotation.
+  if (quote.financeOwner) {
+    try {
+      await quotationService.claim(quoteId, dateVal);
+    } catch (e) {
+      Logger.warn('Payment due date persist failed', e);
+    }
+  }
   renderFinanceLedger();
   var detailEl = document.getElementById('finance-details-' + quoteId);
   if (detailEl) detailEl.style.display = 'block';
@@ -5478,7 +5872,7 @@ function renderCustomersDirectory() {
 function initAdminModule() {
   const form = document.getElementById('admin-pricing-form');
   if (form) {
-    form.onsubmit = (e) => {
+    form.onsubmit = async (e) => {
       e.preventDefault();
       
       STATE.adminPricing.floor6 = parseFloat(document.getElementById('admin-p-floor-6').value);
@@ -5487,8 +5881,14 @@ function initAdminModule() {
       STATE.adminPricing.axle2 = parseFloat(document.getElementById('admin-p-axle-2').value);
       STATE.adminPricing.axle3_16 = parseFloat(document.getElementById('admin-p-axle-3-16').value);
 
-      logSystemActivity(`Admin updated raw material pricing coefficients.`);
-      alert('Pricing parameters updated successfully in database.');
+      try {
+        await adminService.updatePricing({ ...STATE.adminPricing });
+        logSystemActivity(`Admin updated raw material pricing coefficients.`);
+        alert('Pricing parameters updated successfully in database.');
+      } catch (err) {
+        Logger.error('Pricing sync failed', err);
+        alert('Failed to save pricing parameters: ' + err.message);
+      }
       
       renderAdminSettings();
     };
@@ -5689,6 +6089,7 @@ async function saveEmployeeForm(e) {
     if (id) {
       if (password) data.password = password;
       await employeeService.update(id, data);
+      await refreshEmployeesFromApi().catch((e) => Logger.warn('Employee list refresh failed', e));
       logSystemActivity('Employee ' + data.fullName + ' updated.');
     } else {
       if (!password) {
@@ -5697,6 +6098,7 @@ async function saveEmployeeForm(e) {
       }
       data.password = password;
       await employeeService.create(data);
+      await refreshEmployeesFromApi().catch((e) => Logger.warn('Employee list refresh failed', e));
       logSystemActivity('Employee ' + data.fullName + ' created.');
     }
   } catch(err) {
@@ -5708,6 +6110,167 @@ async function saveEmployeeForm(e) {
   loadState();
   closeEmployeeForm();
   renderAdminSettings();
+}
+
+async function refreshEmployeesFromApi() {
+  const employees = await employeeService.getAll();
+  STATE.employees = employees;
+  _stateCache = Object.assign({}, _stateCache, { employees });
+}
+
+function _legacyToBackendStatus(status) {
+  return status === 'Pending Approval' ? 'Pending' : status;
+}
+
+function _backendToLegacyStatus(status) {
+  return status === 'Pending' ? 'Pending Approval' : status;
+}
+
+// Reconcile quotation statuses from the backend. Local-only fields (specs,
+// terms, etc.) and unsynced local rows are never overwritten or dropped; a
+// backend status change (e.g. Admin approval) is only adopted when the local
+// row has no pending unsynced transition. Returns true when STATE changed.
+async function refreshQuotationsFromApi() {
+  const quotations = await quotationService.getAll(_sessionRole === 'finance' ? { financeView: 'mine' } : undefined);
+  console.log('[refreshQuotationsFromApi] fetched from API:', quotations.map(q => q.id), 'current STATE.quotations:', STATE.quotations ? STATE.quotations.map(q => q.id) : []);
+  if (!STATE.quotations) STATE.quotations = [];
+  const wasDirty = _entitySig(STATE.quotations) !== _syncSignatures.quotations;
+  let changed = false;
+  for (const backend of quotations) {
+    const local = STATE.quotations.find(q =>
+      (q._backendId && q._backendId === backend._backendId) ||
+      q.id === backend.id ||
+      q.id === backend._backendId
+    );
+    if (!local) {
+      const full = await quotationService.getById(backend._backendId).catch(() => null);
+      const stillMissing = full && !STATE.quotations.some(q =>
+        (q._backendId && q._backendId === full._backendId) || q.id === full.id || q.id === full._backendId
+      );
+      if (stillMissing) {
+        STATE.quotations.push(full);
+        changed = true;
+      }
+      continue;
+    }
+    if (!local._backendId && backend._backendId) {
+      local._backendId = backend._backendId;
+      local.id = backend.id;
+      changed = true;
+    }
+    const localSynced = _legacyToBackendStatus(local.status) === local._backendStatus;
+    if (localSynced && backend._backendStatus && backend._backendStatus !== local._backendStatus) {
+      local._backendStatus = backend._backendStatus;
+      local.status = _backendToLegacyStatus(backend._backendStatus);
+      changed = true;
+    }
+  }
+  _stateCache = Object.assign({}, _stateCache, { quotations: STATE.quotations });
+  if (!wasDirty) {
+    _syncSignatures.quotations = _entitySig(STATE.quotations);
+  }
+  return changed;
+}
+
+// Backend-authoritative finance views. Refreshes the inbox ("All Quotations",
+// approved + unclaimed) and the current user's claimed quotations, and merges
+// the latter into STATE so the "My Quotations" ledger stays current. Ownership
+// scoping lives in the backend queries — nothing here filters by owner.
+let _financeSig = null;
+
+async function refreshFinanceFromApi() {
+  let inbox = [];
+  let mine = [];
+  try {
+    inbox = await quotationService.getAll({ financeView: 'inbox' });
+    mine = await quotationService.getAll({ financeView: 'mine' });
+  } catch (e) {
+    Logger.warn('Finance refresh failed', e);
+    return false;
+  }
+  const sig = JSON.stringify(inbox.map(q => q._backendId))
+    + '|' + JSON.stringify(mine.map(q => q._backendId));
+  if (sig === _financeSig) return false;
+  _financeSig = sig;
+  if (_sessionRole === 'finance') {
+    if (!STATE.quotations) STATE.quotations = [];
+    for (const q of mine) {
+      const idx = STATE.quotations.findIndex(x =>
+        (x._backendId && x._backendId === q._backendId) || x.id === q._backendId
+      );
+      if (idx >= 0) STATE.quotations[idx] = q;
+      else STATE.quotations.push(q);
+    }
+    _stateCache = Object.assign({}, _stateCache, { quotations: STATE.quotations });
+  }
+  return true;
+}
+
+// Add backend-created work orders (e.g. freshly approved quotations) so every
+// manager sees every work order, and reconcile their backend status. Returns
+// true when STATE changed.
+async function refreshWorkOrdersFromApi() {
+  const workOrders = await workOrderService.getAll();
+  if (!STATE.workOrders) STATE.workOrders = [];
+  const wasDirty = _entitySig(STATE.workOrders) !== _syncSignatures.workOrders;
+  const local = STATE.workOrders;
+  let changed = false;
+  for (const backend of workOrders) {
+    const existingLocal = local.find(w =>
+      (w._backendId && w._backendId === backend._backendId) ||
+      w.id === backend.id ||
+      w.id === backend._backendId
+    );
+    if (!existingLocal) {
+      local.push(backend);
+      changed = true;
+      continue;
+    }
+    if (backend._backendStatus && backend._backendStatus !== existingLocal._backendStatus) {
+      existingLocal._backendStatus = backend._backendStatus;
+      changed = true;
+    }
+  }
+  _stateCache = Object.assign({}, _stateCache, { workOrders: STATE.workOrders });
+  if (!wasDirty) {
+    _syncSignatures.workOrders = _entitySig(STATE.workOrders);
+  }
+  return changed;
+}
+
+let _visibilityPollTimer = null;
+
+function startVisibilityPoll() {
+  if (_visibilityPollTimer) return;
+  _visibilityPollTimer = setInterval(async () => {
+    if (document.visibilityState !== 'visible') return;
+    try {
+      if (userCanAccess('approvals') || userCanAccess('quotations') || userCanAccess('allquotations')) {
+        const changed = await refreshQuotationsFromApi();
+        if (changed) {
+          renderAllQuotations();
+          renderApprovalsList(_approvalsFilter || 'pending');
+        }
+      }
+      if (userCanAccess('workorders')) {
+        const changed = await refreshWorkOrdersFromApi();
+        if (changed) renderWorkOrders();
+      }
+      if (userCanAccess('accounts')) {
+        const changed = await refreshFinanceFromApi();
+        if (changed) refreshFinanceModule();
+      }
+    } catch (e) {
+      Logger.warn('Visibility refresh failed', e);
+    }
+  }, 15000);
+}
+
+function stopVisibilityPoll() {
+  if (_visibilityPollTimer) {
+    clearInterval(_visibilityPollTimer);
+    _visibilityPollTimer = null;
+  }
 }
 
 function openEmployeeView(empId) {
@@ -5778,7 +6341,7 @@ window.disableEmployee = async function(empId) {
   if (!confirm('Are you sure you want to ' + newStatus + ' employee ' + emp.fullName + '?')) return;
   try {
     await employeeService.disable(empId);
-    loadState();
+    await refreshEmployeesFromApi().catch((e) => Logger.warn('Employee list refresh failed', e));
     logSystemActivity('Employee ' + emp.fullName + ' ' + (emp.status === 'Active' ? 'disabled' : 'enabled') + '.');
     renderAdminSettings();
   } catch(err) {
@@ -5793,7 +6356,7 @@ window.deleteEmployee = async function(empId) {
   if (!confirm('Soft-delete employee ' + emp.fullName + '? They can be restored from storage.')) return;
   try {
     await employeeService.delete(empId);
-    loadState();
+    await refreshEmployeesFromApi().catch((e) => Logger.warn('Employee list refresh failed', e));
     logSystemActivity('Employee ' + emp.fullName + ' deleted (soft).');
     renderAdminSettings();
   } catch(err) {
@@ -5809,7 +6372,7 @@ window.resetEmployeePassword = async function(empId) {
   if (!newPwd || newPwd.trim() === '') return;
   try {
     await employeeService.resetPassword(empId, newPwd.trim());
-    loadState();
+    await refreshEmployeesFromApi().catch((e) => Logger.warn('Employee list refresh failed', e));
     logSystemActivity('Password reset for employee ' + emp.fullName + '.');
     alert('Password updated successfully.');
   } catch(err) {

@@ -1,120 +1,95 @@
-import { BaseService } from './BaseService.js';
+import { apiClient } from '../api/client.js';
 
-export class EmployeeService extends BaseService {
+function toLegacy(emp) {
+  return {
+    id: emp.id,
+    fullName: emp.fullName || '',
+    email: emp.email || '',
+    phone: emp.phone || '',
+    employeeCode: emp.employeeCode || '',
+    role: emp.role || 'sales',
+    status: emp.status || 'Active',
+    isDeleted: false,
+    password: undefined,
+    createdDate: emp.createdAt ? emp.createdAt.split('T')[0] : null,
+    lastLogin: emp.lastLoginAt || null,
+    _backendId: emp.id,
+  };
+}
+
+function toBackend(data) {
+  const out = {};
+  if (data.fullName !== undefined) out.fullName = data.fullName;
+  if (data.email !== undefined) out.email = data.email;
+  if (data.phone !== undefined) out.phone = data.phone || null;
+  if (data.employeeCode !== undefined) out.employeeCode = data.employeeCode || null;
+  if (data.role !== undefined) out.role = data.role;
+  return out;
+}
+
+export class EmployeeService {
   async getAll() {
-    const state = await this.loadState();
-    return (state.employees || []).filter(e => !e.isDeleted);
+    const { data } = await apiClient.get('/api/employees');
+    return (data || []).map(toLegacy);
   }
 
   async getAllIncludingDeleted() {
-    const state = await this.loadState();
-    return state.employees || [];
+    const { data } = await apiClient.get('/api/employees?includeDisabled=true');
+    return (data || []).map(toLegacy);
   }
 
   async getById(id) {
-    const state = await this.loadState();
-    return (state.employees || []).find(e => e.id === id) || null;
+    const { data } = await apiClient.get(`/api/employees/${id}`);
+    return data ? toLegacy(data) : null;
   }
 
   async getByEmail(email) {
-    const state = await this.loadState();
-    return (state.employees || []).find(e => e.email === email && !e.isDeleted) || null;
+    const list = await this.getAll();
+    return list.find((e) => e.email === email && !e.isDeleted) || null;
   }
 
   async authenticate(email, password) {
-    const state = await this.loadState();
-    const emp = (state.employees || []).find(e =>
-      e.email === email && e.password === password && !e.isDeleted && e.status === 'Active'
-    );
-    if (emp) {
-      emp.lastLogin = new Date().toISOString();
-      await this.saveState(state);
-    }
-    return emp || null;
+    throw new Error('Direct employee authentication is no longer supported. Use AuthenticationService.login().');
   }
 
   async findByRole(role) {
-    const state = await this.loadState();
-    return (state.employees || []).find(e =>
-      e.role === role && !e.isDeleted && e.status === 'Active'
-    ) || null;
+    const list = await this.getAll();
+    return list.find((e) => e.role === role && !e.isDeleted && e.status === 'Active') || null;
   }
 
   async create(data) {
-    const state = await this.loadState();
-    state.employeeCounter = (state.employeeCounter || 0) + 1;
-    const id = 'EMP-' + String(state.employeeCounter).padStart(6, '0');
-    const emp = {
-      id,
+    const body = {
       fullName: data.fullName || '',
       email: data.email || '',
-      phone: data.phone || '',
-      employeeCode: data.employeeCode || '',
+      password: data.password || '',
       role: data.role || 'sales',
-      status: data.status || 'Active',
-      password: data.password,
-      isDeleted: false,
-      createdDate: new Date().toISOString().split('T')[0],
-      lastLogin: null
+      ...(data.phone ? { phone: data.phone } : {}),
+      ...(data.employeeCode ? { employeeCode: data.employeeCode } : {}),
     };
-    state.employees.push(emp);
-    await this.saveState(state);
-    await this.logActivity(`Employee created: ${emp.fullName} (${emp.role})`);
-    return emp;
+    const { data: created } = await apiClient.post('/api/employees', body);
+    return toLegacy(created);
   }
 
   async update(id, data) {
-    const state = await this.loadState();
-    const emp = state.employees.find(e => e.id === id);
-    if (!emp) throw new Error(`Employee ${id} not found`);
-    if (data.fullName !== undefined) emp.fullName = data.fullName;
-    if (data.email !== undefined) emp.email = data.email;
-    if (data.phone !== undefined) emp.phone = data.phone;
-    if (data.employeeCode !== undefined) emp.employeeCode = data.employeeCode;
-    if (data.role !== undefined) emp.role = data.role;
-    if (data.status !== undefined) emp.status = data.status;
-    if (data.password !== undefined) emp.password = data.password;
-    await this.saveState(state);
-    await this.logActivity(`Employee ${id} updated.`);
-    return emp;
+    const { data: updated } = await apiClient.put(`/api/employees/${id}`, toBackend(data));
+    return toLegacy(updated);
   }
 
   async disable(id) {
-    const state = await this.loadState();
-    const emp = state.employees.find(e => e.id === id);
-    if (!emp) throw new Error(`Employee ${id} not found`);
-    emp.status = emp.status === 'Active' ? 'Disabled' : 'Active';
-    await this.saveState(state);
-    await this.logActivity(`Employee ${id} ${emp.status}.`);
-    return emp;
+    const { data: updated } = await apiClient.patch(`/api/employees/${id}/status`);
+    return toLegacy(updated);
   }
 
   async delete(id) {
-    const state = await this.loadState();
-    const emp = state.employees.find(e => e.id === id);
-    if (!emp) throw new Error(`Employee ${id} not found`);
-    emp.isDeleted = true;
-    await this.saveState(state);
-    await this.logActivity(`Employee ${id} deleted.`);
-    return emp;
+    await apiClient.delete(`/api/employees/${id}`);
+    return { id, isDeleted: true };
   }
 
   async resetPassword(id, newPassword) {
-    const state = await this.loadState();
-    const emp = state.employees.find(e => e.id === id);
-    if (!emp) throw new Error(`Employee ${id} not found`);
-    emp.password = newPassword;
-    await this.saveState(state);
-    await this.logActivity(`Password reset for employee ${id}.`);
-    return emp;
+    await apiClient.patch(`/api/employees/${id}/password`, { password: newPassword });
   }
 
-  async updateLastLogin(id) {
-    const state = await this.loadState();
-    const emp = state.employees.find(e => e.id === id);
-    if (emp) {
-      emp.lastLogin = new Date().toISOString();
-      await this.saveState(state);
-    }
+  async updateLastLogin(_id) {
+    // Backend tracks last_login_at on login.
   }
 }

@@ -168,7 +168,7 @@ Accepted ✅
 
 ### Context
 
-Users need readable identifiers: Employee #EMP001, Customer #CUS042, Quotation #NQ-2026-001. Using full UUIDs for these display identifiers is impractical.
+Users need readable identifiers: Employee #EMP001, Customer #CUS042, Quotation #JP/2026/000001. Using full UUIDs for these display identifiers is impractical.
 
 ### Decision
 

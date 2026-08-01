@@ -1,12 +1,39 @@
-import { BaseService } from './BaseService.js';
-import { EmployeeService } from './EmployeeService.js';
-import { CONFIG, isDevelopment } from '../config.js';
+import { apiClient, ApiError } from '../api/client.js';
+import { sessionStore } from '../api/session.js';
+import { isDevelopment } from '../config.js';
 
-class AuthService extends BaseService {
+const DEV_ACCOUNTS = {
+  admin: 'admin@nexfra.dev',
+  sales: 'sales@nexfra.dev',
+  finance: 'finance@nexfra.dev',
+  manager: 'manager@nexfra.dev',
+};
+
+const DEV_PASSWORD = 'Nexfra@Dev123';
+
+function normalizeUser(user) {
+  return {
+    ...user,
+    fullName: user.name || user.fullName || '',
+    status: 'Active',
+  };
+}
+
+class AuthService {
   constructor() {
-    super();
     this._currentUser = null;
-    this.employeeService = new EmployeeService();
+    this._restoreSession();
+  }
+
+  _restoreSession() {
+    const token = sessionStore.getToken();
+    if (!token) return;
+    const user = sessionStore.getUser();
+    if (!user) {
+      sessionStore.clear();
+      return;
+    }
+    this._currentUser = normalizeUser(user);
   }
 
   get currentUser() {
@@ -14,7 +41,7 @@ class AuthService extends BaseService {
   }
 
   get isLoggedIn() {
-    return this._currentUser !== null;
+    return this._currentUser !== null && !!sessionStore.getToken();
   }
 
   get userRole() {
@@ -29,45 +56,53 @@ class AuthService extends BaseService {
     if (!email || !password) {
       throw new Error('Email and password are required.');
     }
-    const employee = await this.employeeService.authenticate(email, password);
-    if (!employee) {
-      throw new Error('Invalid credentials or account is disabled.');
+
+    const payload = await apiClient.post('/api/auth/login', { email, password });
+
+    if (payload.requiresMfa) {
+      throw new Error('MFA verification is required but not yet supported.');
     }
-    this._currentUser = employee;
-    return employee;
+
+    const { user, session } = payload.data || {};
+    if (!user || !session?.token) {
+      throw new Error('Invalid response from authentication server.');
+    }
+
+    this._currentUser = normalizeUser(user);
+    sessionStore.setToken(session.token);
+    sessionStore.setUser(this._currentUser);
+    return this._currentUser;
   }
 
   async loginByRole(role) {
     if (!isDevelopment()) {
       throw new Error('Quick login is only available in development mode.');
     }
-    const employee = await this.employeeService.findByRole(role);
-    if (employee) {
-      await this.employeeService.updateLastLogin(employee.id);
-      this._currentUser = employee;
-    } else {
-      this._currentUser = {
-        id: `EMP-${role}-dev`,
-        fullName: role.charAt(0).toUpperCase() + role.slice(1),
-        email: `${role}@nexframfg.com`,
-        role: role,
-        status: 'Active'
-      };
+    const email = DEV_ACCOUNTS[role];
+    if (!email) {
+      throw new Error(`No development account for role: ${role}`);
     }
-    return this._currentUser;
+    return this.login(email, DEV_PASSWORD);
   }
 
-  logout() {
+  async logout() {
+    const token = sessionStore.getToken();
+    if (token) {
+      try {
+        await apiClient.post('/api/auth/logout');
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) {
+          // Session already invalid — proceed with local cleanup.
+        }
+      }
+    }
     this._currentUser = null;
+    sessionStore.clear();
   }
 
   async persistSession() {
-    if (!this._currentUser) return;
-    const state = await this.loadState();
-    const emp = state.employees.find(e => e.id === this._currentUser.id);
-    if (emp) {
-      emp.lastLogin = new Date().toISOString();
-      await this.saveState(state);
+    if (this._currentUser && sessionStore.getToken()) {
+      sessionStore.setUser(this._currentUser);
     }
   }
 

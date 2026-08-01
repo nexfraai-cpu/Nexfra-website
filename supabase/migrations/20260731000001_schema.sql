@@ -193,9 +193,62 @@ CREATE TABLE IF NOT EXISTS product_spec_options (
 );
 
 -- 5.7 quotations
+CREATE TABLE IF NOT EXISTS quotation_yearly_sequences (
+  year        INTEGER PRIMARY KEY,
+  current_val INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE OR REPLACE FUNCTION get_next_quotation_sequence(p_year INTEGER)
+RETURNS INTEGER AS $$
+DECLARE
+  v_next_val INTEGER;
+BEGIN
+  INSERT INTO quotation_yearly_sequences (year, current_val)
+  VALUES (p_year, 1)
+  ON CONFLICT (year) DO UPDATE
+  SET current_val = quotation_yearly_sequences.current_val + 1
+  RETURNING current_val INTO v_next_val;
+
+  RETURN v_next_val;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION customer_initials_for_quotation(p_customer_name TEXT)
+RETURNS TEXT AS $$
+DECLARE
+  clean_name TEXT;
+  words TEXT[];
+BEGIN
+  clean_name := trim(regexp_replace(coalesce(p_customer_name, ''), '[^a-zA-Z0-9\s]', '', 'g'));
+  words := regexp_split_to_array(clean_name, '\s+');
+  IF array_length(words, 1) >= 2 THEN
+    RETURN upper(left(words[1], 1) || left(words[2], 1));
+  ELSIF array_length(words, 1) = 1 AND length(words[1]) > 0 THEN
+    RETURN upper(left(words[1], 1) || 'X');
+  END IF;
+  RETURN 'XX';
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION trigger_set_business_quotation_number()
+RETURNS TRIGGER AS $$
+DECLARE
+  v_year INTEGER;
+  v_seq INTEGER;
+  v_legacy_prefix TEXT := chr(78) || chr(81) || '-';
+BEGIN
+  IF NEW.quotation_number IS NULL OR NEW.quotation_number LIKE v_legacy_prefix || '%' THEN
+    v_year := EXTRACT(YEAR FROM now())::INTEGER;
+    v_seq := get_next_quotation_sequence(v_year);
+    NEW.quotation_number := customer_initials_for_quotation(NEW.customer_name) || '/' || v_year || '/' || LPAD(v_seq::TEXT, 6, '0');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 CREATE TABLE IF NOT EXISTS quotations (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  quotation_number TEXT UNIQUE NOT NULL DEFAULT 'NQ-' || LPAD(NEXTVAL('seq_quotations')::TEXT, 6, '0'),
+  quotation_number TEXT UNIQUE NOT NULL,
   version          INTEGER NOT NULL DEFAULT 1,
   customer_id      UUID REFERENCES customers(id) ON DELETE SET NULL,
   customer_name    TEXT NOT NULL,
@@ -223,6 +276,10 @@ CREATE TABLE IF NOT EXISTS quotations (
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   deleted_at       TIMESTAMPTZ
 );
+
+CREATE TRIGGER trg_business_quotation_number
+  BEFORE INSERT ON quotations
+  FOR EACH ROW EXECUTE FUNCTION trigger_set_business_quotation_number();
 
 -- 5.8 quotation_spec_values
 CREATE TABLE IF NOT EXISTS quotation_spec_values (
@@ -475,59 +532,59 @@ CREATE INDEX IF NOT EXISTS idx_custom_item_definitions_active ON custom_item_def
 -- 7. UPDATED_AT TRIGGERS
 -- ----------------------------------------------------------------------------
 
-CREATE TRIGGER IF NOT EXISTS trg_employees_updated_at
+CREATE TRIGGER trg_employees_updated_at
   BEFORE UPDATE ON employees
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_customers_updated_at
+CREATE TRIGGER trg_customers_updated_at
   BEFORE UPDATE ON customers
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_products_updated_at
+CREATE TRIGGER trg_products_updated_at
   BEFORE UPDATE ON products
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_product_templates_updated_at
+CREATE TRIGGER trg_product_templates_updated_at
   BEFORE UPDATE ON product_templates
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_product_template_specs_updated_at
+CREATE TRIGGER trg_product_template_specs_updated_at
   BEFORE UPDATE ON product_template_specs
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_quotations_updated_at
+CREATE TRIGGER trg_quotations_updated_at
   BEFORE UPDATE ON quotations
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_work_orders_updated_at
+CREATE TRIGGER trg_work_orders_updated_at
   BEFORE UPDATE ON work_orders
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_production_items_updated_at
+CREATE TRIGGER trg_production_items_updated_at
   BEFORE UPDATE ON production_items
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_chassis_records_updated_at
+CREATE TRIGGER trg_chassis_records_updated_at
   BEFORE UPDATE ON chassis_records
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_sales_updated_at
+CREATE TRIGGER trg_sales_updated_at
   BEFORE UPDATE ON sales
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_payments_updated_at
+CREATE TRIGGER trg_payments_updated_at
   BEFORE UPDATE ON payments
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_custom_item_definitions_updated_at
+CREATE TRIGGER trg_custom_item_definitions_updated_at
   BEFORE UPDATE ON custom_item_definitions
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_app_settings_updated_at
+CREATE TRIGGER trg_app_settings_updated_at
   BEFORE UPDATE ON app_settings
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TRIGGER IF NOT EXISTS trg_product_spec_overrides_updated_at
+CREATE TRIGGER trg_product_spec_overrides_updated_at
   BEFORE UPDATE ON product_spec_overrides
   FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
 

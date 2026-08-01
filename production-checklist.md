@@ -22,7 +22,7 @@ Check everything below before going live. Reference the linked docs for how-to.
 - [ ] **Vercel**: `VITE_APP_ENV=production`, `VITE_API_BASE_URL=https://api.nexfra.in`,
       `VITE_STORAGE_PROVIDER=api`, all `VITE_ENABLE_*` = `false`
 - [ ] **Railway**: `NODE_ENV=production`, `TRUST_PROXY=1`, `PORT=4000`, `HOST=0.0.0.0`
-- [ ] **Railway**: Supabase URL + service key + anon key set (service key never in browser)
+- [ ] **Railway**: `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` set (service key never in browser)
 - [ ] **Railway**: `CORS_ORIGINS` = `https://www.nexfra.in,https://erp.nexfra.in`
 - [ ] **Railway**: storage bucket vars match Supabase bucket names
 - [ ] No `.env` with real keys committed to Git (`.gitignore` covers `.env`)
@@ -33,7 +33,7 @@ Check everything below before going live. Reference the linked docs for how-to.
 - [ ] CORS only allows the two frontend origins + `credentials: true`
 - [ ] Rate limiting enabled (`RATE_LIMIT_MAX=100` per min per IP)
 - [ ] Trust proxy set so rate limiter sees real client IPs (behind Railway proxy)
-- [ ] JWT auth middleware on all `/api/*` routes except `/api/auth` + `/api/health` + `/api/storage`
+- [ ] JWT auth middleware on all `/api/*` routes except public ones: `/api/health`, `/api/auth/login`, `/api/auth/refresh`, `/api/auth/forgot-password`, `/api/public/leads`
 - [ ] Vercel headers: HSTS, `X-Content-Type-Options`, `X-Frame-Options` present
 - [ ] RLS enforced on all tables (verify `SELECT` from anon role returns nothing)
 - [ ] Service role key restricted to backend use only (no anon exposure)

@@ -57,7 +57,7 @@
 ## Key Design Decisions
 
 ### 1. UUID v7 Primary Keys
-All tables use UUID v7 as primary keys. UUID v7 is time-ordered, cluster-safe, and Supabase-compatible. Business-facing identifiers (EMP-000001, NQ-000001) are stored as separate sequential columns.
+All tables use UUID v7 as primary keys. UUID v7 is time-ordered, cluster-safe, and Supabase-compatible. Business-facing identifiers (EMP-000001, JP/2026/000001) are stored as separate sequential columns.
 
 ### 2. Soft Delete Strategy
 Every entity table has `deleted_at TIMESTAMPTZ`. When deleted, only `deleted_at` is set. No data is ever physically removed. Queries include `WHERE deleted_at IS NULL` by default.
@@ -81,7 +81,7 @@ Separate sequences for each business entity:
 |---|---|---|---|
 | EMP | `seq_employees` | EMP-000001 | employees |
 | CUS | `seq_customers` | CUS-000001 | customers |
-| NQ | `seq_quotations` | NQ-000001 | quotations |
+| Initials/year | `quotation_yearly_sequences` | JP/2026/000001 | quotations |
 | WO | `seq_work_orders` | WO-000001 | work_orders |
 | PAY | `seq_payments` | PAY-000001 | payments |
 
@@ -258,7 +258,7 @@ Quotation headers. The core business document.
 | Column | Type | Constraints | Notes |
 |---|---|---|---|
 | id | UUID | PK DEFAULT gen_random_uuid() | |
-| quotation_number | TEXT | UNIQUE NOT NULL | NQ-000001 |
+| quotation_number | TEXT | UNIQUE NOT NULL | JP/2026/000001 |
 | version | INTEGER | NOT NULL DEFAULT 1 | Optimistic locking |
 | customer_id | UUID | REFERENCES customers(id) ON DELETE SET NULL | |
 | customer_name | TEXT | NOT NULL | Snapshot at creation |

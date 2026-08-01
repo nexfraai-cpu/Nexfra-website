@@ -50,7 +50,27 @@ erp.js                   # Internal ERP control panel (ES module)
 
 ## Environment Variables
 
-See `.env.example` for available variables.
+**Frontend** (`.env.example` at repo root):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `VITE_APP_ENV` | `development` | `development` \| `test` \| `production`; gates feature flags |
+| `VITE_API_BASE_URL` | `` | Backend API base URL (empty for localStorage-only mode) |
+| `VITE_STORAGE_PROVIDER` | `localStorage` | `localStorage` \| `api` |
+| `VITE_ENABLE_QUICK_LOGIN` | `false` | Dev-only role quick-login buttons (dev env only) |
+| `VITE_ENABLE_RESET_DATA` | `false` | Dev-only system reset button (dev env only) |
+| `VITE_ENABLE_DEMO_ACCOUNTS` | `false` | Reserved demo account flag |
+
+**Backend** (`backend/.env.example`):
+
+Required (the server refuses to start without them):
+`SUPABASE_URL`, `SUPABASE_SERVICE_KEY`.
+
+Optional (sensible defaults already in `backend/src/config/index.ts`):
+`NODE_ENV`, `PORT`, `HOST`, `TRUST_PROXY`, `CORS_ORIGINS`, `LOG_LEVEL`,
+`RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`, `UPLOAD_MAX_SIZE`,
+`ALLOWED_MIME_TYPES`, `STORAGE_BUCKET_QUOTATIONS`, `STORAGE_BUCKET_ATTACHMENTS`,
+`STORAGE_BUCKET_ASSETS`.
 
 ## Deployment
 

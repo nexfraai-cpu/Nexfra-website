@@ -57,7 +57,6 @@ Vercel (www.nexfra.in, erp.nexfra.in)          Railway (api.nexfra.in)
 | `TRUST_PROXY` | `1` |
 | `SUPABASE_URL` | `https://<project>.supabase.co` |
 | `SUPABASE_SERVICE_KEY` | service role key (secret) |
-| `SUPABASE_ANON_KEY` | anon key |
 | `CORS_ORIGINS` | `https://www.nexfra.in,https://erp.nexfra.in` |
 | `LOG_LEVEL` | `info` |
 | `RATE_LIMIT_WINDOW_MS` | `60000` |
@@ -178,7 +177,7 @@ npm run preview  # Preview dist/
 
 # Backend
 cd backend
-npm run dev      # nodemon + pino-pretty
+npm run dev      # tsx watch (hot reload, pino-pretty logs)
 npm run build    # tsc → dist/
 npm test         # jest
 ```

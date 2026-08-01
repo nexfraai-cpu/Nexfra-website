@@ -1,109 +1,279 @@
-import { BaseService } from './BaseService.js';
-import { CustomerService } from './CustomerService.js';
+import { apiClient } from '../api/client.js';
 
-export class QuotationService extends BaseService {
-  constructor() {
-    super();
-    this.customerService = new CustomerService();
+const PER_PAGE = 100;
+
+const TEMPLATE_NAMES = {
+  flatbed: 'Flat Bed Trailer',
+  sidewall: 'Side Wall Trailer',
+  tiptrailer: 'Tip Trailer',
+  boxbody: 'Box Body Tipper',
+  rockbody: 'Rock Body Tipper',
+};
+
+const SUBTYPE_PRODUCT = {
+  flatbed: 'trailer',
+  sidewall: 'trailer',
+  tiptrailer: 'trailer',
+  boxbody: 'tipper',
+  rockbody: 'tipper',
+};
+
+export function mapStatusToLegacy(status) {
+  if (status === 'Pending') return 'Pending Approval';
+  return status;
+}
+
+export function mapStatusToBackend(status) {
+  if (status === 'Pending Approval') return 'Pending';
+  return status;
+}
+
+function buildSpecsFromValues(specValues) {
+  const specs = {};
+  const notRequired = {};
+  (specValues || []).forEach((sv) => {
+    if (!sv.specKey) return;
+    specs[sv.specKey] = sv.selectedValue ?? sv.customDescription ?? '';
+    if (sv.customDescription) specs[`${sv.specKey}_custom_desc`] = sv.customDescription;
+    if (sv.customPrice != null) specs[`${sv.specKey}_custom_price`] = sv.customPrice;
+    if (sv.isNotRequired) notRequired[sv.specKey] = true;
+  });
+  return { specs, notRequired };
+}
+
+function buildSpecValuesFromLegacy(quote) {
+  const specValues = [];
+  const specs = quote.specs || {};
+  Object.keys(specs).forEach((key) => {
+    if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
+    specValues.push({
+      specKey: key,
+      specName: key,
+      section: '',
+      selectedValue: specs[key],
+      customDescription: specs[`${key}_custom_desc`] ?? null,
+      customPrice: specs[`${key}_custom_price`] ?? null,
+      isNotRequired: !!(quote.notRequired && quote.notRequired[key]),
+    });
+  });
+  return specValues;
+}
+
+function toLegacy(q) {
+  const name = TEMPLATE_NAMES[q.templateKey] || q.templateKey || 'Custom Vehicle';
+  return {
+    id: q.quotationNumber,
+    _backendId: q.id,
+    _backendStatus: q.status,
+    subtype: q.templateKey || null,
+    customerId: q.customerId || null,
+    customerName: q.customerName,
+    productName: q.productKey ? name : 'Custom Vehicle',
+    model: 'Commercial Vehicle',
+    date: (q.createdAt || '').split('T')[0],
+    createdAt: q.createdAt,
+    total: q.total ?? 0,
+    status: mapStatusToLegacy(q.status),
+    orderQty: q.orderQty ?? 1,
+    gstRate: q.gstRate ?? 18,
+    capacity: q.capacity || 'NA',
+    dimensions: q.dimensions || {},
+    scopeOfWork: q.scopeOfWork || 'As Mentioned above',
+    terms: q.terms || [],
+    bankDetails: q.bankDetails || {},
+    financeOwner: q.financeOwner ?? null,
+    paymentDueDate: q.paymentDueDate ?? null,
+    specs: {},
+    notRequired: {},
+  };
+}
+
+function toBackendCreate(quote) {
+  return {
+    customerId: quote.customerId && !String(quote.customerId).startsWith('CUST-')
+      ? quote.customerId
+      : null,
+    customerName: quote.customerName || 'Valued Client',
+    productKey: SUBTYPE_PRODUCT[quote.subtype] || null,
+    templateKey: quote.subtype || null,
+    capacity: quote.capacity || null,
+    dimensions: quote.dimensions || {},
+    manualTotal: typeof quote.total === 'number' ? quote.total : null,
+    gstRate: quote.gstRate ?? 18,
+    orderQty: quote.orderQty || 1,
+    terms: quote.terms || [],
+    scopeOfWork: quote.scopeOfWork || null,
+    bankDetails: quote.bankDetails || {},
+    specValues: buildSpecValuesFromLegacy(quote),
+    customItems: (quote.customItems || []).map((ci, i) => ({
+      name: ci.name || '',
+      description: ci.description ?? null,
+      quantity: ci.qty ?? ci.quantity ?? 1,
+      price: ci.price ?? 0,
+      sortOrder: ci.sortOrder ?? i,
+    })),
+  };
+}
+
+function toUuid(id) {
+  if (!id) return '';
+  if (typeof id === 'object') return id._backendId || id.id || '';
+  const idStr = String(id);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(idStr)) {
+    return idStr;
   }
+  if (typeof window !== 'undefined' && window.STATE && Array.isArray(window.STATE.quotations)) {
+    const found = window.STATE.quotations.find((q) => q.id === idStr || q.quotationNumber === idStr || q._backendId === idStr);
+    if (found && found._backendId) {
+      return found._backendId;
+    }
+  }
+  return idStr;
+}
 
-  async getAll() {
-    const state = await this.loadState();
-    return state.quotations || [];
+export class QuotationService {
+  async getAll(options = {}) {
+    const { financeView } = options;
+    const rows = [];
+    let page = 1;
+    let total = Infinity;
+    const viewParam = financeView ? `&financeView=${financeView}` : '';
+    while (rows.length < total) {
+      const response = await apiClient.get(
+        `/api/quotations?page=${page}&perPage=${PER_PAGE}${viewParam}`,
+      );
+      console.log('[Frontend response received from GET /api/quotations]:', response);
+      const { data, meta } = response || {};
+      rows.push(...(data || []));
+      total = meta?.total ?? rows.length;
+      if (!data || data.length < PER_PAGE) break;
+      page += 1;
+    }
+    console.log('[Frontend QuotationService.getAll] returning mapped rows:', rows.map(toLegacy));
+    return rows.map(toLegacy);
   }
 
   async getById(id) {
-    const state = await this.loadState();
-    return (state.quotations || []).find(q => q.id === id) || null;
+    const targetId = toUuid(id);
+    const { data } = await apiClient.get(`/api/quotations/${targetId}`);
+    if (!data) return null;
+    const legacy = toLegacy(data);
+    const { specs, notRequired } = buildSpecsFromValues(data.specValues);
+    legacy.specs = specs;
+    legacy.notRequired = notRequired;
+    legacy.customItems = (data.customItems || []).map((ci) => ({
+      name: ci.name,
+      qty: ci.quantity,
+      price: ci.price,
+    }));
+    legacy._backendStatus = data.status;
+    return legacy;
   }
 
   async create(data) {
-    const state = await this.loadState();
-    state.quotationCounter = (state.quotationCounter || 0) + 1;
-    const initials = this._getInitials(data.customerName);
-    const year = new Date().getFullYear();
-    const quoteId = `${initials}/${String(state.quotationCounter).padStart(3, '0')}/${year}`;
-
-    let client = await this.customerService.getByCompany(data.company);
-    if (!client) {
-      client = await this.customerService.create(data);
-    }
-
-    const newQuote = {
-      id: quoteId,
-      subtype: data.subtype || 'flatbed',
-      customerId: client.id,
-      customerName: client.company || client.name,
-      model: data.model || 'Commercial Vehicle',
-      productName: data.productName || 'Custom Vehicle',
-      date: data.date || new Date().toISOString().split('T')[0],
-      createdAt: new Date().toISOString(),
-      total: data.total || 0,
-      status: 'Pending Approval',
-      specs: data.specs || {},
-      notRequired: data.notRequired || {},
-      capacity: data.capacity || 'NA',
-      dimensions: data.dimensions || {},
-      scopeOfWork: data.scopeOfWork || 'As Mentioned above',
-      terms: data.terms || [],
-      orderQty: data.orderQty || 1,
-      bankDetails: data.bankDetails || {}
-    };
-
-    if (!state.quotations) state.quotations = [];
-    state.quotations.push(newQuote);
-    await this.saveState(state);
-    await this.logActivity(`Quotation ${quoteId} generated.`);
-    return newQuote;
+    const { data: created } = await apiClient.post('/api/quotations', toBackendCreate(data));
+    const legacy = toLegacy(created);
+    const { specs, notRequired } = buildSpecsFromValues(created.specValues);
+    legacy.specs = specs;
+    legacy.notRequired = notRequired;
+    return legacy;
   }
 
   async update(id, data) {
-    const state = await this.loadState();
-    const quote = state.quotations.find(q => q.id === id);
-    if (!quote) throw new Error(`Quotation ${id} not found`);
-    Object.assign(quote, data);
-    await this.saveState(state);
-    await this.logActivity(`Quotation ${id} updated.`);
-    return quote;
+    const targetId = toUuid(id);
+    const { data: updated } = await apiClient.put(`/api/quotations/${targetId}`, toBackendCreate(data));
+    return toLegacy(updated);
   }
 
-  async approve(id) {
-    const state = await this.loadState();
-    const quote = state.quotations.find(q => q.id === id);
-    if (!quote) throw new Error(`Quotation ${id} not found`);
-    quote.status = 'Approved';
-    await this.saveState(state);
-    await this.logActivity(`Quotation ${id} approved.`);
-    return quote;
+  async approve(id, comment) {
+    const targetId = toUuid(id);
+    const payload = {};
+    if (comment !== undefined && comment !== null) {
+      payload.comment = String(comment);
+    }
+    const { data: updated } = await apiClient.patch(`/api/quotations/${targetId}/approve`, payload);
+    return toLegacy(updated);
   }
 
-  async deny(id) {
-    const state = await this.loadState();
-    const quote = state.quotations.find(q => q.id === id);
-    if (!quote) throw new Error(`Quotation ${id} not found`);
-    quote.status = 'Denied';
-    await this.saveState(state);
-    await this.logActivity(`Quotation ${id} denied.`);
-    return quote;
+  async deny(id, reason) {
+    const targetId = toUuid(id);
+    const { data: updated } = await apiClient.patch(`/api/quotations/${targetId}/deny`, { reason });
+    return toLegacy(updated);
+  }
+
+  async claim(id, paymentDueDate) {
+    const targetId = toUuid(id);
+    const { data: updated } = await apiClient.patch(`/api/quotations/${targetId}/finance-claim`, {
+      paymentDueDate: paymentDueDate || null,
+    });
+    return toLegacy(updated);
+  }
+
+  async submit(id) {
+    const targetId = toUuid(id);
+    const { data: updated } = await apiClient.patch(`/api/quotations/${targetId}/submit`);
+    return toLegacy(updated);
   }
 
   async delete(id) {
-    const state = await this.loadState();
-    state.quotations = (state.quotations || []).filter(q => q.id !== id);
-    await this.saveState(state);
-    await this.logActivity(`Quotation ${id} deleted.`);
+    const targetId = toUuid(id);
+    await apiClient.delete(`/api/quotations/${targetId}`);
   }
 
   async getNextCounter() {
-    const state = await this.loadState();
-    return (state.quotationCounter || 0) + 1;
+    const rows = await this.getAll();
+    return rows.length + 1;
   }
 
-  _getInitials(name) {
-    if (!name) return 'XX';
-    const parts = name.trim().split(/\s+/);
-    const first = parts[0]?.charAt(0).toUpperCase() || 'X';
-    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0).toUpperCase() : 'X';
-    return first + last;
+  async syncAll(quotes) {
+    for (const quote of quotes || []) {
+      try {
+        await this._syncOne(quote);
+      } catch (e) {
+        console.warn(`[QuotationService] sync failed for ${quote.id}:`, e.message);
+      }
+    }
+  }
+
+  async _syncOne(quote) {
+    if (!quote._backendId) {
+      const created = await apiClient.post('/api/quotations', toBackendCreate(quote));
+      quote._backendId = created.data.id;
+      quote.id = created.data.quotationNumber;
+      quote._backendStatus = created.data.status;
+      if (mapStatusToLegacy(quote.status) === 'Pending Approval' && created.data.status !== 'Pending') {
+        const submitted = await apiClient.patch(`/api/quotations/${quote._backendId}/submit`);
+        quote._backendStatus = submitted.data.status;
+      }
+      return;
+    }
+
+    const targetStatus = mapStatusToBackend(quote.status);
+    const currentStatus = quote._backendStatus;
+
+    if (currentStatus && targetStatus !== currentStatus) {
+      if (targetStatus === 'Approved') {
+        const updated = await apiClient.patch(`/api/quotations/${quote._backendId}/approve`, {});
+        quote._backendStatus = updated.data.status;
+        return;
+      }
+      if (targetStatus === 'Denied') {
+        const updated = await apiClient.patch(`/api/quotations/${quote._backendId}/deny`, { reason: 'Denied from ERP' });
+        quote._backendStatus = updated.data.status;
+        return;
+      }
+      if (currentStatus === 'Draft' && targetStatus === 'Pending') {
+        const updated = await apiClient.patch(`/api/quotations/${quote._backendId}/submit`);
+        quote._backendStatus = updated.data.status;
+        return;
+      }
+      console.warn(`[QuotationService] Unsupported status transition ${currentStatus} -> ${targetStatus}`);
+    }
+
+    if (targetStatus === 'Draft') {
+      const { data: updated } = await apiClient.put(`/api/quotations/${quote._backendId}`, toBackendCreate(quote));
+      quote._backendStatus = updated.status;
+    }
   }
 }

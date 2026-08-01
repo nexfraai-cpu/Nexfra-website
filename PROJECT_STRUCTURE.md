@@ -75,8 +75,6 @@
 ├── .env                        # Environment variables (gitignored)
 │   VITE_STORAGE_PROVIDER=localStorage
 │   VITE_API_BASE_URL=http://localhost:4000
-│   VITE_APP_NAME=Nexfra ERP
-│   VITE_APP_VERSION=1.0.0
 │
 ├── .env.example                # Environment template (tracked)
 │

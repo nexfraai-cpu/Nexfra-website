@@ -59,7 +59,7 @@
 - [ ] `DELETE /api/quotations/:id` — Soft delete
 - [ ] `PATCH /api/quotations/:id/approve` — Approve
 - [ ] `PATCH /api/quotations/:id/deny` — Deny
-- [ ] Auto-generate quotation number (NQ-YYYY-SEQ)
+- [ ] Auto-generate quotation number (<INITIALS>/<YEAR>/<SEQ>)
 
 ### P0 — Work Order CRUD Endpoints
 
