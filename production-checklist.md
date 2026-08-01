@@ -19,7 +19,7 @@ Check everything below before going live. Reference the linked docs for how-to.
 
 ## 3. Environment variables
 
-- [ ] **Vercel**: `VITE_APP_ENV=production`, `VITE_API_BASE_URL=https://api.nexfra.in`,
+- [ ] **Vercel**: `VITE_APP_ENV=production`, `VITE_API_URL=https://api.nexfra.in`,
       `VITE_STORAGE_PROVIDER=api`, all `VITE_ENABLE_*` = `false`
 - [ ] **Railway**: `NODE_ENV=production`, `TRUST_PROXY=1`, `PORT=4000`, `HOST=0.0.0.0`
 - [ ] **Railway**: `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` set (service key never in browser)

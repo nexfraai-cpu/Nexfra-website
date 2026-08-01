@@ -105,7 +105,7 @@ deployment.
 | Variable | Value |
 |---|---|
 | `VITE_APP_ENV` | `production` |
-| `VITE_API_BASE_URL` | `https://api.nexfra.in` |
+| `VITE_API_URL` | `https://api.nexfra.in` |
 | `VITE_STORAGE_PROVIDER` | `api` |
 | `VITE_ENABLE_QUICK_LOGIN` | `false` |
 | `VITE_ENABLE_RESET_DATA` | `false` |

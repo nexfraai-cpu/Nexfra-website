@@ -169,7 +169,7 @@
 ### P1 — Config Update
 
 - [ ] Set `VITE_STORAGE_PROVIDER=api` in production `.env`
-- [ ] Set `VITE_API_BASE_URL=https://api.nexfra.in` in production `.env`
+- [ ] Set `VITE_API_URL=https://api.nexfra.in` in production `.env`
 - [ ] Test every module end-to-end
 - [ ] Verify localStorage is no longer accessed in UI code
 

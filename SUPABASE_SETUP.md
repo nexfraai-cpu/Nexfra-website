@@ -156,7 +156,7 @@ SUPABASE_SERVICE_KEY=<your-service-role-key>
 # .env
 VITE_APP_ENV=development
 VITE_STORAGE_PROVIDER=api
-VITE_API_BASE_URL=http://localhost:4000
+VITE_API_URL=http://localhost:4000
 ```
 
 Find `SUPABASE_URL` and `SUPABASE_SERVICE_KEY` in Supabase Dashboard →

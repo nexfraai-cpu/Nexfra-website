@@ -193,7 +193,7 @@
 ### Deliverables
 
 - [ ] Complete `ApiProvider` implementation in frontend
-- [ ] Set `VITE_STORAGE_PROVIDER=api` and `VITE_API_BASE_URL`
+- [ ] Set `VITE_STORAGE_PROVIDER=api` and `VITE_API_URL`
 - [ ] Update `AuthenticationService` to use Supabase Auth
 - [ ] Update `EmployeeService` to use API
 - [ ] Update `CustomerService` to use API

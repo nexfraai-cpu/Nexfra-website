@@ -74,7 +74,7 @@
 │
 ├── .env                        # Environment variables (gitignored)
 │   VITE_STORAGE_PROVIDER=localStorage
-│   VITE_API_BASE_URL=http://localhost:4000
+│   VITE_API_URL=http://localhost:4000
 │
 ├── .env.example                # Environment template (tracked)
 │

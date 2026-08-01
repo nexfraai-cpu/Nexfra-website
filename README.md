@@ -55,7 +55,7 @@ erp.js                   # Internal ERP control panel (ES module)
 | Variable | Default | Purpose |
 |---|---|---|
 | `VITE_APP_ENV` | `development` | `development` \| `test` \| `production`; gates feature flags |
-| `VITE_API_BASE_URL` | `` | Backend API base URL (empty for localStorage-only mode) |
+| `VITE_API_URL` | `http://localhost:4000` | Backend API base URL |
 | `VITE_STORAGE_PROVIDER` | `localStorage` | `localStorage` \| `api` |
 | `VITE_ENABLE_QUICK_LOGIN` | `false` | Dev-only role quick-login buttons (dev env only) |
 | `VITE_ENABLE_RESET_DATA` | `false` | Dev-only system reset button (dev env only) |

@@ -62,8 +62,8 @@ Nexfra ERP deploys across three platforms. The frontend is live, the database is
 # Storage provider: 'localStorage' (dev) or 'api' (production)
 VITE_STORAGE_PROVIDER=localStorage
 
-# Backend API URL (only used when STORAGE_PROVIDER = 'api')
-VITE_API_BASE_URL=http://localhost:4000
+# Backend API URL (defaults to http://localhost:4000)
+VITE_API_URL=http://localhost:4000
 
 # Application environment: development | test | production
 VITE_APP_ENV=development
@@ -74,7 +74,7 @@ VITE_APP_ENV=development
 ```
 VITE_APP_ENV=production
 VITE_STORAGE_PROVIDER=api
-VITE_API_BASE_URL=https://api.nexfra.in
+VITE_API_URL=https://api.nexfra.in
 ```
 
 Supabase is only ever reached by the backend (via `SUPABASE_URL` +

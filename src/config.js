@@ -2,7 +2,7 @@ export const CONFIG = {
   APP_NAME: 'Nexfra ERP',
   VERSION: '1.0.0',
   ENVIRONMENT: import.meta.env.VITE_APP_ENV || 'development',
-  API_BASE_URL: import.meta.env.VITE_API_BASE_URL || '',
+  API_BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:4000',
   STORAGE_PROVIDER: import.meta.env.VITE_STORAGE_PROVIDER || 'localStorage',
   FEATURE_FLAGS: {
     DEVELOPMENT: (import.meta.env.VITE_APP_ENV || 'development') === 'development',

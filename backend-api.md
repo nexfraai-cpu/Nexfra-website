@@ -25,7 +25,7 @@ Set via environment variables:
 |---|---|---|
 | `VITE_APP_ENV` | `production` | Environment mode |
 | `VITE_STORAGE_PROVIDER` | `api` | Switches to ApiProvider |
-| `VITE_API_BASE_URL` | `https://api.nexframfg.com` | Backend base URL |
+| `VITE_API_URL` | `https://api.nexframfg.com` | Backend base URL |
 | `VITE_ENABLE_QUICK_LOGIN` | `false` | Disable dev quick-login |
 | `VITE_ENABLE_RESET_DATA` | `false` | Disable dev reset button |
 | `VITE_ENABLE_DEMO_ACCOUNTS` | `false` | Disable demo accounts |
