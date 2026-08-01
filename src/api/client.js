@@ -1,4 +1,5 @@
 import { getStorageProvider } from '../storage/index.js';
+import { sessionStore } from './session.js';
 import { CONFIG } from '../config.js';
 
 export class ApiError extends Error {
@@ -16,8 +17,9 @@ async function request(path, options = {}) {
   const { method = 'GET', body, headers = {}, ...rest } = options;
 
   const finalHeaders = { 'Content-Type': 'application/json', ...headers };
-  if (provider.token) {
-    finalHeaders.Authorization = `Bearer ${provider.token}`;
+  const token = sessionStore.getToken() || provider.token;
+  if (token) {
+    finalHeaders.Authorization = `Bearer ${token}`;
   }
 
   const fetchOptions = { method, headers: finalHeaders, ...rest };
