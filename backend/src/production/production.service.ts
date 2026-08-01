@@ -15,6 +15,7 @@ import {
 import { logger } from '../config/logger.js';
 import { supabase } from '../database/client.js';
 import { AuthenticatedUser } from '../middleware/auth.js';
+import { calculateProductionProgress, stageRecordsToProgressMap } from './production-progress.js';
 
 const PRODUCTION_STAGES = [
   'Pending', 'Material Ordered', 'Cutting', 'Fabrication', 'Welding',
@@ -33,8 +34,12 @@ export class ProductionService {
   ): Promise<PaginatedResult<ProductionItemResponse>> {
     const { data, total } = await this.queries.findAll(options as any, user);
     logger.info({ actorId: user.id, page: options.page, total }, 'Production items listed');
+    const rowsWithStageRecords = await Promise.all(data.map(async (row) => ({
+      row,
+      stageRecords: await this.queries.findStageRecords(String(row.id), user),
+    })));
     return {
-      data: data.map(this._toResponse),
+      data: rowsWithStageRecords.map(({ row, stageRecords }) => this._toResponse(row, stageRecords)),
       meta: { total, page: options.page, perPage: options.perPage, totalPages: Math.ceil(total / options.perPage) || 1 },
     };
   }
@@ -48,13 +53,16 @@ export class ProductionService {
 
     logger.info({ actorId: user.id, productionItemId: id }, 'Production item retrieved');
     return {
-      ...this._toResponse(item),
-      stageRecords: stageRecords.map(this._toStageRecordResponse),
+      ...this._toResponse(item, stageRecords),
       chassisRecords: chassisRecords.map(this._toChassisResponse),
     };
   }
 
-  async update(id: string, input: { dispatchFields?: Record<string, unknown>; stageProgress?: Record<string, unknown> }, user: AuthenticatedUser): Promise<ProductionItemResponse> {
+  async update(
+    id: string,
+    input: { dispatchFields?: Record<string, unknown>; productionStages?: { stageKey: string; stageName?: string; isCompleted: boolean }[] },
+    user: AuthenticatedUser,
+  ): Promise<ProductionItemResponse> {
     const item = await this.queries.findById(id, user);
     if (!item || (item as any).deleted_at) throw new ProductionItemNotFoundError(id);
 
@@ -62,15 +70,31 @@ export class ProductionService {
     const updates: Record<string, unknown> = { updated_by: user.id };
 
     if (input.dispatchFields !== undefined) updates.dispatch_fields = input.dispatchFields;
-    if (input.stageProgress !== undefined) updates.stage_progress = input.stageProgress;
 
-    if (Object.keys(updates).length === 1) return this._toResponse(item);
+    for (const stage of input.productionStages ?? []) {
+      await this.queries.upsertStageRecord({
+        production_item_id: id,
+        stage_key: stage.stageKey,
+        stage_name: stage.stageName ?? stage.stageKey,
+        is_completed: stage.isCompleted,
+        completed_by: stage.isCompleted ? user.id : null,
+        completed_at: stage.isCompleted ? new Date().toISOString() : null,
+        remark: null,
+        created_by: user.id,
+      });
+    }
 
-    const updated = await this.queries.update(id, updates as any, user);
+    if (Object.keys(updates).length === 1 && !input.productionStages?.length) {
+      const stageRecords = await this.queries.findStageRecords(id, user);
+      return this._toResponse(item, stageRecords);
+    }
+
+    const updated = Object.keys(updates).length > 1 ? await this.queries.update(id, updates as any, user) : item;
+    const stageRecords = await this.queries.findStageRecords(id, user);
 
     await this._logAudit(user.id, 'update', 'production_item', id, oldData, updated);
     logger.info({ actorId: user.id, productionItemId: id }, 'Production item updated');
-    return this._toResponse(updated);
+    return this._toResponse(updated, stageRecords);
   }
 
   async advanceStage(id: string, input: { stageKey?: string; remark?: string | null }, user: AuthenticatedUser): Promise<ProductionItemDetailResponse> {
@@ -116,7 +140,6 @@ export class ProductionService {
     const timeNow = new Date().toISOString();
     const updates: Record<string, unknown> = {
       current_stage: nextStage,
-      stage_progress: { ...((item as any).stage_progress as Record<string, unknown> ?? {}), [nextStage]: timeNow },
       updated_by: user.id,
     };
 
@@ -136,8 +159,7 @@ export class ProductionService {
 
     logger.info({ actorId: user.id, productionItemId: id, from: currentStage, to: nextStage }, 'Stage advanced');
     return {
-      ...this._toResponse(updated),
-      stageRecords: stageRecords.map(this._toStageRecordResponse),
+      ...this._toResponse(updated, stageRecords),
       chassisRecords: chassisRecords.map(this._toChassisResponse),
     };
   }
@@ -214,12 +236,21 @@ export class ProductionService {
     if (error) logger.error({ error, action, entityId }, 'Audit log insertion failed');
   }
 
-  private _toResponse(row: any): ProductionItemResponse {
+  private _toResponse(row: any, stageRecords: any[] = []): ProductionItemResponse {
     const wo = row.work_orders ?? {};
+    const progress = calculateProductionProgress(stageRecords);
     return {
       id: row.id, workOrderId: row.work_order_id, quotationId: row.quotation_id ?? null,
       quotationNumber: row.quotation_number ?? row.quotationNumber ?? wo.quotations?.quotation_number ?? null,
-      currentStage: row.current_stage, stageProgress: row.stage_progress ?? {},
+      currentStage: row.current_stage,
+      boardColumn: progress.boardColumn,
+      progressPercentage: progress.percentage,
+      completedStages: progress.completedStages,
+      completedStageCount: progress.completedStageCount,
+      totalStages: progress.totalStages,
+      isFinished: progress.isFinished,
+      stageProgress: stageRecordsToProgressMap(stageRecords),
+      stageRecords: stageRecords.map((sr) => this._toStageRecordResponse(sr)),
       dispatchFields: row.dispatch_fields ?? {},
       startedAt: row.started_at ?? null, completedAt: row.completed_at ?? null,
       workOrderNumber: wo.work_order_number, customerName: wo.customer_name,

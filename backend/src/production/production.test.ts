@@ -111,6 +111,7 @@ describe('ProductionService', () => {
     it('returns paginated production items', async () => {
       const rows = [createMockItem(), createMockItem({ id: 'pi-2' })];
       queries.findAll.mockResolvedValue({ data: rows, total: 2 });
+      queries.findStageRecords.mockResolvedValue([]);
 
       const result = await service.list({ page: 1, perPage: 20 }, actor);
 
@@ -119,6 +120,44 @@ describe('ProductionService', () => {
       expect(result.data[0].currentStage).toBe('Pending');
       expect(result.data[0].customerName).toBe('Sharma Fabricators');
       expect(result.data[0].quotationNumber).toBe('JP/2026/000001');
+    });
+
+    it('derives board column and progress from stage records', async () => {
+      const rows = [createMockItem()];
+      queries.findAll.mockResolvedValue({ data: rows, total: 1 });
+      queries.findStageRecords.mockResolvedValue([
+        createMockStageRecord({
+          stage_key: 'sec_design_sub_design_items_scopeClear',
+          is_completed: true,
+        }),
+        createMockStageRecord({
+          stage_key: 'sec_design_sub_design_items_assemblyDesign',
+          is_completed: true,
+        }),
+      ]);
+
+      const result = await service.list({ page: 1, perPage: 20 }, actor);
+
+      expect(result.data[0].boardColumn).toBe('Work in Progress');
+      expect(result.data[0].progressPercentage).toBeGreaterThan(0);
+      expect(result.data[0].completedStages).toContain('sec_design_sub_design_items_scopeClear');
+      expect(result.data[0].completedStageCount).toBe(2);
+      expect(result.data[0].totalStages).toBeGreaterThan(2);
+      expect(result.data[0].isFinished).toBe(false);
+      expect(result.data[0].stageRecords).toHaveLength(2);
+      expect(result.data[0].stageProgress).toHaveProperty('sec_design_sub_design_items_scopeClear', true);
+    });
+
+    it('maps empty stage records to Not Started with 0 percent', async () => {
+      const rows = [createMockItem()];
+      queries.findAll.mockResolvedValue({ data: rows, total: 1 });
+      queries.findStageRecords.mockResolvedValue([]);
+
+      const result = await service.list({ page: 1, perPage: 20 }, actor);
+
+      expect(result.data[0].boardColumn).toBe('Not Started');
+      expect(result.data[0].progressPercentage).toBe(0);
+      expect(result.data[0].completedStageCount).toBe(0);
     });
   });
 
@@ -237,10 +276,54 @@ describe('ProductionService', () => {
       const item = createMockItem();
       queries.findById.mockResolvedValue(item);
       queries.update.mockResolvedValue({ ...item, dispatch_fields: { driver: 'Raj' } });
+      queries.findStageRecords.mockResolvedValue([]);
 
       const result = await service.update(item.id, { dispatchFields: { driver: 'Raj' } }, actor);
 
       expect(result.dispatchFields).toEqual({ driver: 'Raj' });
+    });
+
+    it('upserts productionStages into stage records and derives progress', async () => {
+      const item = createMockItem();
+      queries.findById.mockResolvedValue(item);
+      queries.upsertStageRecord.mockResolvedValue(createMockStageRecord({
+        stage_key: 'sec_design_sub_design_items_scopeClear',
+        is_completed: true,
+      }));
+      queries.update.mockResolvedValue(item);
+      queries.findStageRecords.mockResolvedValue([
+        createMockStageRecord({
+          stage_key: 'sec_design_sub_design_items_scopeClear',
+          is_completed: true,
+        }),
+      ]);
+
+      const result = await service.update(item.id, {
+        productionStages: [
+          { stageKey: 'sec_design_sub_design_items_scopeClear', stageName: 'Scope Clear', isCompleted: true },
+        ],
+      }, actor);
+
+      expect(queries.upsertStageRecord).toHaveBeenCalledTimes(1);
+      expect(queries.upsertStageRecord).toHaveBeenCalledWith(expect.objectContaining({
+        production_item_id: item.id,
+        stage_key: 'sec_design_sub_design_items_scopeClear',
+        is_completed: true,
+      }));
+      expect(result.completedStages).toContain('sec_design_sub_design_items_scopeClear');
+      expect(result.completedStageCount).toBe(1);
+      expect(result.boardColumn).toBe('Work in Progress');
+    });
+
+    it('does not rewrite stage records when only dispatch fields change', async () => {
+      const item = createMockItem();
+      queries.findById.mockResolvedValue(item);
+      queries.update.mockResolvedValue({ ...item, dispatch_fields: { driver: 'Raj' } });
+      queries.findStageRecords.mockResolvedValue([]);
+
+      await service.update(item.id, { dispatchFields: { driver: 'Raj' } }, actor);
+
+      expect(queries.upsertStageRecord).not.toHaveBeenCalled();
     });
   });
 });

@@ -38,10 +38,13 @@ Get full production item detail with stage records and chassis records.
 
 ## `PUT /api/production/:id`
 
-Update dispatch fields or stage progress.
+Update dispatch fields or stage completion state.
 
 **Access:** Admin, Manager  
-**Body:** `{ "dispatchFields": { "driver": "Raj", "vehicle": "KA-01-1234" }, "stageProgress": { "Cutting": "50%" } }`
+**Body:** `{ "dispatchFields": { "driver": "Raj", "vehicle": "KA-01-1234" }, "productionStages": [{ "stageKey": "sec_design_sub_design_items_scopeClear", "isCompleted": true }] }`
+
+- `productionStages` upserts rows into `production_stage_records` (the single source of truth)
+- Board column and progress percentage are derived from `production_stage_records` via `calculateProductionProgress()` — they are never read from `current_stage` / `stage_progress`
 
 ---
 
@@ -54,7 +57,7 @@ Advance the production stage.
 
 - Automatically sets `started_at` on first stage change
 - Automatically sets `completed_at` when stage reaches `Delivered`
-- Upserts a `production_stage_record` for history
+- Upserts a `production_stage_record` for history (linear `Pending -> Delivered` pipeline only)
 
 ---
 

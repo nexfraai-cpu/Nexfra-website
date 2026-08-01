@@ -4,7 +4,14 @@ export interface ProductionItemResponse {
   quotationId: string | null;
   quotationNumber: string | null;
   currentStage: string;
+  boardColumn: 'Not Started' | 'Work in Progress' | 'Finished';
+  progressPercentage: number;
+  completedStages: string[];
+  completedStageCount: number;
+  totalStages: number;
+  isFinished: boolean;
   stageProgress: Record<string, unknown>;
+  stageRecords: StageRecordResponse[];
   dispatchFields: Record<string, unknown>;
   startedAt: string | null;
   completedAt: string | null;
@@ -16,7 +23,6 @@ export interface ProductionItemResponse {
 }
 
 export interface ProductionItemDetailResponse extends ProductionItemResponse {
-  stageRecords: StageRecordResponse[];
   chassisRecords: ChassisRecordResponse[];
 }
 
@@ -56,7 +62,7 @@ export interface AdvanceStageInput {
 
 export interface UpdateProductionItemInput {
   dispatchFields?: Record<string, unknown>;
-  stageProgress?: Record<string, unknown>;
+  productionStages?: { stageKey: string; stageName?: string; isCompleted: boolean }[];
 }
 
 export interface CreateChassisInput {

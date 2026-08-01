@@ -15,7 +15,11 @@ export const advanceStageSchema = z.object({
 export const updateProductionItemSchema = z.object({
   body: z.object({
     dispatchFields: z.record(z.unknown()).optional(),
-    stageProgress: z.record(z.unknown()).optional(),
+    productionStages: z.array(z.object({
+      stageKey: z.string().min(1).max(200),
+      stageName: z.string().max(200).optional(),
+      isCompleted: z.boolean(),
+    })).optional(),
   }),
   params: z.object({ id: z.string().uuid() }),
 });
