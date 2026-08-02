@@ -89,13 +89,14 @@ function toLegacy(q) {
 }
 
 function toBackendCreate(quote) {
+  const subtype = quote.subtype || quote.templateKey || null;
   return {
     customerId: quote.customerId && !String(quote.customerId).startsWith('CUST-')
       ? quote.customerId
       : null,
     customerName: quote.customerName || 'Valued Client',
-    productKey: SUBTYPE_PRODUCT[quote.subtype] || null,
-    templateKey: quote.subtype || null,
+    productKey: SUBTYPE_PRODUCT[subtype] || quote.productKey || null,
+    templateKey: subtype,
     capacity: quote.capacity || null,
     dimensions: quote.dimensions || {},
     manualTotal: typeof quote.total === 'number' ? quote.total : null,

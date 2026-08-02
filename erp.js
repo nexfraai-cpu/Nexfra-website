@@ -4509,7 +4509,9 @@ window.showToastNotification = function (message, type = "success") {
 
 window.editQuotation = function (quoteId) {
   loadState();
-  const q = STATE.quotations.find((x) => x.id === quoteId);
+  const q = STATE.quotations.find(
+    (x) => x.id === quoteId || x._backendId === quoteId,
+  );
   if (!q) return;
 
   const template = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : null;
@@ -4975,6 +4977,7 @@ window.saveEditQuotation = async function (showPdf) {
       terms: e.terms || q.terms,
       dimensions: e.dimensions || q.dimensions,
       specs: e.specs || q.specs,
+      subtype: e.subtype || q.subtype,
     });
 
     const idx = STATE.quotations.findIndex(
@@ -6864,7 +6867,9 @@ window.approveQuotation = async function (quoteId, comment = "") {
 
 window.denyQuotation = function (quoteId) {
   loadState();
-  const q = STATE.quotations.find((x) => x.id === quoteId);
+  const q = STATE.quotations.find(
+    (x) => x.id === quoteId || x._backendId === quoteId,
+  );
   if (!q) return;
 
   q.status = "Denied";
@@ -6892,7 +6897,9 @@ window.denyQuotation = function (quoteId) {
 
 window.setQuotationPending = function (quoteId) {
   loadState();
-  const q = STATE.quotations.find((x) => x.id === quoteId);
+  const q = STATE.quotations.find(
+    (x) => x.id === quoteId || x._backendId === quoteId,
+  );
   if (!q) return;
 
   q.status = "Pending Approval";
@@ -9222,7 +9229,7 @@ window.openPdfPreview = function (quoteId) {
   loadState();
   var q = STATE.quotations
     ? STATE.quotations.find(function (x) {
-        return x.id === quoteId;
+        return x.id === quoteId || x._backendId === quoteId;
       })
     : null;
   if (!q) return;
