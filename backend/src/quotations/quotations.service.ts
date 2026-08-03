@@ -29,6 +29,93 @@ interface PricingResult {
   total: number;
 }
 
+const DEFAULT_TEMPLATE_SPECS: Record<string, Array<{ specKey: string; selectedValue: string }>> = {
+  rigid30: [
+    { specKey: 'floor', selectedValue: '5mm (St52)' },
+    { specKey: 'side_board', selectedValue: '3mm (St52)' },
+    { specKey: 'headboard', selectedValue: '3mm (St52)' },
+    { specKey: 'taildoor', selectedValue: '3mm (St52)' },
+    { specKey: 'cylinder', selectedValue: 'Hyva 175' },
+    { specKey: 'runner', selectedValue: 'ISMC 200 SAIL make' },
+    { specKey: 'landing_leg', selectedValue: 'York' },
+    { specKey: 'painting', selectedValue: 'Epoxy primer and PU top coat Nippon paint' },
+    { specKey: 'marker_lamps', selectedValue: 'Side Marker Lamp 6 no\'s and top marker lamp 2 no\'s' },
+    { specKey: 'supd_rupd', selectedValue: 'Standard Heavy Duty RTO' },
+    { specKey: 'subframe', selectedValue: '6mm' },
+  ],
+  rigid28: [
+    { specKey: 'floor', selectedValue: '5mm (St52)' },
+    { specKey: 'side_board', selectedValue: '3mm (St52)' },
+    { specKey: 'headboard', selectedValue: '3mm (St52)' },
+    { specKey: 'taildoor', selectedValue: '3mm (St52)' },
+    { specKey: 'cylinder', selectedValue: 'Hyva 175' },
+    { specKey: 'runner', selectedValue: 'ISMC 200 SAIL make' },
+    { specKey: 'landing_leg', selectedValue: 'York' },
+    { specKey: 'painting', selectedValue: 'Epoxy primer and PU top coat Nippon paint' },
+    { specKey: 'marker_lamps', selectedValue: 'Side Marker Lamp 6 no\'s and top marker lamp 2 no\'s' },
+    { specKey: 'supd_rupd', selectedValue: 'Standard Heavy Duty RTO' },
+    { specKey: 'subframe', selectedValue: '6mm' },
+  ],
+  flatbed: [
+    { specKey: 'beam', selectedValue: 'ST52' },
+    { specKey: 'floor', selectedValue: '3mm Chequered' },
+    { specKey: 'axles', selectedValue: 'York 3x12T' },
+    { specKey: 'landing_leg', selectedValue: 'York' },
+    { specKey: 'suspension', selectedValue: 'Mechanical' },
+    { specKey: 'brake', selectedValue: 'WABCO Dual Line' },
+    { specKey: 'tyre', selectedValue: '10.00x20 Nylon' },
+    { specKey: 'painting', selectedValue: 'Epoxy primer and PU top coat' },
+    { specKey: 'marker_lamps', selectedValue: 'Standard 6 lamps' },
+    { specKey: 'supd_rupd', selectedValue: 'Standard Heavy Duty RTO' },
+  ],
+  sidewall: [
+    { specKey: 'beam', selectedValue: 'ST52' },
+    { specKey: 'floor', selectedValue: '3mm Chequered' },
+    { specKey: 'side_panel', selectedValue: '1.6mm Corrugated' },
+    { specKey: 'axles', selectedValue: 'York 3x12T' },
+    { specKey: 'landing_leg', selectedValue: 'York' },
+    { specKey: 'suspension', selectedValue: 'Mechanical' },
+    { specKey: 'brake', selectedValue: 'WABCO Dual Line' },
+    { specKey: 'tyre', selectedValue: '10.00x20 Nylon' },
+    { specKey: 'painting', selectedValue: 'Epoxy primer and PU top coat' },
+    { specKey: 'marker_lamps', selectedValue: 'Standard 6 lamps' },
+    { specKey: 'supd_rupd', selectedValue: 'Standard Heavy Duty RTO' },
+  ],
+  tiptrailer: [
+    { specKey: 'beam', selectedValue: 'ST52' },
+    { specKey: 'floor', selectedValue: '4mm ST52' },
+    { specKey: 'side_sheet', selectedValue: '3mm ST52' },
+    { specKey: 'cylinder', selectedValue: 'Hyva 179' },
+    { specKey: 'axles', selectedValue: 'York 3x12T' },
+    { specKey: 'landing_leg', selectedValue: 'York' },
+    { specKey: 'painting', selectedValue: 'Epoxy primer and PU top coat' },
+    { specKey: 'marker_lamps', selectedValue: 'Standard 6 lamps' },
+    { specKey: 'supd_rupd', selectedValue: 'Standard Heavy Duty RTO' },
+  ],
+  boxbody: [
+    { specKey: 'floor', selectedValue: '4mm ST52' },
+    { specKey: 'side_sheet', selectedValue: '3mm ST52' },
+    { specKey: 'headboard', selectedValue: '3mm ST52' },
+    { specKey: 'taildoor', selectedValue: '3mm ST52' },
+    { specKey: 'cylinder', selectedValue: 'Hyva 179' },
+    { specKey: 'subframe', selectedValue: '6mm' },
+    { specKey: 'landing_leg', selectedValue: 'York' },
+    { specKey: 'painting', selectedValue: 'Epoxy primer and PU top coat' },
+    { specKey: 'marker_lamps', selectedValue: 'Standard 6 lamps' },
+    { specKey: 'supd_rupd', selectedValue: 'Standard Heavy Duty RTO' },
+  ],
+  rockbody: [
+    { specKey: 'floor', selectedValue: '6mm Hardox' },
+    { specKey: 'side_sheet', selectedValue: '4mm Hardox' },
+    { specKey: 'cylinder', selectedValue: 'Hyva 179' },
+    { specKey: 'subframe', selectedValue: '8mm' },
+    { specKey: 'landing_leg', selectedValue: 'York' },
+    { specKey: 'painting', selectedValue: 'Epoxy primer and PU top coat' },
+    { specKey: 'marker_lamps', selectedValue: 'Standard 6 lamps' },
+    { specKey: 'supd_rupd', selectedValue: 'Standard Heavy Duty RTO' },
+  ],
+};
+
 export class QuotationsService {
   constructor(private queries: QuotationQueries) {}
 
@@ -74,12 +161,19 @@ export class QuotationsService {
   }
 
   async create(input: Record<string, unknown>, user: AuthenticatedUser): Promise<QuotationResponse> {
+    const templateKey = input.templateKey as string | undefined;
+    const inputSpecValues = input.specValues as any[] | undefined;
+    const specValuesToUse = (inputSpecValues && inputSpecValues.length > 0)
+      ? inputSpecValues
+      : (templateKey ? (DEFAULT_TEMPLATE_SPECS[templateKey] || []) : []);
+    const customItemsToUse = input.customItems as any[] | undefined;
+
     const pricing = input.manualTotal != null
       ? { specTotal: 0, customItemsTotal: 0, total: Number(input.manualTotal) }
       : await this._calculatePricing(
-          input.templateKey as string | undefined,
-          input.specValues as any[] | undefined,
-          input.customItems as any[] | undefined,
+          templateKey,
+          specValuesToUse,
+          customItemsToUse,
           input.orderQty as number | undefined,
         );
 
@@ -114,12 +208,12 @@ export class QuotationsService {
 
     const specValues = await this.queries.replaceSpecValues(
       quotation.id as string,
-      this._buildSpecValueRows(quotation.id as string, input.specValues as any[] | undefined, pricing),
+      this._buildSpecValueRows(quotation.id as string, specValuesToUse, pricing),
     );
 
     const customItems = await this.queries.replaceCustomItems(
       quotation.id as string,
-      this._buildCustomItemRows(input.customItems as any[] | undefined),
+      this._buildCustomItemRows(customItemsToUse),
     );
 
     await this._logAudit(user.id, 'create', 'quotation', quotation.id as string, null, {
@@ -140,13 +234,50 @@ export class QuotationsService {
     }
 
     const merged = { ...quotation, ...this._pickInputFields(input) };
+    const templateKey = (input.templateKey as string | undefined) ?? (quotation as any).template_key;
+    const existingSpecRows = await this.queries.findSpecValues(id, user);
+    const existingCustomItemRows = await this.queries.findCustomItems(id, user);
+
+    const inputSpecValues = input.specValues as any[] | undefined;
+    const inputCustomItems = input.customItems as any[] | undefined;
+
+    let specValuesToUse: any[] = [];
+    if (inputSpecValues && inputSpecValues.length > 0) {
+      specValuesToUse = inputSpecValues;
+    } else if (existingSpecRows && existingSpecRows.length > 0) {
+      specValuesToUse = existingSpecRows.map((sv) => ({
+        specKey: sv.spec_key,
+        specName: sv.spec_name,
+        section: sv.section,
+        selectedValue: sv.selected_value,
+        customDescription: sv.custom_description,
+        customPrice: sv.custom_price,
+        effectivePriceDiff: sv.effective_price_diff,
+        isNotRequired: sv.is_not_required,
+      }));
+    } else if (templateKey && DEFAULT_TEMPLATE_SPECS[templateKey]) {
+      specValuesToUse = DEFAULT_TEMPLATE_SPECS[templateKey];
+    }
+
+    let customItemsToUse: any[] = [];
+    if (inputCustomItems && inputCustomItems.length > 0) {
+      customItemsToUse = inputCustomItems;
+    } else if (existingCustomItemRows && existingCustomItemRows.length > 0) {
+      customItemsToUse = existingCustomItemRows.map((ci) => ({
+        name: ci.name,
+        description: ci.description,
+        quantity: ci.quantity,
+        price: ci.price,
+        sortOrder: ci.sort_order,
+      }));
+    }
 
     const pricing = input.manualTotal != null
       ? { specTotal: 0, customItemsTotal: 0, total: Number(input.manualTotal) }
       : await this._calculatePricing(
-          (merged as any).template_key,
-          input.specValues as any[] | undefined ?? (quotation as any).specValues,
-          input.customItems as any[] | undefined ?? (quotation as any).customItems,
+          templateKey,
+          specValuesToUse,
+          customItemsToUse,
           (merged as any).order_qty,
         );
 
@@ -184,13 +315,13 @@ export class QuotationsService {
 
     const updated = await this.queries.update(id, updates as any, user);
 
-    const specRows = this._buildSpecValueRows(id, input.specValues as any[] | undefined, pricing);
-    const specValues = input.specValues !== undefined
+    const specRows = this._buildSpecValueRows(id, specValuesToUse, pricing);
+    const specValues = input.specValues !== undefined || !existingSpecRows || existingSpecRows.length === 0
       ? await this.queries.replaceSpecValues(id, specRows)
       : await this.queries.findSpecValues(id, user);
 
-    const customItems = input.customItems !== undefined
-      ? await this.queries.replaceCustomItems(id, this._buildCustomItemRows(input.customItems as any[] | undefined))
+    const customItems = input.customItems !== undefined || !existingCustomItemRows || existingCustomItemRows.length === 0
+      ? await this.queries.replaceCustomItems(id, this._buildCustomItemRows(customItemsToUse))
       : await this.queries.findCustomItems(id, user);
 
     await this._logAudit(user.id, 'update', 'quotation', id, oldData, updated);
