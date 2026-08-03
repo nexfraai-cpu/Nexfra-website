@@ -5674,45 +5674,7 @@ window.renderAllQuotations = function () {
     `;
     })
     .join("");
-  renderSalesCustomers();
 };
-
-window.toggleSalesCustomers = function () {
-  const content = document.getElementById("sales-customers-content");
-  const toggle = document.getElementById("sales-customers-toggle");
-  if (!content || !toggle) return;
-  const isHidden = content.style.display === "none" || !content.style.display;
-  content.style.display = isHidden ? "block" : "none";
-  toggle.innerText = isHidden ? "Hide" : "Show";
-  if (isHidden) renderSalesCustomers();
-};
-
-function renderSalesCustomers() {
-  const tbody = document.querySelector("#customers-table tbody");
-  if (!tbody) return;
-  if (!STATE.customers) return;
-  tbody.innerHTML = STATE.customers
-    .map(
-      (c) => `
-    <tr>
-      <td style="font-weight:600">${c.company}</td>
-      <td style="font-family:var(--font-headings)">${c.gst}</td>
-      <td>
-        <div>${c.name}</div>
-        <div style="font-size:0.75rem;color:var(--color-text-muted)">${c.phone} | ${c.email}</div>
-      </td>
-      <td style="font-size:0.8rem;color:var(--color-text-muted)">${c.address}</td>
-      <td>
-        ${(c.vehicles || []).map((v) => `<span class="tbl-status-badge status-paid" style="font-size:0.65rem;margin-right:4px">${v}</span>`).join("") || '<span class="section-hint" style="font-size:0.75rem">None</span>'}
-      </td>
-      <td style="font-family:var(--font-headings);font-weight:700;color:${c.outstanding > 0 ? "var(--color-danger)" : "var(--color-success)"}">
-        ₹${c.outstanding.toLocaleString("en-IN")}
-      </td>
-    </tr>
-  `,
-    )
-    .join("");
-}
 
 function renderWorkOrders() {
   loadState();
@@ -8396,34 +8358,6 @@ window.downloadReceiptPdf = function () {
     alert("PDF library loading, please try printing directly.");
   }
 };
-
-function renderCustomersDirectory() {
-  loadState();
-  const tbody = document.querySelector("#customers-table tbody");
-  if (!tbody) return;
-
-  tbody.innerHTML = STATE.customers
-    .map(
-      (c) => `
-    <tr>
-      <td style="font-weight:600">${c.company}</td>
-      <td style="font-family:var(--font-headings)">${c.gst}</td>
-      <td>
-        <div>${c.name}</div>
-        <div style="font-size:0.75rem;color:var(--color-text-muted)">${c.phone} | ${c.email}</div>
-      </td>
-      <td style="font-size:0.8rem;color:var(--color-text-muted)">${c.address}</td>
-      <td>
-        ${c.vehicles.map((v) => `<span class="tbl-status-badge status-paid" style="font-size:0.65rem;margin-right:4px">${v}</span>`).join("") || '<span class="section-hint" style="font-size:0.75rem">None</span>'}
-      </td>
-      <td style="font-family:var(--font-headings);font-weight:700;color:${c.outstanding > 0 ? "var(--color-danger)" : "var(--color-success)"}">
-        ₹${c.outstanding.toLocaleString("en-IN")}
-      </td>
-    </tr>
-  `,
-    )
-    .join("");
-}
 
 // ------------------------------------------
 // 8. PRICING PARAMETERS CONFIG (ADMIN)
