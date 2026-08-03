@@ -134,8 +134,9 @@ export class QuotationsService {
   async update(id: string, input: Record<string, unknown>, user: AuthenticatedUser): Promise<QuotationResponse> {
     const quotation = await this.queries.findById(id, user);
     if (!quotation || quotation.deleted_at) throw new QuotationNotFoundError(id);
-    if ((quotation as any).status !== 'Draft') {
-      throw new QuotationNotDraftError((quotation as any).status);
+    const status = (quotation as any).status;
+    if (status !== 'Draft' && status !== 'Pending') {
+      throw new QuotationNotDraftError(status);
     }
 
     const merged = { ...quotation, ...this._pickInputFields(input) };

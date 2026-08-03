@@ -239,8 +239,28 @@ describe('QuotationsService', () => {
       expect(result.version).toBe(2);
     });
 
-    it('throws QuotationNotDraftError when not draft', async () => {
-      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Pending' }));
+    it('updates a pending quotation', async () => {
+      const q = createMockQuotation({ status: 'Pending' });
+      queries.findById.mockResolvedValue(q);
+      queries.findTemplateBasePrice.mockResolvedValue(850000);
+      queries.update.mockResolvedValue({ ...q, total: 900000, version: 2 });
+      queries.replaceSpecValues.mockResolvedValue([]);
+      queries.replaceCustomItems.mockResolvedValue([]);
+
+      const result = await service.update(q.id, { notes: 'Updated notes' }, actor);
+
+      expect(queries.update).toHaveBeenCalled();
+      expect(result.version).toBe(2);
+      expect(result.status).toBe('Pending');
+    });
+
+    it('throws QuotationNotDraftError when approved', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
+      await expect(service.update('id', { notes: 'x' }, actor)).rejects.toThrow(QuotationNotDraftError);
+    });
+
+    it('throws QuotationNotDraftError when denied', async () => {
+      queries.findById.mockResolvedValue(createMockQuotation({ status: 'Denied' }));
       await expect(service.update('id', { notes: 'x' }, actor)).rejects.toThrow(QuotationNotDraftError);
     });
   });
