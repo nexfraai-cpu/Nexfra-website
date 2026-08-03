@@ -297,7 +297,22 @@ export class QuotationQueries {
       .maybeSingle();
 
     if (error) throw error;
-    return data ? Number(data.base_price) : null;
+    if (data?.base_price != null) {
+      return Number(data.base_price);
+    }
+
+    const FALLBACK_PRICES: Record<string, number> = {
+      flatbed: 850000,
+      sidewall: 1420000,
+      tiptrailer: 1420000,
+      boxbody: 780000,
+      rockbody: 1150000,
+      rigid28: 380000,
+      rigid30: 420000,
+      rigid: 400000,
+    };
+
+    return FALLBACK_PRICES[templateKey] ?? null;
   }
 
   async findSpecPriceDiffs(_specKey: string, selectedValues: string[]): Promise<RowData[]> {

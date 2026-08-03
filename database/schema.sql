@@ -692,6 +692,14 @@ INSERT INTO product_templates (product_id, key, name, base_price, dimensions, so
 SELECT p.id, 'rockbody', 'Rock Body Tipper', 1150000, '{"length": "18 Feet", "height": "4 Feet", "width": "96 Inches"}'::jsonb, 2
 FROM products p WHERE p.key = 'tipper';
 
+INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
+SELECT p.id, 'rigid28', '28 Feet Rigid Load Body', 380000, '{"length": "28 Feet", "height": "4.0 Feet", "width": "98 Inches"}'::jsonb, 1
+FROM products p WHERE p.key = 'rigid';
+
+INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
+SELECT p.id, 'rigid30', '30 Feet Rigid Load Body', 420000, '{"length": "30 Feet", "height": "4.0 Feet", "width": "98 Inches"}'::jsonb, 2
+FROM products p WHERE p.key = 'rigid';
+
 -- App Settings (default pricing coefficients)
 INSERT INTO app_settings (key, value, description) VALUES
   ('pricing_coefficients', '{"floor6": -15000, "floor10": 30000, "steelHardox": 150000, "axle2": -100000, "axle3_16": 80000}'::jsonb, 'Raw material pricing adjustment coefficients');

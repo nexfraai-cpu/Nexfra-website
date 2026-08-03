@@ -47,6 +47,18 @@ SELECT p.id, 'rockbody', 'Rock Body Tipper', 1150000,
 FROM products p WHERE p.key = 'tipper'
 AND NOT EXISTS (SELECT 1 FROM product_templates WHERE key = 'rockbody');
 
+INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
+SELECT p.id, 'rigid28', '28 Feet Rigid Load Body', 380000,
+  '{"length": "28 Feet", "height": "4.0 Feet", "width": "98 Inches"}'::jsonb, 1
+FROM products p WHERE p.key = 'rigid'
+AND NOT EXISTS (SELECT 1 FROM product_templates WHERE key = 'rigid28');
+
+INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
+SELECT p.id, 'rigid30', '30 Feet Rigid Load Body', 420000,
+  '{"length": "30 Feet", "height": "4.0 Feet", "width": "98 Inches"}'::jsonb, 2
+FROM products p WHERE p.key = 'rigid'
+AND NOT EXISTS (SELECT 1 FROM product_templates WHERE key = 'rigid30');
+
 -- Seed app settings
 INSERT INTO app_settings (key, value, description) VALUES
   ('pricing_coefficients', '{"floor6": -15000, "floor10": 30000, "steelHardox": 150000, "axle2": -100000, "axle3_16": 80000}'::jsonb, 'Raw material pricing adjustment coefficients'),

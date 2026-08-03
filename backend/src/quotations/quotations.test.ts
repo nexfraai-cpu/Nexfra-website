@@ -254,6 +254,24 @@ describe('QuotationsService', () => {
       expect(result.status).toBe('Pending');
     });
 
+    it('updates a rigid load body quotation (rigid30)', async () => {
+      const q = createMockQuotation({ template_key: 'rigid30', product_key: 'rigid', manual_total: null });
+      queries.findById.mockResolvedValue(q);
+      queries.findTemplateBasePrice.mockResolvedValue(420000);
+      queries.update.mockResolvedValue({ ...q, total: 420000, version: 2 });
+      queries.replaceSpecValues.mockResolvedValue([]);
+      queries.replaceCustomItems.mockResolvedValue([]);
+
+      const result = await service.update(q.id, {
+        notes: 'Updated rigid quotation',
+        manualTotal: null,
+        specValues: [{ specKey: 'floor', selectedValue: '5mm (St52)' }],
+      }, actor);
+
+      expect(queries.findTemplateBasePrice).toHaveBeenCalledWith('rigid30');
+      expect(result.version).toBe(2);
+    });
+
     it('throws QuotationNotDraftError when approved', async () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Approved' }));
       await expect(service.update('id', { notes: 'x' }, actor)).rejects.toThrow(QuotationNotDraftError);

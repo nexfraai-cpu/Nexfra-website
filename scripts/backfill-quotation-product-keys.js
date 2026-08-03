@@ -38,6 +38,8 @@ const TEMPLATES = {
   tiptrailer: ['beam', 'floor', 'side_sheet', 'cylinder', 'axles', 'landing_leg', 'painting', 'colour', 'marker_lamps', 'supd_rupd'],
   boxbody: ['floor', 'side_sheet', 'headboard', 'taildoor', 'cylinder', 'pto', 'pump', 'lock_system', 'landing_leg', 'painting', 'colour', 'marker_lamps', 'supd_rupd', 'subframe'],
   rockbody: ['floor', 'side_sheet', 'cylinder', 'landing_leg', 'painting', 'colour', 'marker_lamps', 'supd_rupd', 'subframe'],
+  rigid28: ['floor', 'side_board', 'headboard', 'taildoor', 'cylinder', 'runner', 'landing_leg', 'painting', 'marker_lamps', 'supd_rupd', 'subframe'],
+  rigid30: ['floor', 'side_board', 'headboard', 'taildoor', 'cylinder', 'runner', 'landing_leg', 'painting', 'marker_lamps', 'supd_rupd', 'subframe'],
 };
 
 const SUBTYPE_PRODUCT = {
@@ -46,6 +48,9 @@ const SUBTYPE_PRODUCT = {
   tiptrailer: 'trailer',
   boxbody: 'tipper',
   rockbody: 'tipper',
+  rigid28: 'rigid',
+  rigid30: 'rigid',
+  rigid: 'rigid',
 };
 
 async function request(pathname, options = {}) {

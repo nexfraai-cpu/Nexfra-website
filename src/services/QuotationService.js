@@ -8,6 +8,9 @@ const TEMPLATE_NAMES = {
   tiptrailer: 'Tip Trailer',
   boxbody: 'Box Body Tipper',
   rockbody: 'Rock Body Tipper',
+  rigid28: '28 Feet Rigid Load Body',
+  rigid30: '30 Feet Rigid Load Body',
+  rigid: 'Rigid Load Body',
 };
 
 const SUBTYPE_PRODUCT = {
@@ -16,6 +19,9 @@ const SUBTYPE_PRODUCT = {
   tiptrailer: 'trailer',
   boxbody: 'tipper',
   rockbody: 'tipper',
+  rigid28: 'rigid',
+  rigid30: 'rigid',
+  rigid: 'rigid',
 };
 
 export function mapStatusToLegacy(status) {
