@@ -97,9 +97,7 @@ function toLegacy(q) {
 
 function toBackendCreate(quote) {
   const subtype = quote.subtype || quote.templateKey || null;
-  const manualTotal = quote.manualTotal !== undefined
-    ? (typeof quote.manualTotal === 'number' ? quote.manualTotal : null)
-    : (typeof quote.total === 'number' ? quote.total : null);
+  const manualTotal = typeof quote.manualTotal === 'number' ? quote.manualTotal : null;
 
   return {
     customerId: quote.customerId && !String(quote.customerId).startsWith('CUST-')
