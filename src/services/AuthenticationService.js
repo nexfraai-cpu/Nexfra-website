@@ -70,6 +70,7 @@ class AuthService {
 
     this._currentUser = normalizeUser(user);
     sessionStore.setToken(session.token);
+    sessionStore.setRefreshToken(session.refreshToken);
     sessionStore.setUser(this._currentUser);
     return this._currentUser;
   }
