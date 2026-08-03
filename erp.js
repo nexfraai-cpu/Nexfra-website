@@ -4530,12 +4530,21 @@ window.editQuotation = function (quoteId) {
     rigid30: "rigid",
   };
 
+  const initialSpecs = JSON.parse(JSON.stringify(q.specs || {}));
+  if (template && template.specs) {
+    template.specs.forEach((s) => {
+      if (!initialSpecs[s.id]) {
+        initialSpecs[s.id] = s.defaultValue || (s.options && s.options[0]) || "Standard";
+      }
+    });
+  }
+
   _editState = {
     quoteId: quoteId,
     subtype: q.subtype,
     capacity: q.capacity || "NA",
     category: categoryMap[q.subtype] || "",
-    specs: JSON.parse(JSON.stringify(q.specs || {})),
+    specs: initialSpecs,
     notRequired: JSON.parse(JSON.stringify(q.notRequired || {})),
     model: q.model || "Commercial Vehicle",
     customerName: q.customerName || "",
@@ -4976,8 +4985,10 @@ window.saveEditQuotation = async function (showPdf) {
       scopeOfWork: e.scopeOfWork || q.scopeOfWork,
       terms: e.terms || q.terms,
       dimensions: e.dimensions || q.dimensions,
-      specs: e.specs || q.specs,
+      specs: (e.specs && Object.keys(e.specs).length > 0) ? e.specs : (q.specs || {}),
+      notRequired: e.notRequired || q.notRequired || {},
       subtype: e.subtype || q.subtype,
+      customItems: e.customItems || q.customItems || [],
     });
 
     const idx = STATE.quotations.findIndex(

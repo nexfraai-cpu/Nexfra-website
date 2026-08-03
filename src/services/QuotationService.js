@@ -67,6 +67,7 @@ function buildSpecValuesFromLegacy(quote) {
 
 function toLegacy(q) {
   const name = TEMPLATE_NAMES[q.templateKey] || q.templateKey || 'Custom Vehicle';
+  const { specs, notRequired } = buildSpecsFromValues(q.specValues);
   return {
     id: q.quotationNumber,
     _backendId: q.id,
@@ -89,13 +90,17 @@ function toLegacy(q) {
     bankDetails: q.bankDetails || {},
     financeOwner: q.financeOwner ?? null,
     paymentDueDate: q.paymentDueDate ?? null,
-    specs: {},
-    notRequired: {},
+    specs: specs || {},
+    notRequired: notRequired || {},
   };
 }
 
 function toBackendCreate(quote) {
   const subtype = quote.subtype || quote.templateKey || null;
+  const manualTotal = quote.manualTotal !== undefined
+    ? (typeof quote.manualTotal === 'number' ? quote.manualTotal : null)
+    : (typeof quote.total === 'number' ? quote.total : null);
+
   return {
     customerId: quote.customerId && !String(quote.customerId).startsWith('CUST-')
       ? quote.customerId
@@ -105,7 +110,7 @@ function toBackendCreate(quote) {
     templateKey: subtype,
     capacity: quote.capacity || null,
     dimensions: quote.dimensions || {},
-    manualTotal: typeof quote.total === 'number' ? quote.total : null,
+    manualTotal,
     gstRate: quote.gstRate ?? 18,
     orderQty: quote.orderQty || 1,
     terms: quote.terms || [],
@@ -167,8 +172,8 @@ export class QuotationService {
     if (!data) return null;
     const legacy = toLegacy(data);
     const { specs, notRequired } = buildSpecsFromValues(data.specValues);
-    legacy.specs = specs;
-    legacy.notRequired = notRequired;
+    if (Object.keys(specs).length > 0) legacy.specs = specs;
+    if (Object.keys(notRequired).length > 0) legacy.notRequired = notRequired;
     legacy.customItems = (data.customItems || []).map((ci) => ({
       name: ci.name,
       qty: ci.quantity,
@@ -182,15 +187,30 @@ export class QuotationService {
     const { data: created } = await apiClient.post('/api/quotations', toBackendCreate(data));
     const legacy = toLegacy(created);
     const { specs, notRequired } = buildSpecsFromValues(created.specValues);
-    legacy.specs = specs;
-    legacy.notRequired = notRequired;
+    legacy.specs = Object.keys(specs).length > 0 ? specs : (data.specs || {});
+    legacy.notRequired = Object.keys(notRequired).length > 0 ? notRequired : (data.notRequired || {});
+    legacy.customItems = (created.customItems || []).map((ci) => ({
+      name: ci.name,
+      qty: ci.quantity,
+      price: ci.price,
+    }));
     return legacy;
   }
 
   async update(id, data) {
     const targetId = toUuid(id);
     const { data: updated } = await apiClient.put(`/api/quotations/${targetId}`, toBackendCreate(data));
-    return toLegacy(updated);
+    const legacy = toLegacy(updated);
+    const { specs, notRequired } = buildSpecsFromValues(updated.specValues);
+    legacy.specs = Object.keys(specs).length > 0 ? specs : (data.specs || {});
+    legacy.notRequired = Object.keys(notRequired).length > 0 ? notRequired : (data.notRequired || {});
+    legacy.customItems = (updated.customItems || []).map((ci) => ({
+      name: ci.name,
+      qty: ci.quantity,
+      price: ci.price,
+    }));
+    legacy._backendStatus = updated.status;
+    return legacy;
   }
 
   async approve(id, comment) {
