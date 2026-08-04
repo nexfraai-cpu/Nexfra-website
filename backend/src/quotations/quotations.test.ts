@@ -204,7 +204,7 @@ describe('QuotationsService', () => {
       expect(queries.create).toHaveBeenCalled();
       expect(queries.replaceSpecValues).toHaveBeenCalled();
       expect(queries.replaceCustomItems).toHaveBeenCalled();
-      expect(result.total).toBe(860000); // 850000 base + 0 spec diff + 10000 custom = 860000
+      expect(result.total).toBe(1014800); // (850000 base + 10000 custom) * 1.18 GST = 1014800
     });
 
     it('creates quotation with manualTotal override', async () => {

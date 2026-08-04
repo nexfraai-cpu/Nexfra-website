@@ -4998,7 +4998,6 @@ window.saveEditQuotation = async function (showPdf) {
     const updated = await quotationService.update(backendId, {
       customerName: e.customerName || q.customerName,
       manualTotal: e.manualTotal,
-      total: e.total || q.total || 0,
       gstRate: e.gstRate || 18,
       orderQty: e.orderQty || 1,
       scopeOfWork: e.scopeOfWork || q.scopeOfWork,

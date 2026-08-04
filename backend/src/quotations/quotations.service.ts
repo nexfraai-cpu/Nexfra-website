@@ -274,9 +274,13 @@ export class QuotationsService {
       }));
     }
 
+    const inputQty = input.orderQty as number | undefined;
+    const existingQty = (quotation as any).order_qty ?? 1;
+    const qtyChanged = inputQty !== undefined && inputQty !== existingQty;
+
     const pricing = input.manualTotal != null
       ? { specTotal: 0, customItemsTotal: 0, total: Number(input.manualTotal) }
-      : input.total != null
+      : (input.total != null && !qtyChanged)
         ? { specTotal: 0, customItemsTotal: 0, total: Number(input.total) }
         : await this._calculatePricing(
             templateKey,
@@ -503,7 +507,8 @@ export class QuotationsService {
     }
 
     const qty = orderQty ?? 1;
-    const total = (specTotal + customItemsTotal) * qty;
+    const basicTotal = (specTotal + customItemsTotal) * qty;
+    const total = Math.round(basicTotal * 1.18);
 
     return { specTotal, customItemsTotal, total };
   }
