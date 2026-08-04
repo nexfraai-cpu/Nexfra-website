@@ -218,6 +218,23 @@ describe('QuotationsService', () => {
       expect(result.total).toBe(900000);
     });
 
+    it('persists the previewed total verbatim and does NOT recompute when total is provided', async () => {
+      queries.create.mockImplementation(async (input: any) =>
+        createMockQuotation({ id: 'new-id', total: input.total }),
+      );
+      queries.replaceSpecValues.mockResolvedValue([createMockSpecValue()]);
+      queries.replaceCustomItems.mockResolvedValue([createMockCustomItem()]);
+
+      const result = await service.create(
+        { ...createInput, total: 830000, orderQty: 1, gstRate: 18 },
+        actor,
+      );
+
+      expect(queries.findTemplateBasePrice).not.toHaveBeenCalled();
+      expect(result.total).toBe(830000);
+      expect(result.orderQty).toBe(1);
+    });
+
     it('throws TemplatePricingNotFoundError when template missing', async () => {
       queries.findTemplateBasePrice.mockResolvedValue(null);
       await expect(service.create(createInput, actor)).rejects.toThrow(TemplatePricingNotFoundError);
@@ -270,6 +287,30 @@ describe('QuotationsService', () => {
 
       expect(queries.findTemplateBasePrice).toHaveBeenCalledWith('rigid30');
       expect(result.version).toBe(2);
+    });
+
+    it('re-saves an unchanged quotation verbatim without recomputing the total', async () => {
+      const q = createMockQuotation({ total: 830000 });
+      queries.findById.mockResolvedValue(q);
+      queries.update.mockImplementation(async (_id: any, updates: any) => ({
+        ...q,
+        ...updates,
+        version: (q as any).version + 1,
+      }));
+      queries.replaceSpecValues.mockResolvedValue([]);
+      queries.replaceCustomItems.mockResolvedValue([]);
+
+      // Background sync re-PUTs the exact same payload that produced the saved quote.
+      const result = await service.update(q.id, {
+        total: 830000,
+        orderQty: 1,
+        gstRate: 18,
+        specValues: [],
+      }, actor);
+
+      expect(queries.findTemplateBasePrice).not.toHaveBeenCalled();
+      expect(result.total).toBe(830000);
+      expect((queries.update.mock.calls[0][1] as any).total).toBe(830000);
     });
 
     it('throws QuotationNotDraftError when approved', async () => {

@@ -4933,13 +4933,13 @@ window.saveEditQty = function () {
       ? _editState.manualTotal
       : _editState.total || 0;
   const gstRate = _editState.gstRate || 18;
-  const unitPrice = originalQty > 0 ? oldTotal / originalQty : oldTotal; // pre-GST per unit
+  const oldBasic = Math.round(oldTotal / (1 + gstRate / 100));
+  const unitPrice = oldBasic / originalQty;
   const newBasic = Math.round(unitPrice * newQty);
   const newGst = Math.round((newBasic * gstRate) / 100);
   const newTotal = newBasic + newGst;
 
-  // keep pre-GST total convention (matches quote.total / backend)
-  _editState.total = newBasic;
+  _editState.total = newTotal;
   _editState.manualTotal = null;
 
   const d = document.getElementById("e-price-display");
@@ -4993,6 +4993,7 @@ window.saveEditQuotation = async function (showPdf) {
     const updated = await quotationService.update(backendId, {
       customerName: e.customerName || q.customerName,
       manualTotal: e.manualTotal,
+      total: e.total || q.total || 0,
       gstRate: e.gstRate || 18,
       orderQty: e.orderQty || 1,
       scopeOfWork: e.scopeOfWork || q.scopeOfWork,
@@ -5051,11 +5052,11 @@ function renderPdfFromQuote(quote, client) {
 
   var gstRate = quote.gstRate || 18;
   var qty = quote.orderQty || 1;
-  // quote.total is the pre-GST total for ALL units (backend _calculatePricing multiplies by orderQty)
-  var basicVal = quote.total || 0;
+  // quote.total is the saved grand total (GST-inclusive) exactly as previewed when saved
+  var grandTotalVal = quote.total || 0;
+  var basicVal = Math.round(grandTotalVal / (1 + gstRate / 100));
   var unitVal = basicVal > 0 ? Math.round(basicVal / qty) : 0;
-  var gstVal = Math.round((basicVal * gstRate) / 100);
-  var grandTotalVal = basicVal + gstVal;
+  var gstVal = grandTotalVal - basicVal;
   var unitGst = Math.round((unitVal * gstRate) / 100);
   var unitTotal = unitVal + unitGst;
 
@@ -8796,8 +8797,15 @@ async function refreshFinanceFromApi() {
           (x._backendId && x._backendId === q._backendId) ||
           x.id === q._backendId,
       );
-      if (idx >= 0) STATE.quotations[idx] = q;
-      else STATE.quotations.push(q);
+      if (idx >= 0) {
+        const existing = STATE.quotations[idx];
+        const detailed = ["specs", "notRequired", "_specDiffs", "customItems", "terms", "scopeOfWork", "bankDetails", "dimensions"];
+        const merged = Object.assign({}, q);
+        detailed.forEach((k) => {
+          if (existing[k] !== undefined) merged[k] = existing[k];
+        });
+        STATE.quotations[idx] = merged;
+      } else STATE.quotations.push(q);
     }
     _stateCache = Object.assign({}, _stateCache, {
       quotations: STATE.quotations,

@@ -37,19 +37,22 @@ export function mapStatusToBackend(status) {
 function buildSpecsFromValues(specValues) {
   const specs = {};
   const notRequired = {};
+  const diffs = {};
   (specValues || []).forEach((sv) => {
     if (!sv.specKey) return;
     specs[sv.specKey] = sv.selectedValue ?? sv.customDescription ?? '';
     if (sv.customDescription) specs[`${sv.specKey}_custom_desc`] = sv.customDescription;
     if (sv.customPrice != null) specs[`${sv.specKey}_custom_price`] = sv.customPrice;
+    if (sv.effectivePriceDiff != null) diffs[sv.specKey] = Number(sv.effectivePriceDiff);
     if (sv.isNotRequired) notRequired[sv.specKey] = true;
   });
-  return { specs, notRequired };
+  return { specs, notRequired, diffs };
 }
 
 function buildSpecValuesFromLegacy(quote) {
   const specValues = [];
   const specs = quote.specs || {};
+  const diffs = quote._specDiffs || {};
   Object.keys(specs).forEach((key) => {
     if (key.endsWith('_custom_desc') || key.endsWith('_custom_price')) return;
     specValues.push({
@@ -59,6 +62,7 @@ function buildSpecValuesFromLegacy(quote) {
       selectedValue: specs[key],
       customDescription: specs[`${key}_custom_desc`] ?? null,
       customPrice: specs[`${key}_custom_price`] ?? null,
+      effectivePriceDiff: diffs[key] != null ? diffs[key] : null,
       isNotRequired: !!(quote.notRequired && quote.notRequired[key]),
     });
   });
@@ -67,7 +71,7 @@ function buildSpecValuesFromLegacy(quote) {
 
 function toLegacy(q) {
   const name = TEMPLATE_NAMES[q.templateKey] || q.templateKey || 'Custom Vehicle';
-  const { specs, notRequired } = buildSpecsFromValues(q.specValues);
+  const { specs, notRequired, diffs } = buildSpecsFromValues(q.specValues);
   return {
     id: q.quotationNumber,
     _backendId: q.id,
@@ -92,12 +96,16 @@ function toLegacy(q) {
     paymentDueDate: q.paymentDueDate ?? null,
     specs: specs || {},
     notRequired: notRequired || {},
+    _specDiffs: diffs || {},
   };
 }
 
 function toBackendCreate(quote) {
   const subtype = quote.subtype || quote.templateKey || null;
   const manualTotal = typeof quote.manualTotal === 'number' ? quote.manualTotal : null;
+  const persistedTotal = !manualTotal && typeof quote.total === 'number'
+    ? quote.total
+    : manualTotal;
 
   return {
     customerId: quote.customerId && !String(quote.customerId).startsWith('CUST-')
@@ -109,6 +117,7 @@ function toBackendCreate(quote) {
     capacity: quote.capacity || null,
     dimensions: quote.dimensions || {},
     manualTotal,
+    total: persistedTotal,
     gstRate: quote.gstRate ?? 18,
     orderQty: quote.orderQty || 1,
     terms: quote.terms || [],
@@ -178,6 +187,7 @@ export class QuotationService {
       price: ci.price,
     }));
     legacy._backendStatus = data.status;
+    legacy._lastSyncedPayload = JSON.stringify(toBackendCreate(legacy));
     return legacy;
   }
 
@@ -192,6 +202,7 @@ export class QuotationService {
       qty: ci.quantity,
       price: ci.price,
     }));
+    legacy._lastSyncedPayload = JSON.stringify(toBackendCreate(data));
     return legacy;
   }
 
@@ -208,6 +219,7 @@ export class QuotationService {
       price: ci.price,
     }));
     legacy._backendStatus = updated.status;
+    legacy._lastSyncedPayload = JSON.stringify(toBackendCreate(data));
     return legacy;
   }
 
@@ -267,6 +279,7 @@ export class QuotationService {
       quote._backendId = created.data.id;
       quote.id = created.data.quotationNumber;
       quote._backendStatus = created.data.status;
+      quote._lastSyncedPayload = JSON.stringify(toBackendCreate(quote));
       if (mapStatusToLegacy(quote.status) === 'Pending Approval' && created.data.status !== 'Pending') {
         const submitted = await apiClient.patch(`/api/quotations/${quote._backendId}/submit`);
         quote._backendStatus = submitted.data.status;
@@ -297,8 +310,12 @@ export class QuotationService {
     }
 
     if (targetStatus === 'Draft') {
-      const { data: updated } = await apiClient.put(`/api/quotations/${quote._backendId}`, toBackendCreate(quote));
+      const payload = toBackendCreate(quote);
+      const sig = JSON.stringify(payload);
+      if (quote._lastSyncedPayload === sig) return;
+      const { data: updated } = await apiClient.put(`/api/quotations/${quote._backendId}`, payload);
       quote._backendStatus = updated.status;
+      quote._lastSyncedPayload = sig;
     }
   }
 }

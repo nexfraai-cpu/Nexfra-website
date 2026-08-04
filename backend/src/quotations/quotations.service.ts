@@ -170,12 +170,14 @@ export class QuotationsService {
 
     const pricing = input.manualTotal != null
       ? { specTotal: 0, customItemsTotal: 0, total: Number(input.manualTotal) }
-      : await this._calculatePricing(
-          templateKey,
-          specValuesToUse,
-          customItemsToUse,
-          input.orderQty as number | undefined,
-        );
+      : input.total != null
+        ? { specTotal: 0, customItemsTotal: 0, total: Number(input.total) }
+        : await this._calculatePricing(
+            templateKey,
+            specValuesToUse,
+            customItemsToUse,
+            input.orderQty as number | undefined,
+          );
 
     const year = new Date().getFullYear();
     const seqNum = typeof (this.queries as any).getNextSequenceForYear === 'function'
@@ -274,12 +276,14 @@ export class QuotationsService {
 
     const pricing = input.manualTotal != null
       ? { specTotal: 0, customItemsTotal: 0, total: Number(input.manualTotal) }
-      : await this._calculatePricing(
-          templateKey,
-          specValuesToUse,
-          customItemsToUse,
-          (merged as any).order_qty,
-        );
+      : input.total != null
+        ? { specTotal: 0, customItemsTotal: 0, total: Number(input.total) }
+        : await this._calculatePricing(
+            templateKey,
+            specValuesToUse,
+            customItemsToUse,
+            (merged as any).order_qty,
+          );
 
     const oldData = { ...quotation };
 
