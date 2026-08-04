@@ -36,7 +36,7 @@ export function getDefaultState() {
 function getProducts() {
   return {
     flatbed: {
-      name: 'Flat Bed Trailer', basePrice: 850000,
+      name: 'Flat Bed Trailer', basePrice: 520000,
       templates: ['32 Feet Flatbed', '40 Feet Flatbed'],
       specs: [
         { id: 'length', name: 'Length', default: '40 Feet', options: [

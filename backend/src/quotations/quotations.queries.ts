@@ -302,11 +302,11 @@ export class QuotationQueries {
     }
 
     const FALLBACK_PRICES: Record<string, number> = {
-      flatbed: 850000,
-      sidewall: 1420000,
-      tiptrailer: 1420000,
-      boxbody: 780000,
-      rockbody: 1150000,
+      flatbed: 520000,
+      sidewall: 580000,
+      tiptrailer: 720000,
+      boxbody: 480000,
+      rockbody: 650000,
       rigid28: 380000,
       rigid30: 420000,
       rigid: 400000,

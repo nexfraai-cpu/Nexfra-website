@@ -673,23 +673,23 @@ INSERT INTO products (key, name, description, sort_order) VALUES
 
 -- Product Templates
 INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
-SELECT p.id, 'flatbed', 'Flat Bed Trailer', 850000, '{"length": "40 Feet", "height": "NA", "width": "98 Inches"}'::jsonb, 1
+SELECT p.id, 'flatbed', 'Flat Bed Trailer', 520000, '{"length": "40 Feet", "height": "NA", "width": "98 Inches"}'::jsonb, 1
 FROM products p WHERE p.key = 'trailer';
 
 INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
-SELECT p.id, 'sidewall', 'Side Wall Trailer', 1420000, '{"length": "40 Feet", "height": "4.5 Feet", "width": "98 Inches"}'::jsonb, 2
+SELECT p.id, 'sidewall', 'Side Wall Trailer', 580000, '{"length": "40 Feet", "height": "4.5 Feet", "width": "98 Inches"}'::jsonb, 2
 FROM products p WHERE p.key = 'trailer';
 
 INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
-SELECT p.id, 'tiptrailer', 'Tip Trailer', 1420000, '{"length": "32 Feet", "height": "4.5 Feet", "width": "98 Inches"}'::jsonb, 3
+SELECT p.id, 'tiptrailer', 'Tip Trailer', 720000, '{"length": "32 Feet", "height": "4.5 Feet", "width": "98 Inches"}'::jsonb, 3
 FROM products p WHERE p.key = 'trailer';
 
 INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
-SELECT p.id, 'boxbody', 'Box Body Tipper', 780000, '{"length": "20 Feet", "height": "4.5 Feet", "width": "98 Inches"}'::jsonb, 1
+SELECT p.id, 'boxbody', 'Box Body Tipper', 480000, '{"length": "20 Feet", "height": "4.5 Feet", "width": "98 Inches"}'::jsonb, 1
 FROM products p WHERE p.key = 'tipper';
 
 INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
-SELECT p.id, 'rockbody', 'Rock Body Tipper', 1150000, '{"length": "18 Feet", "height": "4 Feet", "width": "96 Inches"}'::jsonb, 2
+SELECT p.id, 'rockbody', 'Rock Body Tipper', 650000, '{"length": "18 Feet", "height": "4 Feet", "width": "96 Inches"}'::jsonb, 2
 FROM products p WHERE p.key = 'tipper';
 
 INSERT INTO product_templates (product_id, key, name, base_price, dimensions, sort_order)
