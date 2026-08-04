@@ -419,6 +419,7 @@ let wizardState = {
   status: "Draft",
   total: 0,
   orderQty: 1,
+  lastConfirmedQty: 1,
   terms: [
     "1) Validity – 15 days",
     "2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment",
@@ -2459,6 +2460,7 @@ function startNewQuotationWizard() {
     status: "Draft",
     total: 0,
     orderQty: 1,
+    lastConfirmedQty: 1,
     terms: [
       "1) Validity – 15 days",
       "2) Delivery – 2 To 3 weeks from Date of receipt of purchase order and advance payment",
@@ -4231,6 +4233,11 @@ window.onOrderQtyChange = function (val) {
     typeof calculateWizardPricing === "function"
   )
     calculateWizardPricing();
+  const btn = document.getElementById("w-qty-save-btn");
+  if (btn) {
+    btn.disabled = wizardState.orderQty === (wizardState.lastConfirmedQty || 1);
+    btn.textContent = "Save";
+  }
 };
 
 window.saveOrderQty = function () {
@@ -4239,14 +4246,14 @@ window.saveOrderQty = function () {
     wizardState.orderQty = parseInt(inp.value, 10) || 1;
     if (typeof calculateWizardPricing === "function") calculateWizardPricing();
     simulateDraftAutoSave();
+    wizardState.lastConfirmedQty = wizardState.orderQty;
     var btn = document.getElementById("w-qty-save-btn");
     if (btn) {
-      var orig = btn.textContent;
       btn.textContent = "Saved ✓";
       btn.disabled = true;
       setTimeout(function () {
-        btn.textContent = orig;
-        btn.disabled = false;
+        btn.textContent = "Save";
+        btn.disabled = true;
       }, 1500);
     }
   }
@@ -4533,7 +4540,7 @@ window.editQuotation = function (quoteId) {
   const initialSpecs = JSON.parse(JSON.stringify(q.specs || {}));
   if (template && template.specs) {
     template.specs.forEach((s) => {
-      if (!initialSpecs[s.id]) {
+      if (initialSpecs[s.id] === undefined || initialSpecs[s.id] === null) {
         initialSpecs[s.id] = s.defaultValue || (s.options && s.options[0]) || "Standard";
       }
     });
@@ -4557,6 +4564,7 @@ window.editQuotation = function (quoteId) {
     scopeOfWork: q.scopeOfWork || "As Mentioned above",
     terms: q.terms ? q.terms.slice() : [],
     orderQty: q.orderQty || 1,
+    lastConfirmedQty: q.orderQty || 1,
   };
 
   renderInlineEditForm(quoteId, template);
@@ -4901,6 +4909,11 @@ window.onEditGstChange = function (val) {
 window.onEditQtyChange = function (val) {
   if (!_editState) return;
   _editState.orderQty = val !== "" && val !== null ? parseInt(val, 10) || 1 : 1;
+  const btn = document.getElementById("e-qty-save-btn");
+  if (btn) {
+    btn.disabled = _editState.orderQty === (_editState.lastConfirmedQty || 1);
+    btn.textContent = "Save";
+  }
 };
 
 window.saveEditQty = function () {
@@ -4920,13 +4933,13 @@ window.saveEditQty = function () {
       ? _editState.manualTotal
       : _editState.total || 0;
   const gstRate = _editState.gstRate || 18;
-  const oldBasic = Math.round(oldTotal / (1 + gstRate / 100));
-  const unitPrice = oldBasic / originalQty;
+  const unitPrice = originalQty > 0 ? oldTotal / originalQty : oldTotal; // pre-GST per unit
   const newBasic = Math.round(unitPrice * newQty);
   const newGst = Math.round((newBasic * gstRate) / 100);
   const newTotal = newBasic + newGst;
 
-  _editState.total = newTotal;
+  // keep pre-GST total convention (matches quote.total / backend)
+  _editState.total = newBasic;
   _editState.manualTotal = null;
 
   const d = document.getElementById("e-price-display");
@@ -4934,14 +4947,14 @@ window.saveEditQty = function () {
 
   const btn = document.getElementById("e-qty-save-btn");
   if (btn) {
-    const orig = btn.textContent;
     btn.textContent = "Saved \u2713";
     btn.disabled = true;
     setTimeout(function () {
-      btn.textContent = orig;
-      btn.disabled = false;
+      btn.textContent = "Save";
+      btn.disabled = true;
     }, 1500);
   }
+  _editState.lastConfirmedQty = newQty;
 
   showToastNotification(
     "Qty updated to " +
@@ -5038,10 +5051,11 @@ function renderPdfFromQuote(quote, client) {
 
   var gstRate = quote.gstRate || 18;
   var qty = quote.orderQty || 1;
-  var grandTotalVal = quote.total || 0;
-  var basicVal = Math.round(grandTotalVal / (1 + gstRate / 100));
-  var unitVal = Math.round(basicVal / qty);
-  var gstVal = grandTotalVal - basicVal;
+  // quote.total is the pre-GST total for ALL units (backend _calculatePricing multiplies by orderQty)
+  var basicVal = quote.total || 0;
+  var unitVal = basicVal > 0 ? Math.round(basicVal / qty) : 0;
+  var gstVal = Math.round((basicVal * gstRate) / 100);
+  var grandTotalVal = basicVal + gstVal;
   var unitGst = Math.round((unitVal * gstRate) / 100);
   var unitTotal = unitVal + unitGst;
 
