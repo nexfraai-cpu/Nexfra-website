@@ -4565,6 +4565,8 @@ window.editQuotation = function (quoteId) {
     terms: q.terms ? q.terms.slice() : [],
     orderQty: q.orderQty || 1,
     lastConfirmedQty: q.orderQty || 1,
+    originalOrderQty: q.orderQty || 1,
+    originalTotal: q.total || 0,
   };
 
   renderInlineEditForm(quoteId, template);
@@ -4911,8 +4913,10 @@ window.onEditQtyChange = function (val) {
   _editState.orderQty = val !== "" && val !== null ? parseInt(val, 10) || 1 : 1;
   const btn = document.getElementById("e-qty-save-btn");
   if (btn) {
-    btn.disabled = _editState.orderQty === (_editState.lastConfirmedQty || 1);
+    btn.disabled = false;
     btn.textContent = "Save";
+    btn.style.background = "#0284C7";
+    btn.style.color = "#ffffff";
   }
 };
 
@@ -4922,20 +4926,15 @@ window.saveEditQty = function () {
   if (!inp) return;
   const newQty = parseInt(inp.value, 10) || 1;
 
-  const q = STATE.quotations.find((x) => x.id === _editState.quoteId);
-  const originalQty = q ? q.orderQty || 1 : _editState.orderQty || 1;
-  if (newQty === originalQty) return;
+  const originalQty = _editState.originalOrderQty || 1;
+  const originalTotal = _editState.originalTotal || _editState.total || 0;
+  const gstRate = _editState.gstRate || 18;
 
   _editState.orderQty = newQty;
 
-  const oldTotal =
-    _editState.manualTotal !== null
-      ? _editState.manualTotal
-      : _editState.total || 0;
-  const gstRate = _editState.gstRate || 18;
-  const oldBasic = Math.round(oldTotal / (1 + gstRate / 100));
-  const unitPrice = oldBasic / originalQty;
-  const newBasic = Math.round(unitPrice * newQty);
+  const oldBasic = Math.round(originalTotal / (1 + gstRate / 100));
+  const unitBasicPrice = oldBasic / originalQty;
+  const newBasic = Math.round(unitBasicPrice * newQty);
   const newGst = Math.round((newBasic * gstRate) / 100);
   const newTotal = newBasic + newGst;
 
@@ -4948,20 +4947,26 @@ window.saveEditQty = function () {
   const btn = document.getElementById("e-qty-save-btn");
   if (btn) {
     btn.textContent = "Saved \u2713";
+    btn.style.background = "#10B981";
+    btn.style.color = "#ffffff";
     btn.disabled = true;
     setTimeout(function () {
       btn.textContent = "Save";
-      btn.disabled = true;
-    }, 1500);
+      btn.style.background = "#0284C7";
+      btn.style.color = "#ffffff";
+      btn.disabled = false;
+    }, 2000);
   }
   _editState.lastConfirmedQty = newQty;
 
-  showToastNotification(
-    "Qty updated to " +
-      newQty +
-      ", total recalculated to \u20B9" +
-      newTotal.toLocaleString("en-IN"),
-  );
+  if (typeof showToastNotification === "function") {
+    showToastNotification(
+      "Qty updated to " +
+        newQty +
+        ", total recalculated to \u20B9" +
+        newTotal.toLocaleString("en-IN")
+    );
+  }
 };
 
 window.onEditScopeChange = function (val) {
