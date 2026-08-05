@@ -33,6 +33,11 @@ let _sessionRole = "admin";
 let _sessionUser = "Admin";
 let _sessionEmployeeId = null;
 
+// Becomes true only after startup auth + ALL data hydration + initial render
+// have finished. The loader owns the lifecycle: nothing reveals the app until
+// this flag is set.
+let _startupComplete = false;
+
 window.sanitizeDisplayId = function (val, fallbackLabel = "") {
   if (!val) return fallbackLabel || "—";
   const str = String(val);
@@ -1824,31 +1829,58 @@ function logSystemActivity(message) {
 // 2. LIFECYCLE & ROUTING EVENT HANDLERS
 // ------------------------------------------
 
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener("DOMContentLoaded", () => {
+  bootApplication();
+});
+
+function bootApplication() {
   const startTime = Date.now();
 
-  const authed = await initSession();
-  if (!authed) return;
+  async function bootstrap() {
+    // 1. Authenticate. This also runs full parallel startup data hydration.
+    const authed = await initSession();
+    if (!authed) return;
 
-  await loadState();
-  if (!isResetDataEnabled()) {
-    document.querySelectorAll(".reset-data-btn").forEach((el) => {
-      el.style.display = "none";
-    });
+    // 2. Populate the complete in-memory application state from that data.
+    await loadState();
+
+    if (!isResetDataEnabled()) {
+      document.querySelectorAll(".reset-data-btn").forEach((el) => {
+        el.style.display = "none";
+      });
+    }
+
+    // 3. Bind interactive behaviour (no data-bearing rendering happens here).
+    filterSidebarByRole();
+    updateHeaderDisplay();
+    initSidebarNav();
+    initDashboardShortcuts();
+    initQuotationBuilder();
+    initAccountsModule();
+    initAdminModule();
+    initLogout();
+    initPdfPreviewControls();
+
+    // 4. Render the initial module ONLY now that startup state is fully ready.
+    await handleUrlRouting();
+
+    // 5. Startup is complete → record it BEFORE revealing the app.
+    _startupComplete = true;
+
+    startVisibilityPoll();
+
+    finalizeStartup(startTime);
   }
-  filterSidebarByRole();
-  updateHeaderDisplay();
-  initSidebarNav();
-  initDashboardShortcuts();
-  initQuotationBuilder();
-  initAccountsModule();
-  initAdminModule();
-  initLogout();
-  initPdfPreviewControls();
 
-  await handleUrlRouting();
-  startVisibilityPoll();
+  bootstrap().catch((e) => {
+    Logger.error("Application bootstrap failed", e);
+    updateLoader(100, "Startup failed");
+    alert("The control panel failed to start. Please reload the page.");
+  });
+}
 
+// The ONLY place the fullscreen loader is dismissed and the app is revealed.
+function finalizeStartup(startTime) {
   updateLoader(100, "Almost ready...");
 
   const elapsed = Date.now() - startTime;
@@ -1871,43 +1903,48 @@ document.addEventListener("DOMContentLoaded", async () => {
         gsap.to(appContainer, {
           opacity: 1,
           duration: 0.5,
-          ease: "power2.inOut"
+          ease: "power2.inOut",
+          onStart: () => {
+            appContainer.style.visibility = "visible";
+          }
         });
       } else {
         loader.style.transition = "opacity 0.5s ease-in-out";
-        appContainer.style.transition = "opacity 0.5s ease-in-out";
+        appContainer.style.transition = "opacity 0.5s ease-in-out; visibility 0s";
         loader.style.opacity = "0";
         appContainer.style.opacity = "1";
+        appContainer.style.visibility = "visible";
         setTimeout(() => {
           loader.style.display = "none";
         }, 500);
       }
     }
   }, delay);
+}
 
-  // Delegated employee action buttons
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-action]");
-    if (!btn) return;
-    const action = btn.getAttribute("data-action");
-    const id = btn.getAttribute("data-id");
-    if (action === "view-employee") openEmployeeView(id);
-    else if (action === "edit-employee") openEmployeeForm(id);
-    else if (action === "disable-employee") window.disableEmployee(id);
-    else if (action === "delete-employee") window.deleteEmployee(id);
-    else if (action === "reset-employee-password")
-      window.resetEmployeePassword(id);
-  });
+// Register delegated action handlers once at startup.
+// (Rendering is already complete and the loader is still covering the screen.)
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-action]");
+  if (!btn) return;
+  const action = btn.getAttribute("data-action");
+  const id = btn.getAttribute("data-id");
+  if (action === "view-employee") openEmployeeView(id);
+  else if (action === "edit-employee") openEmployeeForm(id);
+  else if (action === "disable-employee") window.disableEmployee(id);
+  else if (action === "delete-employee") window.deleteEmployee(id);
+  else if (action === "reset-employee-password")
+    window.resetEmployeePassword(id);
+});
 
-  document.addEventListener("click", (e) => {
-    document.querySelectorAll(".filter-dd").forEach((el) => {
-      if (el.style.display !== "block") return;
-      const moduleKey = el.id.replace("filter-dd-", "");
-      const btn = document.querySelector(`[data-filter-btn="${moduleKey}"]`);
-      if (!el.contains(e.target) && (!btn || !btn.contains(e.target))) {
-        el.style.display = "none";
-      }
-    });
+document.addEventListener("click", (e) => {
+  document.querySelectorAll(".filter-dd").forEach((el) => {
+    if (el.style.display !== "block") return;
+    const moduleKey = el.id.replace("filter-dd-", "");
+    const btn = document.querySelector(`[data-filter-btn="${moduleKey}"]`);
+    if (!el.contains(e.target) && (!btn || !btn.contains(e.target))) {
+      el.style.display = "none";
+    }
   });
 });
 
@@ -7902,8 +7939,23 @@ window.updateDispatchedData = function (quoteId, field, value) {
 // ------------------------------------------
 
 function initAccountsModule() {
-  switchFinanceTab("inbox");
-  renderFinanceLedger();
+  // Configure the finance tab state WITHOUT rendering any placeholder content.
+  // The finance view is only rendered once the dashboard is visible and the user
+  // actually opens it, so the boot never paints an empty/"Loading…" ledger.
+  financeTab = "inbox";
+  var buttons = document.querySelectorAll("[data-finance-tab]");
+  buttons.forEach(function (b) {
+    b.classList.toggle(
+      "active",
+      b.getAttribute("data-finance-tab") === financeTab,
+    );
+  });
+  var inboxPanel = document.getElementById("finance-tab-inbox");
+  var minePanel = document.getElementById("finance-tab-mine");
+  if (inboxPanel)
+    inboxPanel.style.display = financeTab === "inbox" ? "block" : "none";
+  if (minePanel)
+    minePanel.style.display = financeTab === "mine" ? "block" : "none";
 }
 
 // Active finance ledger tab: 'inbox' (All Quotations) or 'mine' (My Quotations).
