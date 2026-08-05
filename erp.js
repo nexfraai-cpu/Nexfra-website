@@ -404,6 +404,7 @@ const STAGES = [
 let STATE = {};
 let currentPreviewQuoteId = "";
 let _editState = null;
+let _editSnapshot = null;
 let _editLoading = false;
 let _editSaving = false;
 let _moduleFilters = {};
@@ -4630,6 +4631,10 @@ window.editQuotation = async function (quoteId) {
     })),
   };
 
+  _editSnapshot = JSON.stringify(normalizeEditForCompare(_editState));
+  window.removeEventListener("beforeunload", onEditBeforeUnload);
+  window.addEventListener("beforeunload", onEditBeforeUnload);
+
   _editLoading = false;
   renderInlineEditForm(quoteId, template);
 };
@@ -4827,13 +4832,118 @@ function renderInlineEditForm(quoteId, template) {
     // End
     "</div>" +
     // Footer
-    '<div style="display:flex;justify-content:flex-end;gap:12px;padding:16px 20px;background:#F8FAFC;border-top:1px solid #E2E8F0;">' +
+    '<div style="display:flex;justify-content:flex-end;align-items:center;gap:12px;padding:16px 20px;background:#F8FAFC;border-top:1px solid #E2E8F0;">' +
+    '<span id="e-edit-dirty-label" style="margin-right:auto;font-size:0.78rem;font-weight:600;color:#94A3B8;">No changes</span>' +
     '<button onclick="cancelEditQuotation()" class="btn btn-secondary" style="font-weight:700;padding:10px 24px;">Cancel</button>' +
     '<button onclick="saveEditQuotation(true)" class="btn btn-primary" style="font-weight:700;padding:10px 24px;background:#0284C7;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(2,132,199,0.2);">\uD83D\uDCC4 Save &amp; View PDF</button>' +
-    '<button onclick="saveEditQuotation()" id="e-save-changes-btn" class="btn btn-primary" style="font-weight:700;padding:10px 24px;background:#059669;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(5,150,105,0.2);">\u2713 Save Changes</button>' +
+    '<button onclick="saveEditQuotation()" id="e-save-changes-btn" class="btn btn-primary" disabled style="font-weight:700;padding:10px 24px;background:#059669;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(5,150,105,0.2);">\u2713 Save Changes</button>' +
     "</div></div>";
 
   updateEditPriceDisplay();
+  _updateEditSaveState();
+}
+
+function normEditStr(v) {
+  if (v === undefined || v === null) return "";
+  return String(v).replace(/\s+/g, " ").trim();
+}
+
+function normalizeEditForCompare(state) {
+  if (!state) return null;
+  return {
+    subtype: state.subtype,
+    capacity: normEditStr(state.capacity),
+    model: normEditStr(state.model),
+    customerName: normEditStr(state.customerName),
+    date: normEditStr(state.date),
+    manualTotal: state.manualTotal != null ? Number(state.manualTotal) : null,
+    gstRate: state.gstRate != null ? Number(state.gstRate) : null,
+    orderQty: state.orderQty || 1,
+    scopeOfWork: normEditStr(state.scopeOfWork),
+    terms: (state.terms || []).map(normEditStr),
+    dimensions: {
+      length: normEditStr(state.dimensions && state.dimensions.length),
+      height: normEditStr(state.dimensions && state.dimensions.height),
+      width: normEditStr(state.dimensions && state.dimensions.width),
+    },
+    specs: (state.specs || [])
+      .map(function (s) {
+        return {
+          id: s.id,
+          value: normEditStr(s.value),
+          isNotRequired: !!s.isNotRequired,
+          customDescription: normEditStr(s.customDescription),
+          customPrice: s.customPrice != null ? Number(s.customPrice) : null,
+        };
+      })
+      .sort(function (a, b) {
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      }),
+    customItems: (state.customItems || []).map(function (ci) {
+      return {
+        name: normEditStr(ci.name),
+        qty: ci.qty,
+        price: ci.price,
+      };
+    }),
+  };
+}
+
+function editHasChanges() {
+  if (!_editState) return false;
+  const cur = JSON.stringify(normalizeEditForCompare(_editState));
+  return cur !== _editSnapshot;
+}
+
+function onEditBeforeUnload(e) {
+  if (editHasChanges()) {
+    e.preventDefault();
+    e.returnValue = "";
+  }
+}
+
+function _updateEditSaveState() {
+  if (!_editState) return;
+  const dirty = editHasChanges();
+  const btn = document.getElementById("e-save-changes-btn");
+  const label = document.getElementById("e-edit-dirty-label");
+  if (btn) btn.disabled = !dirty;
+  if (label) {
+    label.textContent = dirty ? "Unsaved changes" : "No changes";
+    label.style.color = dirty ? "#D97706" : "#94A3B8";
+  }
+}
+
+function closeEditQuotation() {
+  window.removeEventListener("beforeunload", onEditBeforeUnload);
+  _editSnapshot = null;
+  _editState = null;
+  renderApprovalsList(_approvalsFilter || "pending");
+}
+
+function showDiscardChangesConfirm() {
+  ensureEditStyles();
+  let ov = document.getElementById("edit-discard-overlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "edit-discard-overlay";
+    ov.style.cssText =
+      "position:fixed;inset:0;z-index:1000000;background:rgba(15,23,42,0.45);display:flex;align-items:center;justify-content:center;";
+    ov.innerHTML =
+      '<div style="background:#ffffff;border-radius:12px;padding:24px 28px;width:360px;box-shadow:0 12px 40px rgba(0,0,0,0.2);">' +
+      '<h3 style="margin:0 0 10px 0;font-size:1rem;font-weight:800;color:#0F172A;">Discard your changes?</h3>' +
+      '<p style="margin:0 0 18px 0;font-size:0.85rem;color:#64748B;">You have unsaved changes. Leaving this editor will discard them.</p>' +
+      '<div style="display:flex;justify-content:flex-end;gap:10px;">' +
+      '<button id="edit-discard-continue" class="btn btn-secondary" style="font-weight:700;padding:8px 18px;">Continue Editing</button>' +
+      '<button id="edit-discard-confirm" class="btn btn-primary" style="font-weight:700;padding:8px 18px;background:#DC2626;color:white;border:none;border-radius:6px;cursor:pointer;">Discard Changes</button>' +
+      "</div></div>";
+    document.body.appendChild(ov);
+  }
+  ov.style.display = "flex";
+  const cont = document.getElementById("edit-discard-continue");
+  const conf = document.getElementById("edit-discard-confirm");
+  if (cont) cont.onclick = function () { ov.style.display = "none"; };
+  if (conf) conf.onclick = function () { ov.style.display = "none"; closeEditQuotation(); };
 }
 
 function escHtml(s) {
@@ -4969,6 +5079,7 @@ window.onEditSpecChange = function (id, val) {
   if (!_editState) return;
   const spec = (_editState.specs || []).find((s) => s.id === id);
   if (spec) spec.value = val;
+  _updateEditSaveState();
 };
 
 window.onEditToggleNr = function (id) {
@@ -4982,6 +5093,7 @@ window.onEditToggleNr = function (id) {
 
 window.onEditCustChange = function (field, val) {
   if (_editState) _editState[field] = val;
+  _updateEditSaveState();
 };
 
 window.onEditDim = function (dim) {
@@ -4989,24 +5101,28 @@ window.onEditDim = function (dim) {
   const nEl = document.getElementById("e-dim-" + dim.charAt(0) + "-n");
   const uEl = document.getElementById("e-dim-" + dim.charAt(0) + "-u");
   if (nEl && uEl) _editState.dimensions[dim] = nEl.value + " " + uEl.value;
+  _updateEditSaveState();
 };
 
 window.onEditPriceChange = function (val) {
   if (!_editState) return;
   _editState.manualTotal = val !== "" && val !== null ? parseFloat(val) : null;
   updateEditPriceDisplay();
+  _updateEditSaveState();
 };
 
 window.onEditGstChange = function (val) {
   if (!_editState) return;
   _editState.gstRate = val !== "" && val !== null ? parseFloat(val) : 18;
   updateEditPriceDisplay();
+  _updateEditSaveState();
 };
 
 window.onEditQtyChange = function (val) {
   if (!_editState) return;
   _editState.orderQty = val !== "" && val !== null ? parseInt(val, 10) || 1 : 1;
   updateEditPriceDisplay();
+  _updateEditSaveState();
 };
 
 window.resetEditPrice = function () {
@@ -5015,6 +5131,7 @@ window.resetEditPrice = function () {
   const inp = document.getElementById("e-price-input");
   if (inp) inp.value = "";
   updateEditPriceDisplay();
+  _updateEditSaveState();
 };
 
 function computeEditDisplayPrice() {
@@ -5047,16 +5164,21 @@ function updateEditPriceDisplay() {
 
 window.onEditScopeChange = function (val) {
   if (_editState) _editState.scopeOfWork = val;
+  _updateEditSaveState();
 };
 
 window.onEditTermsChange = function (val) {
   if (_editState) _editState.terms = val.split("\n").filter((t) => t.trim());
+  _updateEditSaveState();
 };
 
 window.cancelEditQuotation = function () {
-  if (_editLoading) return;
-  _editState = null;
-  renderApprovalsList(_approvalsFilter || "pending");
+  if (_editLoading || _editSaving) return;
+  if (_editState && editHasChanges()) {
+    showDiscardChangesConfirm();
+    return;
+  }
+  closeEditQuotation();
 };
 
 function serializeEditPayload() {
@@ -5225,6 +5347,8 @@ window.saveEditQuotation = async function (showPdf) {
       STATE.quotations[idx] = updated;
     }
     saveState();
+    window.removeEventListener("beforeunload", onEditBeforeUnload);
+    _editSnapshot = null;
     _editState = null;
 
     await new Promise(function (r) {
