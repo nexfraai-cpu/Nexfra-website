@@ -21,6 +21,25 @@
 </head>
 <body style="background-color: var(--color-bg); overflow: hidden; height: 100vh; display: flex; flex-direction: column;">
 
+  <!-- Global Branded App Loader -->
+  <div id="global-app-loader" class="global-loader-overlay">
+    <div class="global-loader-content">
+      <div class="global-loader-brand">
+        <div class="global-loader-ring"></div>
+        <div class="global-loader-logo">
+          <span class="logo-accent">NEX</span>FRA
+        </div>
+      </div>
+      <div class="global-loader-title">Preparing your workspace...</div>
+      <div class="global-loader-progress-container">
+        <div class="global-loader-progress-bar" id="global-loader-progress-bar"></div>
+      </div>
+      <div class="global-loader-status" id="global-loader-status">Connecting...</div>
+    </div>
+  </div>
+
+  <div id="app-container" style="opacity: 0; display: flex; flex-direction: column; height: 100vh; width: 100%; overflow: hidden;">
+
   <!-- ERP TOP HEADER -->
   <header class="portal-header" style="height: 60px;">
     <div class="portal-logo">
@@ -1899,6 +1918,8 @@
         </form>
       </div>
     </div>
+  </div>
+
   </div>
 
   <script type="module" src="erp.js"></script>

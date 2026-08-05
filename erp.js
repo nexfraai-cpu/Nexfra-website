@@ -148,56 +148,100 @@ function pickAuxState(state) {
   return aux;
 }
 
+function updateLoader(progress, statusText) {
+  const bar = document.getElementById("global-loader-progress-bar");
+  const statusEl = document.getElementById("global-loader-status");
+  if (bar) {
+    bar.style.width = `${progress}%`;
+  }
+  if (statusEl && statusText) {
+    statusEl.innerText = statusText;
+  }
+}
+
 async function hydrateStateFromApi() {
+  updateLoader(10, "Connecting...");
+
+  let completedTasks = 0;
+  const totalTasks = 9;
+
+  const onTaskComplete = (taskName) => {
+    completedTasks++;
+    const progress = 10 + Math.round((completedTasks / totalTasks) * 75); // 10% to 85%
+    
+    let message = "Loading dashboard...";
+    if (progress < 25) {
+      message = "Connecting...";
+    } else if (progress < 45) {
+      message = "Loading quotations...";
+    } else if (progress < 65) {
+      message = "Loading work orders...";
+    } else if (progress < 85) {
+      message = "Loading dashboard...";
+    } else {
+      message = "Almost ready...";
+    }
+    
+    updateLoader(progress, message);
+  };
+
+  const wrapPromise = async (promise, name) => {
+    try {
+      const res = await promise;
+      onTaskComplete(name);
+      return res;
+    } catch (e) {
+      Logger.warn(`${name} hydrate failed`, e);
+      onTaskComplete(name);
+      if (name === "finance") return { sales: [], payments: [] };
+      if (name === "pricing" || name === "metalPrice") return null;
+      if (name === "appConfig") return {};
+      return [];
+    }
+  };
+
+  const customersPromise = wrapPromise(customerService.getAll(), "customers");
+  const quotationsPromise = wrapPromise(
+    quotationService.getAll(_sessionRole === "finance" ? { financeView: "mine" } : undefined),
+    "quotations"
+  );
+  const workOrdersPromise = wrapPromise(workOrderService.getAll(), "workOrders");
+  const financePromise = wrapPromise(financeService.hydrate(), "finance");
+  const employeesPromise = wrapPromise(employeeService.getAll(), "employees");
+  const appConfigPromise = wrapPromise(loadAppConfig(), "appConfig");
+  const pricingPromise = wrapPromise(adminService.getPricing(), "pricing");
+  const metalPricePromise = wrapPromise(adminService.getMetalPrice(), "metalPrice");
+  const rawProductionPromise = wrapPromise(productionService.fetchRaw(), "production");
+
   const [
     customers,
     quotations,
     workOrders,
-    { sales, payments },
+    financeData,
     employees,
     appConfig,
+    pricing,
+    metalPrice,
+    rawProduction,
   ] = await Promise.all([
-    customerService.getAll().catch((e) => {
-      Logger.warn("Customers hydrate failed", e);
-      return [];
-    }),
-    quotationService
-      .getAll(_sessionRole === "finance" ? { financeView: "mine" } : undefined)
-      .catch((e) => {
-        Logger.warn("Quotations hydrate failed", e);
-        return [];
-      }),
-    workOrderService.getAll().catch((e) => {
-      Logger.warn("Work orders hydrate failed", e);
-      return [];
-    }),
-    financeService.hydrate().catch((e) => {
-      Logger.warn("Finance hydrate failed", e);
-      return { sales: [], payments: [] };
-    }),
-    employeeService.getAll().catch((e) => {
-      Logger.warn("Employees hydrate failed", e);
-      return [];
-    }),
-    loadAppConfig().catch(() => ({})),
+    customersPromise,
+    quotationsPromise,
+    workOrdersPromise,
+    financePromise,
+    employeesPromise,
+    appConfigPromise,
+    pricingPromise,
+    metalPricePromise,
+    rawProductionPromise,
   ]);
 
-  const productionItems = await productionService
-    .hydrate(quotations)
-    .catch((e) => {
-      Logger.warn("Production hydrate failed", e);
-      return [];
-    });
+  const { sales, payments } = financeData || { sales: [], payments: [] };
 
-  const pricing = await adminService.getPricing().catch((e) => {
-    Logger.warn("Admin pricing hydrate failed", e);
-    return null;
-  });
+  updateLoader(90, "Almost ready...");
 
-  const metalPrice = await adminService.getMetalPrice().catch((e) => {
-    Logger.warn("Metal price hydrate failed", e);
-    return null;
-  });
+  const productionItems = rawProduction.map((item) =>
+    productionService.toLegacy(item, quotations)
+  );
 
   console.log(
     "[hydrateStateFromApi] Hydrated quotations count:",
@@ -225,6 +269,8 @@ async function hydrateStateFromApi() {
   _syncSignatures.productionItems = _entitySig(productionItems);
   _syncSignatures.sales = _entitySig(sales);
   _syncSignatures.payments = _entitySig(payments);
+
+  updateLoader(95, "Almost ready...");
 }
 
 async function flushStateToApi() {
@@ -1779,6 +1825,8 @@ function logSystemActivity(message) {
 // ------------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
+  const startTime = Date.now();
+
   const authed = await initSession();
   if (!authed) return;
 
@@ -1800,6 +1848,42 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await handleUrlRouting();
   startVisibilityPoll();
+
+  updateLoader(100, "Almost ready...");
+
+  const elapsed = Date.now() - startTime;
+  const minLoadingTime = 800;
+  const delay = Math.max(0, minLoadingTime - elapsed);
+
+  setTimeout(() => {
+    const loader = document.getElementById("global-app-loader");
+    const appContainer = document.getElementById("app-container");
+    if (loader && appContainer) {
+      if (window.gsap) {
+        gsap.to(loader, {
+          opacity: 0,
+          duration: 0.5,
+          ease: "power2.inOut",
+          onComplete: () => {
+            loader.style.display = "none";
+          }
+        });
+        gsap.to(appContainer, {
+          opacity: 1,
+          duration: 0.5,
+          ease: "power2.inOut"
+        });
+      } else {
+        loader.style.transition = "opacity 0.5s ease-in-out";
+        appContainer.style.transition = "opacity 0.5s ease-in-out";
+        loader.style.opacity = "0";
+        appContainer.style.opacity = "1";
+        setTimeout(() => {
+          loader.style.display = "none";
+        }, 500);
+      }
+    }
+  }, delay);
 
   // Delegated employee action buttons
   document.addEventListener("click", (e) => {

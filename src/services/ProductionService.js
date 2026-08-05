@@ -50,7 +50,11 @@ function toLegacy(item, quotations) {
 }
 
 export class ProductionService {
-  async hydrate(quotations) {
+  toLegacy(item, quotations) {
+    return toLegacy(item, quotations);
+  }
+
+  async fetchRaw() {
     const rows = [];
     let page = 1;
     let total = Infinity;
@@ -63,6 +67,11 @@ export class ProductionService {
       if (!data || data.length < PER_PAGE) break;
       page += 1;
     }
+    return rows;
+  }
+
+  async hydrate(quotations) {
+    const rows = await this.fetchRaw();
     return rows.map((item) => toLegacy(item, quotations));
   }
 
