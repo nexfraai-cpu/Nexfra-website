@@ -405,6 +405,7 @@ let STATE = {};
 let currentPreviewQuoteId = "";
 let _editState = null;
 let _editLoading = false;
+let _editSaving = false;
 let _moduleFilters = {};
 let _approvalsFilter = "pending";
 
@@ -4576,6 +4577,10 @@ window.editQuotation = async function (quoteId) {
       isNotRequired: !!sv.isNotRequired,
       customDescription: sv.customDescription ?? null,
       customPrice: sv.customPrice != null ? Number(sv.customPrice) : null,
+      effectivePriceDiff:
+        q._specDiffs && q._specDiffs[sv.id] != null
+          ? Number(q._specDiffs[sv.id])
+          : null,
     });
   });
   if (template && template.specs) {
@@ -4590,6 +4595,7 @@ window.editQuotation = async function (quoteId) {
         isNotRequired: false,
         customDescription: null,
         customPrice: null,
+        effectivePriceDiff: null,
       });
     });
   }
@@ -5070,7 +5076,106 @@ window.cancelEditQuotation = function () {
   renderApprovalsList(_approvalsFilter || "pending");
 };
 
+function serializeEditPayload() {
+  const e = _editState;
+  const specs = {};
+  const notRequired = {};
+  const specDiffs = {};
+  (e.specs || []).forEach(function (s) {
+    if (!s || !s.id) return;
+    specs[s.id] = s.value !== undefined && s.value !== null ? s.value : "";
+    if (s.customDescription) specs[s.id + "_custom_desc"] = s.customDescription;
+    if (s.customPrice != null) specs[s.id + "_custom_price"] = s.customPrice;
+    if (s.isNotRequired) notRequired[s.id] = true;
+    if (s.effectivePriceDiff != null) specDiffs[s.id] = Number(s.effectivePriceDiff);
+  });
+
+  return {
+    customerName: e.customerName || "",
+    manualTotal: e.manualTotal,
+    gstRate: e.gstRate || 18,
+    orderQty: e.orderQty || 1,
+    scopeOfWork: e.scopeOfWork || "",
+    terms: e.terms ? e.terms.slice() : [],
+    dimensions: e.dimensions || {},
+    subtype: e.subtype || null,
+    specs: specs,
+    notRequired: notRequired,
+    _specDiffs: specDiffs,
+    customItems: (e.customItems || []).map(function (ci) {
+      return { name: ci.name, qty: ci.qty, price: ci.price };
+    }),
+  };
+}
+
+function setEditInputsDisabled(disabled) {
+  const container = document.getElementById("approvals-cards-container");
+  if (!container) return;
+  container.querySelectorAll("input, select, textarea, button").forEach(function (el) {
+    el.disabled = disabled;
+  });
+}
+
+function ensureEditSavingOverlay() {
+  let ov = document.getElementById("edit-saving-overlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "edit-saving-overlay";
+    ov.style.cssText =
+      "position:fixed;inset:0;z-index:999999;background:rgba(15,23,42,0.45);display:flex;align-items:center;justify-content:center;";
+    ov.innerHTML =
+      '<div style="background:#ffffff;border-radius:12px;padding:24px 28px;width:340px;box-shadow:0 12px 40px rgba(0,0,0,0.2);">' +
+      '<h3 style="margin:0 0 14px 0;font-size:1rem;font-weight:800;color:#0F172A;">Saving Quotation</h3>' +
+      '<div id="edit-saving-steps-list"></div>' +
+      "</div>";
+    document.body.appendChild(ov);
+  }
+  return ov;
+}
+
+function setEditSavingVisible(visible) {
+  const ov = document.getElementById("edit-saving-overlay");
+  if (ov) ov.style.display = visible ? "flex" : "none";
+}
+
+function renderEditSavingSteps(activeIndex) {
+  const steps = [
+    "Saving…",
+    "Validating quotation…",
+    "Saving quotation…",
+    "Refreshing quotation…",
+    "Success",
+  ];
+  const container = document.getElementById("edit-saving-steps-list");
+  if (!container) return;
+  let html = "";
+  steps.forEach(function (label, i) {
+    let prefix, color;
+    if (i < activeIndex) {
+      prefix = "\u2713";
+      color = "#059669";
+    } else if (i === activeIndex) {
+      prefix = "\u25CF";
+      color = "#0284C7";
+    } else {
+      prefix = "\u25CB";
+      color = "#CBD5E1";
+    }
+    html +=
+      '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;color:' +
+      color +
+      ';font-size:0.85rem;font-weight:600;">' +
+      prefix +
+      " " +
+      escHtml(label) +
+      "</div>";
+  });
+  container.innerHTML = html;
+}
+
 window.saveEditQuotation = async function (showPdf) {
+  if (_editSaving) return;
+
   loadState();
   const e = _editState;
   if (!e || !e.quoteId) return;
@@ -5078,44 +5183,54 @@ window.saveEditQuotation = async function (showPdf) {
   const q = STATE.quotations.find(
     (x) => x.id === e.quoteId || x._backendId === e.quoteId,
   );
-  if (!q) return;
+  if (!q) {
+    showToastNotification("Quotation not found for saving.", "error");
+    return;
+  }
 
   const backendId = q._backendId || q.id;
 
-  const editSpecs = {};
-  const editNotRequired = {};
-  (e.specs || []).forEach(function (s) {
-    if (!s) return;
-    editSpecs[s.id] = s.value !== undefined && s.value !== null ? s.value : "";
-    if (s.customDescription) editSpecs[s.id + "_custom_desc"] = s.customDescription;
-    if (s.customPrice != null) editSpecs[s.id + "_custom_price"] = s.customPrice;
-    if (s.isNotRequired) editNotRequired[s.id] = true;
+  _editSaving = true;
+  setEditInputsDisabled(true);
+  ensureEditSavingOverlay();
+  setEditSavingVisible(true);
+  renderEditSavingSteps(0);
+  await new Promise(function (r) {
+    setTimeout(r, 80);
   });
 
   try {
-    const updated = await quotationService.update(backendId, {
-      customerName: e.customerName || q.customerName,
-      manualTotal: e.manualTotal,
-      gstRate: e.gstRate || 18,
-      orderQty: e.orderQty || 1,
-      scopeOfWork: e.scopeOfWork || q.scopeOfWork,
-      terms: e.terms || q.terms,
-      dimensions: e.dimensions || q.dimensions,
-      specs: Object.keys(editSpecs).length > 0 ? editSpecs : (q.specs || {}),
-      notRequired: Object.keys(editNotRequired).length > 0 ? editNotRequired : (q.notRequired || {}),
-      subtype: e.subtype || q.subtype,
-      customItems: e.customItems || q.customItems || [],
+    renderEditSavingSteps(1);
+    await new Promise(function (r) {
+      setTimeout(r, 80);
     });
 
+    const payload = serializeEditPayload();
+
+    renderEditSavingSteps(2);
+    const updated = await quotationService.update(backendId, payload);
+
+    renderEditSavingSteps(3);
     const idx = STATE.quotations.findIndex(
       (x) => x._backendId === backendId || x.id === q.id,
     );
     if (idx >= 0) {
       STATE.quotations[idx] = updated;
     }
-
     saveState();
     _editState = null;
+
+    await new Promise(function (r) {
+      setTimeout(r, 80);
+    });
+    renderEditSavingSteps(4);
+    await new Promise(function (r) {
+      setTimeout(r, 300);
+    });
+
+    setEditSavingVisible(false);
+    _editSaving = false;
+    setEditInputsDisabled(false);
 
     showToastNotification(`Quotation ${updated.id} updated successfully!`);
     if (showPdf) {
@@ -5131,9 +5246,17 @@ window.saveEditQuotation = async function (showPdf) {
       err.response?.data?.error?.message ||
       err.message ||
       "Failed to update quotation on server";
+
+    setEditSavingVisible(false);
+    _editSaving = false;
+    setEditInputsDisabled(false);
+
+    const t = WIZARD_PRODUCT_TEMPLATES[e.subtype];
+    if (t) renderInlineEditForm(e.quoteId, t);
+
     showToastNotification(`Failed to update quotation: ${msg}`, "error");
     alert(
-      `Failed to update quotation on server: ${msg}\n\nEdits were NOT saved.`,
+      `Failed to update quotation on server: ${msg}\n\nEdits were NOT saved.\nYour changes have been preserved — you can retry.`,
     );
   }
 };
