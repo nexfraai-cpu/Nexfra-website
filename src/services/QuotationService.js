@@ -190,6 +190,13 @@ export class QuotationService {
     }));
     legacy._backendStatus = data.status;
     legacy._lastSyncedPayload = JSON.stringify(toBackendCreate(legacy));
+    legacy.specList = (data.specValues || []).map((sv) => ({
+      id: sv.specKey,
+      name: sv.specName || sv.specKey,
+      section: sv.section || 'General',
+      value: sv.selectedValue ?? '',
+      isNotRequired: !!sv.isNotRequired,
+    }));
     return legacy;
   }
 

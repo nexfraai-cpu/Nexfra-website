@@ -4591,12 +4591,19 @@ window.editQuotation = async function (quoteId) {
     terms: q.terms ? q.terms.slice() : [],
     orderQty: q.orderQty || 1,
     lastConfirmedQty: q.orderQty || 1,
-    originalOrderQty: q.orderQty || 1,
+    originalQty: q.orderQty || 1,
     originalTotal: q.total || 0,
     customItems: (q.customItems || []).map((ci) => ({
       name: ci.name,
       qty: ci.qty,
       price: ci.price,
+    })),
+    specList: (q.specList || []).map((sv) => ({
+      id: sv.id,
+      name: sv.name,
+      section: sv.section || "General",
+      value: sv.value,
+      isNotRequired: !!sv.isNotRequired,
     })),
   };
 
@@ -4610,14 +4617,7 @@ function renderInlineEditForm(quoteId, template) {
   const e = _editState;
 
   if (!e) return;
-  const sections = [
-    "material",
-    "chassis",
-    "hydraulic",
-    "painting",
-    "accessories",
-    "subframe",
-  ];
+
   const sectionLabels = {
     material: "Steel Sheets & Material Grade",
     chassis: "Chassis & Body Structure",
@@ -4627,19 +4627,45 @@ function renderInlineEditForm(quoteId, template) {
     subframe: "Subframe Configuration",
   };
 
+  const templateDefs = {};
+  (template.specs || []).forEach(function (s) {
+    templateDefs[s.id] = s;
+  });
+
+  const specOrder = [];
+  const specGroups = {};
+  (e.specList || []).forEach(function (sv) {
+    if (!sv || !sv.id) return;
+    const section = sv.section || "General";
+    if (!specGroups[section]) {
+      specGroups[section] = [];
+      specOrder.push(section);
+    }
+    const def = templateDefs[sv.id] || {};
+    specGroups[section].push({
+      id: sv.id,
+      name: sv.name || def.name || sv.id,
+      section: section,
+      type: def.type || "text",
+      options: def.options,
+      priceDiffs: def.priceDiffs,
+      defaultValue: def.defaultValue,
+    });
+  });
+
   let specsHtml = "";
-  sections.forEach((secId) => {
-    const secSpecs = template.specs.filter((s) => s.section === secId);
-    if (secSpecs.length === 0) return;
+  specOrder.forEach(function (secId) {
+    const secSpecs = specGroups[secId];
+    if (!secSpecs || secSpecs.length === 0) return;
     specsHtml +=
       '<div class="spec-section-card" style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;padding:18px;margin-bottom:16px;">';
     specsHtml +=
       '<h4 style="margin:0 0 14px 0;font-size:0.85rem;font-weight:700;color:#0F172A;">' +
-      (sectionLabels[secId] || secId) +
+      escHtml(sectionLabels[secId] || secId) +
       "</h4>";
     specsHtml +=
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;">';
-    secSpecs.forEach((spec) => {
+    secSpecs.forEach(function (spec) {
       specsHtml += buildEditSpecControl(spec);
     });
     specsHtml += "</div></div>";
@@ -4873,6 +4899,15 @@ function buildEditSpecControl(spec) {
   } else if (spec.type === "text") {
     ctrl =
       '<input type="text" class="form-control" value="' +
+      escHtml(selectedVal) +
+      '" oninput="onEditSpecChange(\'' +
+      spec.id +
+      "',this.value)\" " +
+      (isNr ? "disabled" : "") +
+      ' style="width:100%;font-weight:600;min-height:42px;padding:8px 12px;margin-top:4px;">';
+  } else if (spec.type === "number") {
+    ctrl =
+      '<input type="number" step="any" class="form-control" value="' +
       escHtml(selectedVal) +
       '" oninput="onEditSpecChange(\'' +
       spec.id +
