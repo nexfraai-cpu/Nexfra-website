@@ -4611,7 +4611,8 @@ window.editQuotation = async function (quoteId) {
     customerName: q.customerName || "",
     date: q.date || new Date().toISOString().split("T")[0],
     total: q.total || 0,
-    manualTotal: null,
+    manualTotal:
+      q.manualTotal != null ? Number(q.manualTotal) : null,
     gstRate: q.gstRate != null ? q.gstRate : 18,
     dimensions: JSON.parse(
       JSON.stringify(q.dimensions || template.dimensions || {}),
@@ -4799,7 +4800,7 @@ function renderInlineEditForm(quoteId, template) {
     '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">' +
     '<div style="flex:1;min-width:200px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Override Final Price (\u20B9)</label>' +
     '<div style="display:flex;gap:6px;align-items:center;"><input type="number" id="e-price-input" class="form-control" placeholder="Use calculated" value="' +
-    (e.total || "") +
+    (e.manualTotal != null ? e.manualTotal : "") +
     '" oninput="onEditPriceChange(this.value)" style="flex:1;font-weight:700;">' +
     "<button type=\"button\" id=\"e-price-reset-btn\" onclick=\"resetEditPrice()\" style=\"background:none;border:1px solid #CBD5E1;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.75rem;font-weight:600;color:#64748B;\">\u2715 Reset</button></div>" +
     '<small style="color:#94A3B8;font-size:0.7rem;">Leave empty for auto-calculated price</small></div>' +
@@ -4874,6 +4875,7 @@ function normalizeEditForCompare(state) {
           isNotRequired: !!s.isNotRequired,
           customDescription: normEditStr(s.customDescription),
           customPrice: s.customPrice != null ? Number(s.customPrice) : null,
+          effectivePriceDiff: s.effectivePriceDiff != null ? Number(s.effectivePriceDiff) : null,
         };
       })
       .sort(function (a, b) {
@@ -4893,6 +4895,40 @@ function editHasChanges() {
   if (!_editState) return false;
   const cur = JSON.stringify(normalizeEditForCompare(_editState));
   return cur !== _editSnapshot;
+}
+
+function editPricingBasis(state) {
+  return {
+    specs: (state.specs || [])
+      .map(function (s) {
+        return {
+          id: s.id,
+          v: normEditStr(s.value),
+          cd: normEditStr(s.customDescription),
+          cp: s.customPrice != null ? Number(s.customPrice) : null,
+          d: s.effectivePriceDiff != null ? Number(s.effectivePriceDiff) : null,
+        };
+      })
+      .sort(function (a, b) {
+        return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+      }),
+    items: (state.customItems || []).map(function (ci) {
+      return { n: normEditStr(ci.name), q: ci.qty, p: ci.price };
+    }),
+  };
+}
+
+function editPricingBasisChanged() {
+  if (!_editState || !_editSnapshot) return false;
+  let snap;
+  try {
+    snap = JSON.parse(_editSnapshot);
+  } catch (e) {
+    return false;
+  }
+  const cur = JSON.stringify(editPricingBasis(_editState));
+  const stored = JSON.stringify(editPricingBasis(snap));
+  return cur !== stored;
 }
 
 function onEditBeforeUnload(e) {
@@ -5195,9 +5231,20 @@ function serializeEditPayload() {
     if (s.effectivePriceDiff != null) specDiffs[s.id] = Number(s.effectivePriceDiff);
   });
 
+  // Only send the previewed grand total when the unit-price basis (spec
+  // choices, custom item prices) is UNCHANGED. Then quantity acts purely as a
+  // multiplier of the existing unit price and the backend stores that total
+  // verbatim instead of re-deriving the unit price. When specs/custom items
+  // changed, omit `total` so the backend recalcs from the new diffs.
+  let previewTotal;
+  if (!editPricingBasisChanged()) {
+    previewTotal = computeEditDisplayPrice();
+  }
+
   return {
     customerName: e.customerName || "",
     manualTotal: e.manualTotal,
+    total: previewTotal !== undefined ? previewTotal : null,
     gstRate: e.gstRate || 18,
     orderQty: e.orderQty || 1,
     scopeOfWork: e.scopeOfWork || "",

@@ -322,6 +322,54 @@ describe('QuotationsService', () => {
       queries.findById.mockResolvedValue(createMockQuotation({ status: 'Denied' }));
       await expect(service.update('id', { notes: 'x' }, actor)).rejects.toThrow(QuotationNotDraftError);
     });
+
+    it('preserves unit price on a quantity change by storing the supplied total verbatim', async () => {
+      // Existing qty 3, grand total 2006000, manual override absent.
+      const q = createMockQuotation({ total: 2006000, order_qty: 3, manual_total: null });
+      queries.findById.mockResolvedValue(q);
+      queries.findSpecValues.mockResolvedValue([]);
+      queries.findCustomItems.mockResolvedValue([]);
+      // Editor scales qty 3 -> 1: total = unit(668667) * 1.
+      queries.update.mockImplementation(async (_id: any, updates: any) => ({
+        ...q, ...updates, order_qty: 1, total: 668667, version: 2,
+      }));
+      queries.replaceSpecValues.mockResolvedValue([]);
+      queries.replaceCustomItems.mockResolvedValue([]);
+
+      const result = await service.update(q.id, {
+        manualTotal: null,
+        total: 668667,
+        orderQty: 1,
+      }, actor);
+
+      // Quantity must only multiply the existing unit price; the total must
+      // never be re-derived from the template base spec prices.
+      expect(queries.findTemplateBasePrice).not.toHaveBeenCalled();
+      expect(result.total).toBe(668667);
+      expect((queries.update.mock.calls[0][1] as any).total).toBe(668667);
+    });
+
+    it('preserves an explicit manual override regardless of quantity', async () => {
+      const q = createMockQuotation({ total: 900000, order_qty: 1, manual_total: 900000 });
+      queries.findById.mockResolvedValue(q);
+      queries.findSpecValues.mockResolvedValue([]);
+      queries.findCustomItems.mockResolvedValue([]);
+      queries.update.mockImplementation(async (_id: any, updates: any) => ({
+        ...q, ...updates, order_qty: 5, total: 900000, version: 2,
+      }));
+      queries.replaceSpecValues.mockResolvedValue([]);
+      queries.replaceCustomItems.mockResolvedValue([]);
+
+      const result = await service.update(q.id, {
+        manualTotal: 900000,
+        total: 45000000,
+        orderQty: 5,
+      }, actor);
+
+      expect(result.total).toBe(900000);
+      expect((queries.update.mock.calls[0][1] as any).total).toBe(900000);
+      expect((queries.update.mock.calls[0][1] as any).manual_total).toBe(900000);
+    });
   });
 
   describe('softDelete', () => {

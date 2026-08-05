@@ -87,6 +87,7 @@ function toLegacy(q) {
     status: mapStatusToLegacy(q.status),
     orderQty: q.orderQty ?? 1,
     gstRate: q.gstRate ?? 18,
+    manualTotal: q.manualTotal != null ? Number(q.manualTotal) : null,
     capacity: q.capacity || 'NA',
     dimensions: q.dimensions || {},
     scopeOfWork: q.scopeOfWork || 'As Mentioned above',
@@ -102,12 +103,13 @@ function toLegacy(q) {
 
 function toBackendCreate(quote) {
   const subtype = quote.subtype || quote.templateKey || null;
-  const manualTotal = typeof quote.manualTotal === 'number'
-    ? quote.manualTotal
+  // The grand total must NEVER be promoted to a manual unit-price override.
+  // `manualTotal` is only ever an explicit user-set override; `total` is the
+  // computed/recalculated grand total (unit price scaled by order quantity).
+  const manualTotal = typeof quote.manualTotal === 'number' ? quote.manualTotal : null;
+  const persistedTotal = manualTotal != null
+    ? manualTotal
     : (typeof quote.total === 'number' && quote.total > 0 ? quote.total : null);
-  const persistedTotal = !manualTotal && typeof quote.total === 'number'
-    ? quote.total
-    : manualTotal;
 
   return {
     customerId: quote.customerId && !String(quote.customerId).startsWith('CUST-')
