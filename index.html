@@ -54,6 +54,10 @@
         <a href="#contact" class="nav-link">Contact</a>
       </nav>
       <div class="nav-actions">
+        <a href="tel:+91990594859" class="nav-phone-link" title="Sales Helpline">
+          <svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          <span>+91 990594859 / 7979074540</span>
+        </a>
         <button class="btn btn-primary" id="open-portal-btn">
           <svg class="icon" viewBox="0 0 24 24"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>
           Employee Login
@@ -181,18 +185,26 @@
       </div>
     </section>
 
-    <!-- Products Section -->
+    <!-- Products & Services Section -->
     <section class="products-section" id="products">
       <div class="container">
         <div class="section-header text-center">
-          <div class="badge">Our Fleet</div>
-          <h2 class="section-title">Heavy-Duty Product Range</h2>
-          <p class="section-desc max-w-md mx-auto">Engineered to standards of extreme durability. Select a category below to see technical specifications and configure quotations.</p>
+          <div class="badge">Products & Manufacturing Services</div>
+          <h2 class="section-title">Commercial Fleet & Heavy Engineering Range</h2>
+          <p class="section-desc max-w-md mx-auto">Nexfra Manufacturing produces precision heavy-duty commercial bodies engineered for maximum payload, structural reliability, and 24/7 industrial performance across India.</p>
+        </div>
+
+        <!-- Category Filter Tabs -->
+        <div class="product-filters">
+          <button class="product-filter-btn active" data-category="all">All Products & Services</button>
+          <button class="product-filter-btn" data-category="trailer">Trailers (Flat Bed, Side Wall, Tip)</button>
+          <button class="product-filter-btn" data-category="tipper">Tippers (Box & Rock Body)</button>
+          <button class="product-filter-btn" data-category="rigid">Rigid Load Bodies (28ft & 30ft)</button>
         </div>
         
         <div class="product-grid">
           <!-- Flat Bed Trailer -->
-          <div class="product-card">
+          <div class="product-card" data-category="trailer">
             <div class="product-img-wrap">
               <img src="assets/flatbed_trailer.jpg" alt="Flat Bed Trailer" class="product-img">
               <div class="product-overlay">
@@ -201,12 +213,12 @@
             </div>
             <div class="product-body">
               <h3>Flat Bed Trailer</h3>
-              <p class="product-desc">High-strength cargo trailer designed for heavy container transport and machinery haulage.</p>
+              <p class="product-desc">High-tensile cargo semi-trailer engineered for ISO container haulage, steel coil logistics, and heavy machinery transport.</p>
               <ul class="product-specs-list">
                 <li><strong>Beam:</strong> Submerged Arc Welded Main Beam</li>
                 <li><strong>Axles:</strong> 3 x 13T heavy-duty axles</li>
                 <li><strong>Suspension:</strong> Heavy duty mechanical leaf spring</li>
-                <li><strong>Floor:</strong> 4mm Chequered Plate</li>
+                <li><strong>Floor:</strong> 4mm / 6mm Anti-skid Chequered Plate</li>
               </ul>
               <div class="product-footer">
                 <span class="price-indicator">Base Price: ₹8,50,000</span>
@@ -215,8 +227,32 @@
             </div>
           </div>
 
+          <!-- Side Wall Trailer -->
+          <div class="product-card" data-category="trailer">
+            <div class="product-img-wrap">
+              <img src="assets/sidewall_trailer.jpg" alt="Side Wall Trailer" class="product-img">
+              <div class="product-overlay">
+                <button class="btn btn-primary configure-product-btn" data-product="sidewall">Configure & Quote</button>
+              </div>
+            </div>
+            <div class="product-body">
+              <h3>Side Wall Trailer</h3>
+              <p class="product-desc">Versatile 40ft drop-side cargo trailer built with reinforced side panels, heavy headboard, and toolboxes for agricultural & bulk freight.</p>
+              <ul class="product-specs-list">
+                <li><strong>Dimensions:</strong> 40 Feet Length x 4.5 Feet Side Height</li>
+                <li><strong>Structure:</strong> High-tensile drop side panels & locks</li>
+                <li><strong>Headboard:</strong> Heavy-duty cabin protection guard</li>
+                <li><strong>Application:</strong> Agriculture, cement, general bulk cargo</li>
+              </ul>
+              <div class="product-footer">
+                <span class="price-indicator">Base Price: ₹9,20,000</span>
+                <button class="btn btn-outline btn-sm configure-product-btn" data-product="sidewall">Configure</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Tip Trailer -->
-          <div class="product-card">
+          <div class="product-card" data-category="trailer">
             <div class="product-img-wrap">
               <img src="assets/tip_trailer.jpg" alt="Tip Trailer" class="product-img">
               <div class="product-overlay">
@@ -224,13 +260,13 @@
               </div>
             </div>
             <div class="product-body">
-              <h3>Tip Trailer</h3>
-              <p class="product-desc">Advanced tipping semi-trailer equipped with multi-stage heavy-duty hydraulic cylinders.</p>
+              <h3>Tip Trailer (Tipping Semi-Trailer)</h3>
+              <p class="product-desc">Heavy-capacity tipping semi-trailer equipped with multi-stage hydraulic cylinders for high-volume coal, mineral, and aggregate dumping.</p>
               <ul class="product-specs-list">
-                <li><strong>Capacity:</strong> 30 CBM to 40 CBM payload</li>
-                <li><strong>Cylinder:</strong> High-performance Multi-stage Hydraulic</li>
-                <li><strong>Structure:</strong> High strength wear-resistant steel</li>
-                <li><strong>Axles:</strong> Tandem/Tridem options</li>
+                <li><strong>Capacity:</strong> 30 CBM to 40 CBM payload volume</li>
+                <li><strong>Cylinder:</strong> Multi-stage front-end hydraulic hoist</li>
+                <li><strong>Structure:</strong> Wear-resistant high-tensile steel</li>
+                <li><strong>Axles:</strong> Tandem / Tridem heavy suspension</li>
               </ul>
               <div class="product-footer">
                 <span class="price-indicator">Base Price: ₹14,20,000</span>
@@ -240,7 +276,7 @@
           </div>
 
           <!-- Box Body Tipper -->
-          <div class="product-card">
+          <div class="product-card" data-category="tipper">
             <div class="product-img-wrap">
               <img src="assets/box_body_tipper.jpg" alt="Box Body Tipper" class="product-img">
               <div class="product-overlay">
@@ -249,11 +285,11 @@
             </div>
             <div class="product-body">
               <h3>Box Body Tipper</h3>
-              <p class="product-desc">Rigid chassis tipper body designed for sand, gravel, aggregate, and dry bulk hauling.</p>
+              <p class="product-desc">Rigid chassis tipper body designed for fast unloading of sand, gravel, stone aggregate, and road construction bulk.</p>
               <ul class="product-specs-list">
-                <li><strong>Capacity Options:</strong> 14 to 25 CBM templates</li>
-                <li><strong>Floor:</strong> 8mm heavy-duty MS floor</li>
-                <li><strong>Side Walls:</strong> 6mm thick reinforced panels</li>
+                <li><strong>Capacity Options:</strong> 14 CBM to 25 CBM templates</li>
+                <li><strong>Floor:</strong> 8mm heavy-duty MS floor plate</li>
+                <li><strong>Side Walls:</strong> 6mm thick reinforced side panels</li>
                 <li><strong>Mechanism:</strong> Underbody hydraulic hoist / Front end</li>
               </ul>
               <div class="product-footer">
@@ -264,7 +300,7 @@
           </div>
 
           <!-- Rock Body Tipper -->
-          <div class="product-card">
+          <div class="product-card" data-category="tipper">
             <div class="product-img-wrap">
               <img src="assets/rock_body_tipper.jpg" alt="Rock Body Tipper" class="product-img">
               <div class="product-overlay">
@@ -272,17 +308,138 @@
               </div>
             </div>
             <div class="product-body">
-              <h3>Rock Body Tipper</h3>
-              <p class="product-desc">Extreme-durability heavy tipper utilizing certified Hardox wear plate for mining operations.</p>
+              <h3>Rock Body Tipper (Hardox 450)</h3>
+              <p class="product-desc">Severe-duty mining tipper constructed with certified Hardox 450 wear plate steel to withstand rock dumping impact.</p>
               <ul class="product-specs-list">
-                <li><strong>Steel:</strong> Hardox 450 Grade certified</li>
+                <li><strong>Steel Grade:</strong> Certified Hardox 450 wear steel</li>
                 <li><strong>Floor:</strong> 10mm high-impact wear steel</li>
-                <li><strong>Breakers:</strong> Tailored rock breakers integrated</li>
-                <li><strong>Application:</strong> Heavy mining, rock, iron ore</li>
+                <li><strong>Breakers:</strong> Integrated rock breakers & canopy</li>
+                <li><strong>Application:</strong> Iron ore, mining, quarrying</li>
               </ul>
               <div class="product-footer">
                 <span class="price-indicator">Base Price: ₹11,50,000</span>
                 <button class="btn btn-outline btn-sm configure-product-btn" data-product="rockbody">Configure</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 28 Feet Rigid Load Body -->
+          <div class="product-card" data-category="rigid">
+            <div class="product-img-wrap">
+              <img src="assets/rigid_load_body.jpg" alt="28 Feet Rigid Load Body" class="product-img">
+              <div class="product-overlay">
+                <button class="btn btn-primary configure-product-btn" data-product="rigid28">Configure & Quote</button>
+              </div>
+            </div>
+            <div class="product-body">
+              <h3>28 Feet Rigid Load Body</h3>
+              <p class="product-desc">Precision-fabricated commercial load body for 28ft rigid chassis trucks, providing high payload capacity and robust structural rigidity.</p>
+              <ul class="product-specs-list">
+                <li><strong>Dimensions:</strong> 28 Feet Length x 4.0 Feet Height x 98 Inches Width</li>
+                <li><strong>Structure:</strong> Drop side panels & heavy cross runners</li>
+                <li><strong>Floor:</strong> Reinforced heavy MS floor plate</li>
+                <li><strong>Finish:</strong> Industrial polyurethane spray finish</li>
+              </ul>
+              <div class="product-footer">
+                <span class="price-indicator">Base Price: ₹3,80,000</span>
+                <button class="btn btn-outline btn-sm configure-product-btn" data-product="rigid28">Configure</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 30 Feet Rigid Load Body -->
+          <div class="product-card" data-category="rigid">
+            <div class="product-img-wrap">
+              <img src="assets/rigid_load_body.jpg" alt="30 Feet Rigid Load Body" class="product-img">
+              <div class="product-overlay">
+                <button class="btn btn-primary configure-product-btn" data-product="rigid30">Configure & Quote</button>
+              </div>
+            </div>
+            <div class="product-body">
+              <h3>30 Feet Rigid Load Body</h3>
+              <p class="product-desc">Heavy-duty 30ft rigid chassis load body engineered for maximum cubic cargo volume, highway haulage, and long service life.</p>
+              <ul class="product-specs-list">
+                <li><strong>Dimensions:</strong> 30 Feet Length x 4.0 Feet Height x 98 Inches Width</li>
+                <li><strong>Volume:</strong> Maximum cubic freight cargo space</li>
+                <li><strong>Chassis Fit:</strong> Multi-axle commercial rigid trucks</li>
+                <li><strong>Accessories:</strong> Heavy tail locks, mudguards, lights</li>
+              </ul>
+              <div class="product-footer">
+                <span class="price-indicator">Base Price: ₹4,20,000</span>
+                <button class="btn btn-outline btn-sm configure-product-btn" data-product="rigid30">Configure</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Comprehensive Custom Engineering & Services Overview Banner -->
+        <div class="custom-services-banner">
+          <div class="grid grid-2-col items-center gap-lg">
+            <div class="custom-services-text">
+              <div class="badge">Services We Provide</div>
+              <h2 class="section-title" style="text-align: left;">Custom Heavy Body Engineering & Manufacturing</h2>
+              <p class="section-desc">Beyond standard catalog models, Nexfra Manufacturing offers complete end-to-end heavy engineering services. We build custom-tailored load bodies to suit any truck chassis brand (Tata, Ashok Leyland, BharatBenz, Volvo, Scania, Eicher, Mahindra).</p>
+              
+              <div class="services-features-list">
+                <div class="service-feat-item">
+                  <div class="service-feat-icon">
+                    <svg viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                  </div>
+                  <div>
+                    <h4>Steel Grade & Thickness Tailoring</h4>
+                    <p>Select between high-tensile ST52 steel and certified Hardox 450 wear plate. Customize floor plates from 4mm up to 10mm and side wall plates from 4mm to 6mm based on payload abrasiveness.</p>
+                  </div>
+                </div>
+
+                <div class="service-feat-item">
+                  <div class="service-feat-icon">
+                    <svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+                  </div>
+                  <div>
+                    <h4>Hydraulics & Axle Suspension Engineering</h4>
+                    <p>High-pressure multi-stage front-end and underbody hydraulic tipping cylinders, PTO drive assemblies, tandem or tridem mechanical leaf spring / air suspensions, and heavy 13T/16T axles.</p>
+                  </div>
+                </div>
+
+                <div class="service-feat-item">
+                  <div class="service-feat-icon">
+                    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                  </div>
+                  <div>
+                    <h4>Custom Accessories & Fitment Add-ons</h4>
+                    <p>GPS tracking systems, rear safety cameras, hydraulic loading ramps, extra heavy-duty toolboxes, specialized side hooks, marker light packages, and custom corporate polyurethane spray painting.</p>
+                  </div>
+                </div>
+
+                <div class="service-feat-item">
+                  <div class="service-feat-icon">
+                    <svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                  </div>
+                  <div>
+                    <h4>Automated Fabrication Quality Assurance</h4>
+                    <p>100% ARAI, BIS, and Motor Vehicle Rules compliant. Every body undergoes CNC plasma precision cutting (&lt;0.5mm tolerance), robotic submerged arc welding, shot blasting, and ultrasonic testing.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="mt-lg">
+                <a href="#contact" class="btn btn-primary btn-lg">Request Custom Spec Quote</a>
+              </div>
+            </div>
+
+            <div class="custom-services-visual">
+              <div class="custom-spec-box">
+                <h3>Technical Quotation & Engineering Hub</h3>
+                <p>Our internal digital ERP generates accurate technical drawings, itemized specification costing, and factory work orders in seconds.</p>
+                <ul class="spec-highlights">
+                  <li><strong>Product Categories:</strong> Trailers, Tippers, Rigid Load Bodies</li>
+                  <li><strong>Custom Options:</strong> Steel grade, floor thickness, cylinder type, axles</li>
+                  <li><strong>Warranty:</strong> 12-Month standard warranty against manufacturing defects</li>
+                  <li><strong>Sales Helplines:</strong> +91 990594859 / +91 7979074540</li>
+                </ul>
+                <div class="spec-cta">
+                  <button class="btn btn-outline btn-block configure-product-btn" data-product="flatbed">Configure Custom Quotation</button>
+                </div>
               </div>
             </div>
           </div>
@@ -443,7 +600,7 @@
                 <svg class="contact-icon" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                 <div>
                   <h4>Sales Helpline</h4>
-                  <p>+91 44 2838 9922 / +91 98402 12345</p>
+                  <p><a href="tel:+91990594859" style="color: inherit; text-decoration: none;">+91 99059 4859</a> / <a href="tel:+917979074540" style="color: inherit; text-decoration: none;">+91 79790 74540</a></p>
                 </div>
               </div>
               <div class="contact-detail-item">
@@ -470,7 +627,7 @@
                 </div>
                 <div class="form-group">
                   <label for="contact-phone">Phone Number</label>
-                  <input type="tel" id="contact-phone" class="form-control" required placeholder="+91 98765 43210">
+                  <input type="tel" id="contact-phone" class="form-control" required placeholder="+91 99059 4859 / 79790 74540">
                 </div>
               </div>
               <div class="form-group">
@@ -478,17 +635,21 @@
                 <input type="text" id="contact-company" class="form-control" required placeholder="ABC Logistics Pvt Ltd">
               </div>
               <div class="form-group">
-                <label for="contact-product">Product Interest</label>
+                <label for="contact-product">Product / Service Interest</label>
                 <select id="contact-product" class="form-control">
                   <option value="flatbed">Flat Bed Trailer</option>
-                  <option value="tiptrailer">Tip Trailer</option>
+                  <option value="sidewall">Side Wall Trailer</option>
+                  <option value="tiptrailer">Tip Trailer (Tipping Semi-Trailer)</option>
                   <option value="boxbody">Box Body Tipper</option>
-                  <option value="rockbody">Rock Body Tipper</option>
+                  <option value="rockbody">Rock Body Tipper (Hardox 450)</option>
+                  <option value="rigid28">28 Feet Rigid Load Body</option>
+                  <option value="rigid30">30 Feet Rigid Load Body</option>
+                  <option value="custom">Custom Body Engineering & Fabrication</option>
                 </select>
               </div>
               <div class="form-group">
                 <label for="contact-message">Enquiry Details / Requirements</label>
-                <textarea id="contact-message" class="form-control" rows="4" placeholder="Mention volume requirements, thickness modifications, or specific chassis models..."></textarea>
+                <textarea id="contact-message" class="form-control" rows="4" placeholder="Mention payload requirements, steel grade preference, floor thickness, cylinder type, or truck chassis model..."></textarea>
               </div>
               <button type="submit" class="btn btn-primary w-full">Submit Enquiry</button>
             </form>
@@ -509,16 +670,21 @@
           <div class="logo mb-md">
             <span class="logo-accent">NEX</span>FRA
           </div>
-          <p>Nexfra Manufacturing India Pvt. Ltd. represents durability, engineering integrity, and operational transparency in heavy industrial transport fabrication.</p>
+          <p>Nexfra Manufacturing India Pvt. Ltd. represents structural durability, heavy engineering precision, and complete operational transparency in industrial transport fabrication.</p>
+          <p style="margin-top: 10px; font-size: 0.85rem; color: #9CA3AF;">
+            <strong>Sales Helpline:</strong><br>
+            +91 99059 4859 / +91 79790 74540
+          </p>
         </div>
         <div class="footer-col">
-          <h4>Products</h4>
+          <h4>Products & Services</h4>
           <ul>
             <li><a href="#products">Flat Bed Trailers</a></li>
             <li><a href="#products">Side Wall Trailers</a></li>
             <li><a href="#products">Tip Trailers</a></li>
             <li><a href="#products">Box Body Tippers</a></li>
-            <li><a href="#products">Rock Body Tippers</a></li>
+            <li><a href="#products">Rock Body Tippers (Hardox)</a></li>
+            <li><a href="#products">28ft & 30ft Rigid Load Bodies</a></li>
           </ul>
         </div>
         <div class="footer-col">
@@ -527,7 +693,7 @@
             <li><a href="#about">About Nexfra</a></li>
             <li><a href="#process">Manufacturing Setup</a></li>
             <li><a href="#industries">Industries Served</a></li>
-            <li><a href="#contact">Careers in Fabrication</a></li>
+            <li><a href="#contact">Contact & Sales Helplines</a></li>
           </ul>
         </div>
         <div class="footer-col">

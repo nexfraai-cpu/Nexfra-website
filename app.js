@@ -78,6 +78,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     initWebsiteLayout();
     initCounters();
     initEnquiryForm();
+    initProductFilters();
     await initPortalLogin();
     await checkLoginState();
     runIntroAnimations();
@@ -188,6 +189,32 @@ function initEnquiryForm() {
       Logger.error('Enquiry form submission failed', err);
       alert('Failed to submit enquiry. Please try again.');
     }
+  });
+}
+
+function initProductFilters() {
+  const tabs = document.querySelectorAll('.product-filter-btn');
+  const cards = document.querySelectorAll('.product-card');
+  if (!tabs.length) return;
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      const cat = tab.getAttribute('data-category');
+
+      cards.forEach(card => {
+        const cardCat = card.getAttribute('data-category');
+        if (cat === 'all' || cardCat === cat) {
+          card.style.display = 'flex';
+          if (typeof gsap !== 'undefined') {
+            gsap.fromTo(card, { opacity: 0, y: 15 }, { opacity: 1, y: 0, duration: 0.4 });
+          }
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
   });
 }
 
