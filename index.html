@@ -49,7 +49,9 @@
         <a href="#home" class="nav-link active">Home</a>
         <a href="#about" class="nav-link">About</a>
         <a href="#products" class="nav-link">Products</a>
+        <a href="#video-showcase" class="nav-link">Videos</a>
         <a href="#process" class="nav-link">Manufacturing</a>
+        <a href="#gallery" class="nav-link">Gallery</a>
         <a href="#industries" class="nav-link">Industries</a>
         <a href="#contact" class="nav-link">Contact</a>
       </nav>
@@ -77,7 +79,9 @@
       <a href="#home" class="mobile-link">Home</a>
       <a href="#about" class="mobile-link">About</a>
       <a href="#products" class="mobile-link">Products</a>
+      <a href="#video-showcase" class="mobile-link">Videos</a>
       <a href="#process" class="mobile-link">Manufacturing</a>
+      <a href="#gallery" class="mobile-link">Gallery</a>
       <a href="#industries" class="mobile-link">Industries</a>
       <a href="#contact" class="mobile-link">Contact</a>
       <button class="btn btn-primary w-full" id="open-portal-mobile-btn">
@@ -447,6 +451,49 @@
       </div>
     </section>
 
+    <!-- Video Showcase Section -->
+    <section class="video-showcase-section" id="video-showcase">
+      <div class="container">
+        <div class="section-header text-center">
+          <div class="badge video-badge">Fleet in Action</div>
+          <h2 class="section-title">See Nexfra Heavy Commercial Vehicles in Motion</h2>
+          <p class="section-desc max-w-md mx-auto">Watch live video footage of our custom manufactured heavy-duty trailers, tippers, and rigid chassis load bodies performing in commercial operations across India.</p>
+        </div>
+
+        <div class="video-grid">
+          <!-- Video 1 -->
+          <div class="video-card">
+            <div class="video-wrapper">
+              <video controls preload="metadata" playsinline poster="assets/gallery_img_4.png">
+                <source src="assets/nexfra_fleet_video_1.mp4" type="video/mp4">
+                Your browser does not support HTML5 video.
+              </video>
+            </div>
+            <div class="video-info">
+              <span class="video-badge">Heavy Fleet Action</span>
+              <h3>Commercial Trailer & Tipper Highway Haulage</h3>
+              <p>Live video footage demonstrating high-tensile main beam stability, multi-axle suspension tracking, and heavy cargo transport under real road conditions.</p>
+            </div>
+          </div>
+
+          <!-- Video 2 -->
+          <div class="video-card">
+            <div class="video-wrapper">
+              <video controls preload="metadata" playsinline poster="assets/gallery_img_3.png">
+                <source src="assets/nexfra_fleet_video_2.mp4" type="video/mp4">
+                Your browser does not support HTML5 video.
+              </video>
+            </div>
+            <div class="video-info">
+              <span class="video-badge">Running Vehicle Performance</span>
+              <h3>Rigid Load Body & Tipper Vehicle Performance</h3>
+              <p>On-field performance showcase of custom-fabricated 28ft & 30ft rigid chassis load bodies and hydraulic tipping bodies in operation.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Manufacturing Process -->
     <section class="process-section" id="process">
       <div class="container">
@@ -497,6 +544,79 @@
             <div class="step-content">
               <h3>QC & Suspension Rigging</h3>
               <p>Axles, air braking systems, and suspensions are rigged, followed by load-testing, weld UT checks, and ARAI-compliance inspections.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Manufacturing & Fleet Media Gallery -->
+    <section class="gallery-section" id="gallery">
+      <div class="container">
+        <div class="section-header text-center">
+          <div class="badge">Heavy Engineering Showcase</div>
+          <h2 class="section-title">Manufacturing & Fleet Photo Gallery</h2>
+          <p class="section-desc max-w-md mx-auto">Explore high-definition photos of our heavy engineering fabrication setup, custom steel body construction, and finished vehicle units.</p>
+        </div>
+
+        <div class="gallery-grid">
+          <!-- Gallery Item 1 -->
+          <div class="gallery-item wide">
+            <div class="gallery-img-wrap">
+              <img src="assets/gallery_img_1.png" alt="Heavy Commercial Tipper Body" class="gallery-img">
+              <div class="gallery-overlay">
+                <span class="gallery-tag">Tipper Body Fabrication</span>
+                <h3>Heavy Commercial Tipper & Multi-Stage Hydraulic Hoist</h3>
+                <p>Engineered for high-volume aggregate, sand, and gravel hauling with reinforced floor structure.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gallery Item 2 -->
+          <div class="gallery-item">
+            <div class="gallery-img-wrap">
+              <img src="assets/gallery_img_2.png" alt="Hardox Mining Rock Body" class="gallery-img">
+              <div class="gallery-overlay">
+                <span class="gallery-tag">Mining & Hardox Steel</span>
+                <h3>Severe-Duty Mining Rock Body</h3>
+                <p>Fabricated with certified Hardox 450 wear plate to resist extreme rock dumping impacts.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gallery Item 3 -->
+          <div class="gallery-item">
+            <div class="gallery-img-wrap">
+              <img src="assets/gallery_img_3.png" alt="Rigid Chassis Load Body" class="gallery-img">
+              <div class="gallery-overlay">
+                <span class="gallery-tag">Rigid Chassis Fitment</span>
+                <h3>28ft & 30ft Custom Rigid Load Body</h3>
+                <p>Drop-side load body constructed for maximum cubic freight volume and multi-axle chassis.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gallery Item 4 -->
+          <div class="gallery-item">
+            <div class="gallery-img-wrap">
+              <img src="assets/gallery_img_4.png" alt="Heavy Multi-Axle Trailer Fleet" class="gallery-img">
+              <div class="gallery-overlay">
+                <span class="gallery-tag">Trailer Engineering</span>
+                <h3>High-Tensile Flatbed & Side Wall Trailer Chassis</h3>
+                <p>Submerged arc welded main beams with 3x13T heavy-duty axle suspensions.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Gallery Item 5 -->
+          <div class="gallery-item">
+            <div class="gallery-img-wrap">
+              <img src="assets/gallery_img_5.png" alt="Finished Commercial Vehicle Unit" class="gallery-img">
+              <div class="gallery-overlay">
+                <span class="gallery-tag">Finished Fleet Unit</span>
+                <h3>ARAI Compliant Commercial Vehicle Unit</h3>
+                <p>Dual-coat industrial polyurethane finish matching corporate fleet branding.</p>
+              </div>
             </div>
           </div>
         </div>
