@@ -2637,8 +2637,9 @@ function startNewQuotationWizard() {
   document.getElementById("capacity-custom-input-wrap").style.display = "none";
   document.getElementById("w-custom-capacity-val").value = "";
 
-  // A new quotation starts with a fresh, enabled Save button.
-  resetWizardSaveButton();
+  // A new quotation starts with a fresh, enabled Save button and no stale
+  // overlay/error state from a previous save.
+  resetWizardSaveState();
 
   jumpToWizardStep(1);
 }
@@ -5778,6 +5779,18 @@ function resetWizardSaveButton() {
   btn.innerHTML = _WizardSaveButtonHtml;
 }
 
+// Reset ALL save-side state when a new quotation begins: re-enable the button,
+// clear any leftover overlay / error / retry UI, so a stale state can never
+// block the next save.
+function resetWizardSaveState() {
+  resetWizardSaveButton();
+  setWizardSaveOverlayVisible(false);
+  const errEl = document.getElementById("wizard-save-error");
+  if (errEl) errEl.style.display = "none";
+  const actionsEl = document.getElementById("wizard-save-actions");
+  if (actionsEl) actionsEl.style.display = "none";
+}
+
 function ensureWizardSaveStyles() {
   const id = "wizard-save-styles";
   if (document.getElementById(id)) return;
@@ -6035,7 +6048,9 @@ async function runWizardQuotationSave() {
 }
 
 window.saveWizardQuotation = async function () {
-  if (window._wizardSaveLock) return; // ignore duplicate clicks / Enter / shortcuts
+  // Submission lock: exactly ONE request may ever be in flight. Duplicate
+  // clicks / Enter / shortcuts are ignored until this attempt fully resolves.
+  if (window._wizardSaveLock) return;
   window._wizardSaveLock = true;
 
   // Capture the pristine button HTML once so restores keep the original icon.
@@ -6054,6 +6069,9 @@ window.saveWizardQuotation = async function () {
 
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+  // Holds the backend-returned, fully saved quotation (only used on success).
+  let savedQuote = null;
+
   try {
     renderWizardSaveStepList(0); // Validating quotation
     await wait(160);
@@ -6061,7 +6079,9 @@ window.saveWizardQuotation = async function () {
     await wait(160);
     renderWizardSaveStepList(2); // Waiting for server (during the real request)
 
-    const createdQuote = await runWizardQuotationSave();
+    // The quotation number is NEVER predicted here — it is read from the
+    // object returned by the successful create request below.
+    savedQuote = await runWizardQuotationSave();
 
     renderWizardSaveStepList(3); // Finalizing quotation
     await wait(160);
@@ -6071,28 +6091,38 @@ window.saveWizardQuotation = async function () {
     setWizardSaveButtonState("success");
     await wait(800);
     setWizardSaveOverlayVisible(false);
-
-    // Continue with the existing success flow (notification + approvals page).
-    showToastNotification(
-      `Quotation ${createdQuote.id} saved! Sent to Approval page.`,
-    );
-    switchModule("approvals");
-    if (window.renderApprovalsList) renderApprovalsList("pending");
-  } catch (err) {
-    Logger.error("Save quotation error:", err);
+  } catch (error) {
+    Logger.error("Save quotation error:", error);
     const errorMsg =
-      err.response?.data?.error?.message ||
-      err.message ||
+      error?.response?.data?.error?.message ||
+      error?.message ||
       "Failed to save quotation to server.";
 
-    // 5. Failure → restore button, keep entered values, clear error, allow retry.
+    // 5. Failure → restore button, keep entered values, show error, allow retry.
     setWizardSaveButtonState("idle", originalHtml);
     setWizardSaveError(errorMsg);
     showToastNotification(`Failed to save: ${errorMsg}`, "error");
     // DO NOT navigate away. DO NOT push to STATE.quotations.
-    // Non-blocking overlay remains visible with the retry action.
   } finally {
+    // 3. The lock MUST always be released — after success or failure — exactly
+    // once, so a brand new quotation can always be saved again.
     window._wizardSaveLock = false;
+  }
+
+  // EXACTLY ONE success path, executed AFTER the lock is released and OUTSIDE
+  // the save-error handler. A failure while navigating can therefore never be
+  // mistaken for a save failure (no duplicate toast, no duplicate redirect).
+  if (savedQuote) {
+    try {
+      const savedNumber = savedQuote.id; // read ONLY from the returned quote
+      showToastNotification(
+        `Quotation ${savedNumber} saved! Sent to Approval page.`,
+      );
+      switchModule("approvals");
+      if (window.renderApprovalsList) renderApprovalsList("pending");
+    } catch (navErr) {
+      Logger.error("Post-save navigation failed", navErr);
+    }
   }
 };
 
