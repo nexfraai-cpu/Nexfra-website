@@ -404,6 +404,7 @@ const STAGES = [
 let STATE = {};
 let currentPreviewQuoteId = "";
 let _editState = null;
+let _editLoading = false;
 let _moduleFilters = {};
 let _approvalsFilter = "pending";
 
@@ -4514,16 +4515,41 @@ window.showToastNotification = function (message, type = "success") {
 
 // ===== INLINE QUOTATION EDIT SYSTEM (APPROVALS PAGE) =====
 
-window.editQuotation = function (quoteId) {
+window.editQuotation = async function (quoteId) {
+  if (_editLoading) return;
+
   loadState();
-  const q = STATE.quotations.find(
-    (x) => x.id === quoteId || x._backendId === quoteId,
-  );
-  if (!q) return;
+
+  const container = document.getElementById("approvals-cards-container");
+  _editLoading = true;
+  if (container) {
+    container.innerHTML =
+      '<div style="grid-column:1/-1;text-align:center;padding:48px 20px;color:#94A3B8;font-size:0.9rem;font-weight:600;">Loading quotation…</div>';
+  }
+
+  let q;
+  try {
+    q = await quotationService.getById(quoteId);
+  } catch (err) {
+    Logger.error("Failed to load quotation for edit:", err);
+    _editLoading = false;
+    showToastNotification("Failed to load quotation for editing.", "error");
+    renderApprovalsList(_approvalsFilter || "pending");
+    return;
+  }
+
+  if (!q) {
+    _editLoading = false;
+    showToastNotification("Quotation not found.", "error");
+    renderApprovalsList(_approvalsFilter || "pending");
+    return;
+  }
 
   const template = q.subtype ? WIZARD_PRODUCT_TEMPLATES[q.subtype] : null;
   if (!template) {
+    _editLoading = false;
     showToastNotification("Product template not found.", "error");
+    renderApprovalsList(_approvalsFilter || "pending");
     return;
   }
 
@@ -4567,8 +4593,14 @@ window.editQuotation = function (quoteId) {
     lastConfirmedQty: q.orderQty || 1,
     originalOrderQty: q.orderQty || 1,
     originalTotal: q.total || 0,
+    customItems: (q.customItems || []).map((ci) => ({
+      name: ci.name,
+      qty: ci.qty,
+      price: ci.price,
+    })),
   };
 
+  _editLoading = false;
   renderInlineEditForm(quoteId, template);
 };
 
@@ -4978,6 +5010,7 @@ window.onEditTermsChange = function (val) {
 };
 
 window.cancelEditQuotation = function () {
+  if (_editLoading) return;
   _editState = null;
   renderApprovalsList(_approvalsFilter || "pending");
 };
