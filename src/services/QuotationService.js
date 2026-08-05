@@ -194,8 +194,10 @@ export class QuotationService {
       id: sv.specKey,
       name: sv.specName || sv.specKey,
       section: sv.section || 'General',
-      value: sv.selectedValue ?? '',
+      value: sv.selectedValue ?? sv.customDescription ?? '',
       isNotRequired: !!sv.isNotRequired,
+      customDescription: sv.customDescription ?? null,
+      customPrice: sv.customPrice != null ? Number(sv.customPrice) : null,
     }));
     return legacy;
   }

@@ -4563,12 +4563,34 @@ window.editQuotation = async function (quoteId) {
     rigid30: "rigid",
   };
 
-  const initialSpecs = JSON.parse(JSON.stringify(q.specs || {}));
+  const specs = [];
+  const seenSpecs = {};
+  (q.specList || []).forEach(function (sv) {
+    if (!sv || !sv.id) return;
+    seenSpecs[sv.id] = true;
+    specs.push({
+      id: sv.id,
+      name: sv.name,
+      section: sv.section || "General",
+      value: sv.value,
+      isNotRequired: !!sv.isNotRequired,
+      customDescription: sv.customDescription ?? null,
+      customPrice: sv.customPrice != null ? Number(sv.customPrice) : null,
+    });
+  });
   if (template && template.specs) {
-    template.specs.forEach((s) => {
-      if (initialSpecs[s.id] === undefined || initialSpecs[s.id] === null) {
-        initialSpecs[s.id] = s.defaultValue || (s.options && s.options[0]) || "Standard";
-      }
+    template.specs.forEach(function (s) {
+      if (seenSpecs[s.id]) return;
+      specs.push({
+        id: s.id,
+        name: s.name,
+        section: s.section || "General",
+        value:
+          s.defaultValue || (s.options && s.options[0]) || "Standard",
+        isNotRequired: false,
+        customDescription: null,
+        customPrice: null,
+      });
     });
   }
 
@@ -4577,33 +4599,24 @@ window.editQuotation = async function (quoteId) {
     subtype: q.subtype,
     capacity: q.capacity || "NA",
     category: categoryMap[q.subtype] || "",
-    specs: initialSpecs,
-    notRequired: JSON.parse(JSON.stringify(q.notRequired || {})),
+    specs: specs,
     model: q.model || "Commercial Vehicle",
     customerName: q.customerName || "",
     date: q.date || new Date().toISOString().split("T")[0],
     total: q.total || 0,
     manualTotal: null,
+    gstRate: q.gstRate != null ? q.gstRate : 18,
     dimensions: JSON.parse(
       JSON.stringify(q.dimensions || template.dimensions || {}),
     ),
     scopeOfWork: q.scopeOfWork || "As Mentioned above",
     terms: q.terms ? q.terms.slice() : [],
     orderQty: q.orderQty || 1,
-    lastConfirmedQty: q.orderQty || 1,
-    originalQty: q.orderQty || 1,
-    originalTotal: q.total || 0,
+    qtySnapshot: { qty: q.orderQty || 1, total: q.total || 0 },
     customItems: (q.customItems || []).map((ci) => ({
       name: ci.name,
       qty: ci.qty,
       price: ci.price,
-    })),
-    specList: (q.specList || []).map((sv) => ({
-      id: sv.id,
-      name: sv.name,
-      section: sv.section || "General",
-      value: sv.value,
-      isNotRequired: !!sv.isNotRequired,
     })),
   };
 
@@ -4634,22 +4647,26 @@ function renderInlineEditForm(quoteId, template) {
 
   const specOrder = [];
   const specGroups = {};
-  (e.specList || []).forEach(function (sv) {
-    if (!sv || !sv.id) return;
-    const section = sv.section || "General";
+  (e.specs || []).forEach(function (spec) {
+    if (!spec || !spec.id) return;
+    const section = spec.section || "General";
     if (!specGroups[section]) {
       specGroups[section] = [];
       specOrder.push(section);
     }
-    const def = templateDefs[sv.id] || {};
+    const def = templateDefs[spec.id] || {};
     specGroups[section].push({
-      id: sv.id,
-      name: sv.name || def.name || sv.id,
+      id: spec.id,
+      name: spec.name || def.name || spec.id,
       section: section,
       type: def.type || "text",
       options: def.options,
       priceDiffs: def.priceDiffs,
       defaultValue: def.defaultValue,
+      value: spec.value,
+      isNotRequired: !!spec.isNotRequired,
+      customDescription: spec.customDescription,
+      customPrice: spec.customPrice,
     });
   });
 
@@ -4817,11 +4834,12 @@ function escHtml(s) {
 }
 
 function buildEditSpecControl(spec) {
-  const e = _editState;
-  if (!e) return "";
-  const isNr = !!e.notRequired[spec.id];
+  if (!_editState) return "";
+  const isNr = !!spec.isNotRequired;
   const selectedVal =
-    e.specs[spec.id] !== undefined ? e.specs[spec.id] : spec.defaultValue || "";
+    spec.value !== undefined && spec.value !== null
+      ? spec.value
+      : spec.defaultValue || "";
   const rawOpts =
     spec.options && spec.options.length
       ? spec.options
@@ -4936,12 +4954,16 @@ function buildEditSpecControl(spec) {
 }
 
 window.onEditSpecChange = function (id, val) {
-  if (_editState) _editState.specs[id] = val;
+  if (!_editState) return;
+  const spec = (_editState.specs || []).find((s) => s.id === id);
+  if (spec) spec.value = val;
 };
 
 window.onEditToggleNr = function (id) {
   if (!_editState) return;
-  _editState.notRequired[id] = !_editState.notRequired[id];
+  const spec = (_editState.specs || []).find((s) => s.id === id);
+  if (!spec) return;
+  spec.isNotRequired = !spec.isNotRequired;
   const t = WIZARD_PRODUCT_TEMPLATES[_editState.subtype];
   if (t) renderInlineEditForm(_editState.quoteId, t);
 };
@@ -4993,8 +5015,8 @@ window.saveEditQty = function () {
   if (!inp) return;
   const newQty = parseInt(inp.value, 10) || 1;
 
-  const originalQty = _editState.originalOrderQty || 1;
-  const originalTotal = _editState.originalTotal || _editState.total || 0;
+  const originalQty = _editState.qtySnapshot.qty || 1;
+  const originalTotal = _editState.qtySnapshot.total || _editState.total || 0;
   const gstRate = _editState.gstRate || 18;
 
   _editState.orderQty = newQty;
@@ -5024,8 +5046,6 @@ window.saveEditQty = function () {
       btn.disabled = false;
     }, 2000);
   }
-  _editState.lastConfirmedQty = newQty;
-
   if (typeof showToastNotification === "function") {
     showToastNotification(
       "Qty updated to " +
@@ -5062,6 +5082,16 @@ window.saveEditQuotation = async function (showPdf) {
 
   const backendId = q._backendId || q.id;
 
+  const editSpecs = {};
+  const editNotRequired = {};
+  (e.specs || []).forEach(function (s) {
+    if (!s) return;
+    editSpecs[s.id] = s.value !== undefined && s.value !== null ? s.value : "";
+    if (s.customDescription) editSpecs[s.id + "_custom_desc"] = s.customDescription;
+    if (s.customPrice != null) editSpecs[s.id + "_custom_price"] = s.customPrice;
+    if (s.isNotRequired) editNotRequired[s.id] = true;
+  });
+
   try {
     const updated = await quotationService.update(backendId, {
       customerName: e.customerName || q.customerName,
@@ -5071,8 +5101,8 @@ window.saveEditQuotation = async function (showPdf) {
       scopeOfWork: e.scopeOfWork || q.scopeOfWork,
       terms: e.terms || q.terms,
       dimensions: e.dimensions || q.dimensions,
-      specs: (e.specs && Object.keys(e.specs).length > 0) ? e.specs : (q.specs || {}),
-      notRequired: e.notRequired || q.notRequired || {},
+      specs: Object.keys(editSpecs).length > 0 ? editSpecs : (q.specs || {}),
+      notRequired: Object.keys(editNotRequired).length > 0 ? editNotRequired : (q.notRequired || {}),
       subtype: e.subtype || q.subtype,
       customItems: e.customItems || q.customItems || [],
     });
