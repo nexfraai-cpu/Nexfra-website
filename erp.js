@@ -4618,7 +4618,11 @@ window.editQuotation = async function (quoteId) {
     scopeOfWork: q.scopeOfWork || "As Mentioned above",
     terms: q.terms ? q.terms.slice() : [],
     orderQty: q.orderQty || 1,
-    qtySnapshot: { qty: q.orderQty || 1, total: q.total || 0 },
+    qtySnapshot: {
+      qty: q.orderQty || 1,
+      total: q.total || 0,
+      gst: q.gstRate != null ? q.gstRate : 18,
+    },
     customItems: (q.customItems || []).map((ci) => ({
       name: ci.name,
       qty: ci.qty,
@@ -4792,17 +4796,17 @@ function renderInlineEditForm(quoteId, template) {
     '<div style="display:flex;gap:6px;align-items:center;"><input type="number" id="e-price-input" class="form-control" placeholder="Use calculated" value="' +
     (e.total || "") +
     '" oninput="onEditPriceChange(this.value)" style="flex:1;font-weight:700;">' +
-    "<button type=\"button\" onclick=\"document.getElementById('e-price-input').value='';onEditPriceChange('')\" style=\"background:none;border:1px solid #CBD5E1;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.75rem;font-weight:600;color:#64748B;\">\u2715 Reset</button></div>" +
+    "<button type=\"button\" id=\"e-price-reset-btn\" onclick=\"resetEditPrice()\" style=\"background:none;border:1px solid #CBD5E1;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.75rem;font-weight:600;color:#64748B;\">\u2715 Reset</button></div>" +
     '<small style="color:#94A3B8;font-size:0.7rem;">Leave empty for auto-calculated price</small></div>' +
     '<div style="min-width:100px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">GST (%)</label>' +
     '<input type="number" id="e-gst-input" class="form-control" value="' +
     (e.gstRate || 18) +
     '" oninput="onEditGstChange(this.value)" min="0" max="100" step="0.1" style="font-weight:700;width:90px;"></div>' +
     '<div style="min-width:100px;"><label style="font-size:0.75rem;font-weight:700;color:#334155;margin-bottom:4px;display:block;">Vehicles</label>' +
-    '<div style="display:flex;gap:4px;align-items:center;"><input type="number" id="e-qty-input" class="form-control" value="' +
+    '<input type="number" id="e-qty-input" class="form-control" value="' +
     (e.orderQty || 1) +
-    '" oninput="onEditQtyChange(this.value)" min="1" step="1" style="font-weight:700;width:65px;">' +
-    '<button type="button" id="e-qty-save-btn" onclick="saveEditQty()" style="background:#0284C7;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.7rem;font-weight:600;color:white;white-space:nowrap;">Save</button></div></div>' +
+    '" oninput="onEditQtyChange(this.value)" min="1" step="1" style="font-weight:700;width:90px;">' +
+    '</div>' +
     '<div style="padding:12px 24px;background:#F0FDF4;border-radius:8px;border:1px solid #BBF7D0;text-align:center;">' +
     '<span style="font-size:0.7rem;font-weight:600;color:#059669;display:block;">Final Price</span>' +
     '<span id="e-price-display" style="font-size:1.3rem;font-weight:800;color:#059669;">\u20B9' +
@@ -4826,8 +4830,10 @@ function renderInlineEditForm(quoteId, template) {
     '<div style="display:flex;justify-content:flex-end;gap:12px;padding:16px 20px;background:#F8FAFC;border-top:1px solid #E2E8F0;">' +
     '<button onclick="cancelEditQuotation()" class="btn btn-secondary" style="font-weight:700;padding:10px 24px;">Cancel</button>' +
     '<button onclick="saveEditQuotation(true)" class="btn btn-primary" style="font-weight:700;padding:10px 24px;background:#0284C7;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(2,132,199,0.2);">\uD83D\uDCC4 Save &amp; View PDF</button>' +
-    '<button onclick="saveEditQuotation()" class="btn btn-primary" style="font-weight:700;padding:10px 24px;background:#059669;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(5,150,105,0.2);">\u2713 Save Changes</button>' +
+    '<button onclick="saveEditQuotation()" id="e-save-changes-btn" class="btn btn-primary" style="font-weight:700;padding:10px 24px;background:#059669;color:white;border:none;border-radius:6px;cursor:pointer;display:flex;align-items:center;gap:6px;box-shadow:0 2px 4px rgba(5,150,105,0.2);">\u2713 Save Changes</button>' +
     "</div></div>";
+
+  updateEditPriceDisplay();
 }
 
 function escHtml(s) {
@@ -4988,79 +4994,56 @@ window.onEditDim = function (dim) {
 window.onEditPriceChange = function (val) {
   if (!_editState) return;
   _editState.manualTotal = val !== "" && val !== null ? parseFloat(val) : null;
-  const d = document.getElementById("e-price-display");
-  if (d) {
-    const t =
-      _editState.manualTotal !== null
-        ? _editState.manualTotal
-        : _editState.total;
-    d.textContent = "\u20B9" + (t || 0).toLocaleString("en-IN");
-  }
+  updateEditPriceDisplay();
 };
 
 window.onEditGstChange = function (val) {
   if (!_editState) return;
   _editState.gstRate = val !== "" && val !== null ? parseFloat(val) : 18;
+  updateEditPriceDisplay();
 };
 
 window.onEditQtyChange = function (val) {
   if (!_editState) return;
   _editState.orderQty = val !== "" && val !== null ? parseInt(val, 10) || 1 : 1;
-  const btn = document.getElementById("e-qty-save-btn");
-  if (btn) {
-    btn.disabled = false;
-    btn.textContent = "Save";
-    btn.style.background = "#0284C7";
-    btn.style.color = "#ffffff";
-  }
+  updateEditPriceDisplay();
 };
 
-window.saveEditQty = function () {
+window.resetEditPrice = function () {
   if (!_editState) return;
-  const inp = document.getElementById("e-qty-input");
-  if (!inp) return;
-  const newQty = parseInt(inp.value, 10) || 1;
-
-  const originalQty = _editState.qtySnapshot.qty || 1;
-  const originalTotal = _editState.qtySnapshot.total || _editState.total || 0;
-  const gstRate = _editState.gstRate || 18;
-
-  _editState.orderQty = newQty;
-
-  const oldBasic = Math.round(originalTotal / (1 + gstRate / 100));
-  const unitBasicPrice = oldBasic / originalQty;
-  const newBasic = Math.round(unitBasicPrice * newQty);
-  const newGst = Math.round((newBasic * gstRate) / 100);
-  const newTotal = newBasic + newGst;
-
-  _editState.total = newTotal;
   _editState.manualTotal = null;
-
-  const d = document.getElementById("e-price-display");
-  if (d) d.textContent = "\u20B9" + newTotal.toLocaleString("en-IN");
-
-  const btn = document.getElementById("e-qty-save-btn");
-  if (btn) {
-    btn.textContent = "Saved \u2713";
-    btn.style.background = "#10B981";
-    btn.style.color = "#ffffff";
-    btn.disabled = true;
-    setTimeout(function () {
-      btn.textContent = "Save";
-      btn.style.background = "#0284C7";
-      btn.style.color = "#ffffff";
-      btn.disabled = false;
-    }, 2000);
-  }
-  if (typeof showToastNotification === "function") {
-    showToastNotification(
-      "Qty updated to " +
-        newQty +
-        ", total recalculated to \u20B9" +
-        newTotal.toLocaleString("en-IN")
-    );
-  }
+  const inp = document.getElementById("e-price-input");
+  if (inp) inp.value = "";
+  updateEditPriceDisplay();
 };
+
+function computeEditDisplayPrice() {
+  const e = _editState;
+  if (!e) return 0;
+  if (e.manualTotal != null) return Number(e.manualTotal) || 0;
+  const qty = e.orderQty || 1;
+  const gst = e.gstRate || 18;
+  const snap = e.qtySnapshot || {};
+  const snapQty = snap.qty || 1;
+  const snapTotal = snap.total || e.total || 0;
+  const snapGst = snap.gst != null ? snap.gst : 18;
+  if (snapQty <= 0 || snapTotal <= 0) return e.total || 0;
+  const unitBasic = snapTotal / (1 + snapGst / 100) / snapQty;
+  return Math.round(unitBasic * qty * (1 + gst / 100));
+}
+
+function updateEditPriceDisplay() {
+  if (!_editState) return;
+  const d = document.getElementById("e-price-display");
+  const resetBtn = document.getElementById("e-price-reset-btn");
+  const t = computeEditDisplayPrice();
+  if (d) d.textContent = "\u20B9" + (t || 0).toLocaleString("en-IN");
+  if (resetBtn) {
+    resetBtn.disabled = _editState.manualTotal == null;
+    resetBtn.style.opacity = resetBtn.disabled ? "0.45" : "1";
+    resetBtn.style.cursor = resetBtn.disabled ? "not-allowed" : "pointer";
+  }
+}
 
 window.onEditScopeChange = function (val) {
   if (_editState) _editState.scopeOfWork = val;
@@ -5116,7 +5099,21 @@ function setEditInputsDisabled(disabled) {
   });
 }
 
+function ensureEditStyles() {
+  if (document.getElementById("edit-polish-styles")) return;
+  const style = document.createElement("style");
+  style.id = "edit-polish-styles";
+  style.textContent =
+    ".edit-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:currentColor;border-radius:50%;animation:edit-spin .6s linear infinite;vertical-align:-2px;}" +
+    "@keyframes edit-spin{to{transform:rotate(360deg)}}" +
+    ".edit-active-spinner{display:inline-block;width:12px;height:12px;border:2px solid rgba(2,132,199,.25);border-top-color:#0284C7;border-radius:50%;animation:edit-spin .6s linear infinite;vertical-align:-1px;}" +
+    ".edit-check-pop{display:inline-flex;width:16px;height:16px;align-items:center;justify-content:center;animation:edit-pop .35s ease;}" +
+    "@keyframes edit-pop{0%{transform:scale(0.3);opacity:0;}100%{transform:scale(1);opacity:1;}}";
+  document.head.appendChild(style);
+}
+
 function ensureEditSavingOverlay() {
+  ensureEditStyles();
   let ov = document.getElementById("edit-saving-overlay");
   if (!ov) {
     ov = document.createElement("div");
@@ -5155,8 +5152,13 @@ function renderEditSavingSteps(activeIndex) {
       prefix = "\u2713";
       color = "#059669";
     } else if (i === activeIndex) {
-      prefix = "\u25CF";
-      color = "#0284C7";
+      if (i === steps.length - 1) {
+        prefix =
+          '<span class="edit-check-pop"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12l5 5 11-11" stroke="#059669" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+      } else {
+        prefix = '<span class="edit-active-spinner"></span>';
+      }
+      color = i === steps.length - 1 ? "#059669" : "#0284C7";
     } else {
       prefix = "\u25CB";
       color = "#CBD5E1";
@@ -5195,6 +5197,11 @@ window.saveEditQuotation = async function (showPdf) {
   ensureEditSavingOverlay();
   setEditSavingVisible(true);
   renderEditSavingSteps(0);
+  const saveBtn = document.getElementById("e-save-changes-btn");
+  if (saveBtn) {
+    saveBtn.innerHTML = '<span class="edit-spinner"></span> Saving\u2026';
+    saveBtn.disabled = true;
+  }
   await new Promise(function (r) {
     setTimeout(r, 80);
   });
