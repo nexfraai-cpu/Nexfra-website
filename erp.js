@@ -2637,6 +2637,9 @@ function startNewQuotationWizard() {
   document.getElementById("capacity-custom-input-wrap").style.display = "none";
   document.getElementById("w-custom-capacity-val").value = "";
 
+  // A new quotation starts with a fresh, enabled Save button.
+  resetWizardSaveButton();
+
   jumpToWizardStep(1);
 }
 
@@ -5752,145 +5755,324 @@ function renderPdfFromQuote(quote, client) {
   document.getElementById("pdf-preview-modal").classList.add("active");
 }
 
-window.saveWizardQuotation = async function () {
-  try {
-    loadState();
+// Frontend submission lock: guarantees ONLY ONE save request can ever be in
+// flight, regardless of double-clicks, Enter key, or repeated shortcut triggers.
+window._wizardSaveLock = false;
 
-    if (typeof calculateWizardPricing === "function") {
-      calculateWizardPricing();
-    }
+let _WizardSaveButtonHtml = null;
+function getWizardSaveButtonHtml() {
+  if (!_WizardSaveButtonHtml) {
+    const btn = document.getElementById("w-save-quotation-btn");
+    if (btn) _WizardSaveButtonHtml = btn.innerHTML;
+  }
+  return _WizardSaveButtonHtml || "Save Quotation Registry";
+}
 
-    // Robust customer data capture from form or state
-    if (!wizardState.customer) wizardState.customer = {};
+// Restore the save button so a fresh quotation can be saved again after a
+// previous save (e.g. when a new wizard is started).
+function resetWizardSaveButton() {
+  const btn = document.getElementById("w-save-quotation-btn");
+  if (!btn) return;
+  if (!_WizardSaveButtonHtml) _WizardSaveButtonHtml = btn.innerHTML;
+  btn.disabled = false;
+  btn.innerHTML = _WizardSaveButtonHtml;
+}
 
-    const nameVal =
-      (document.getElementById("w-cust-name")?.value || "").trim() ||
-      wizardState.customer.name ||
-      "Valued Client";
-    const companyVal =
-      (document.getElementById("w-cust-company")?.value || "").trim() ||
-      wizardState.customer.company ||
-      nameVal;
-    const phoneVal =
-      (document.getElementById("w-cust-phone")?.value || "").trim() ||
-      wizardState.customer.phone ||
-      "";
-    const emailVal =
-      (document.getElementById("w-cust-email")?.value || "").trim() ||
-      wizardState.customer.email ||
-      "";
-    const addressVal =
-      (document.getElementById("w-cust-address")?.value || "").trim() ||
-      wizardState.customer.address ||
-      "";
-    const dateVal =
-      document.getElementById("w-cust-date")?.value ||
-      wizardState.customer.date ||
-      new Date().toISOString().split("T")[0];
+function ensureWizardSaveStyles() {
+  const id = "wizard-save-styles";
+  if (document.getElementById(id)) return;
+  const style = document.createElement("style");
+  style.id = id;
+  style.textContent =
+    ".wz-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:currentColor;border-radius:50%;animation:wz-spin .6s linear infinite;vertical-align:-2px;}" +
+    "@keyframes wz-spin{to{transform:rotate(360deg)}}" +
+    ".wz-active-spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(2,132,199,.25);border-top-color:#0284C7;border-radius:50%;animation:wz-spin .6s linear infinite;vertical-align:-1px;}";
+  document.head.appendChild(style);
+}
 
-    wizardState.customer = {
-      name: nameVal,
-      company: companyVal,
-      phone: phoneVal,
-      email: emailVal,
-      address: addressVal,
-      date: dateVal,
-      model: wizardState.customer.model || "Commercial Vehicle",
-    };
+function ensureWizardSaveOverlay() {
+  ensureWizardSaveStyles();
+  let ov = document.getElementById("wizard-save-overlay");
+  if (!ov) {
+    ov = document.createElement("div");
+    ov.id = "wizard-save-overlay";
+    ov.style.cssText = "position:fixed;inset:0;z-index:999999;display:none;align-items:center;justify-content:center;pointer-events:none;";
+    ov.innerHTML =
+      '<div style="pointer-events:auto;background:#ffffff;border-radius:12px;padding:20px 24px;min-width:340px;box-shadow:0 12px 40px rgba(0,0,0,0.18);border:1px solid #E2E8F0;">' +
+      '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">' +
+      '<span class="wz-active-spinner" id="wizard-save-spin"></span>' +
+      '<span id="wizard-save-title" style="font-size:0.95rem;font-weight:800;color:var(--color-text-dark);">Saving quotation…</span>' +
+      "</div>" +
+      '<div id="wizard-save-steps"></div>' +
+      '<div id="wizard-save-error" style="display:none;margin-top:12px;padding:10px 12px;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;color:#B91C1C;font-size:0.8rem;font-weight:600;"></div>' +
+      '<div id="wizard-save-actions" style="margin-top:14px;text-align:right;display:none;"></div>' +
+      "</div>";
+    document.body.appendChild(ov);
+  }
+  return ov;
+}
 
-    const c = wizardState.customer;
-    const subtype = wizardState.subtype || "flatbed";
-    const template =
-      WIZARD_PRODUCT_TEMPLATES[subtype] || WIZARD_PRODUCT_TEMPLATES["flatbed"];
+function setWizardSaveError(errorMsg) {
+  const errEl = document.getElementById("wizard-save-error");
+  const actionsEl = document.getElementById("wizard-save-actions");
+  if (errEl) {
+    errEl.style.display = "block";
+    errEl.textContent = errorMsg || "Failed to save quotation to server.";
+  }
+  // Provide a manual retry (lock is released, so a fresh request is allowed).
+  if (actionsEl) {
+    actionsEl.style.display = "block";
+    actionsEl.innerHTML =
+      '<button type="button" class="btn btn-outline btn-sm" onclick="saveWizardQuotation()" style="font-weight:700;">Retry save</button>';
+  }
+}
 
-    // Generate sequential quotation REF number (e.g. CR/001/2026)
-    STATE.quotationCounter = (STATE.quotationCounter || 0) + 1;
-    const quoteId = generateRefNumber(c.name, STATE.quotationCounter);
-
-    // 1. Create/Update Client Profile
-    if (!STATE.customers) STATE.customers = [];
-    let client = STATE.customers.find(
-      (x) =>
-        x.company &&
-        x.company.toLowerCase() === (c.company || "").toLowerCase(),
-    );
-    if (!client) {
-      try {
-        client = await customerService.create({
-          name: c.name,
-          company: c.company,
-          phone: c.phone,
-          email: c.email,
-          address: c.address,
-        });
-        STATE.customers.push(client);
-      } catch (custErr) {
-        client = {
-          id: null,
-          name: c.name,
-          company: c.company,
-          phone: c.phone,
-          email: c.email,
-          address: c.address,
-        };
+function renderWizardSaveStepList(activeIndex) {
+  const container = document.getElementById("wizard-save-steps");
+  if (!container) return;
+  const steps = [
+    "Validating quotation",
+    "Saving quotation",
+    "Waiting for server",
+    "Finalizing quotation",
+    "Quotation saved successfully",
+  ];
+  let html = "";
+  steps.forEach(function (label, i) {
+    let prefix, color;
+    if (i < activeIndex) {
+      prefix = "\u2713";
+      color = "#059669";
+    } else if (i === activeIndex) {
+      if (i === steps.length - 1) {
+        prefix = "\u2713";
+        color = "#059669";
+      } else {
+        prefix = '<span class="wz-active-spinner"></span>';
+        color = "#0284C7";
       }
-    }
-
-    // 2. Build quotation payload
-    const quotePayload = {
-      customerId: client.id || null,
-      customerName: client.company || client.name,
-      model: wizardState.customer.model || "Commercial Vehicle",
-      productName: template ? template.name : "Custom Trailer",
-      productKey: wizardState.category || "trailer",
-      templateKey: subtype,
-      date: c.date,
-      total: wizardState.total || (template ? template.basePrice : 520000),
-      status: "Pending Approval",
-      specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
-      notRequired: JSON.parse(JSON.stringify(wizardState.notRequired || {})),
-      capacity: wizardState.capacity || "NA",
-      dimensions: {
-        length:
-          document.getElementById("w-dim-length")?.value ||
-          template?.dimensions?.length,
-        height:
-          document.getElementById("w-dim-height")?.value ||
-          template?.dimensions?.height,
-        width:
-          document.getElementById("w-dim-width")?.value ||
-          template?.dimensions?.width,
-      },
-      scopeOfWork: wizardState.scopeOfWork || "As Mentioned above",
-      terms: wizardState.terms || [],
-      orderQty: wizardState.orderQty || 1,
-      bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {})),
-    };
-
-    // 3. Synchronous REST API creation call to Supabase backend
-    const createdQuote = await quotationService.create(quotePayload);
-    const submittedQuote = await quotationService.submit(
-      createdQuote._backendId,
-    );
-    const finalQuote = submittedQuote;
-
-    // 4. Update STATE only upon API SUCCESS
-    if (!STATE.quotations) STATE.quotations = [];
-    const idx = STATE.quotations.findIndex(
-      (q) =>
-        q._backendId === createdQuote._backendId || q.id === createdQuote.id,
-    );
-    if (idx >= 0) {
-      STATE.quotations[idx] = createdQuote;
     } else {
-      STATE.quotations.push(createdQuote);
+      prefix = "\u25CB";
+      color = "#CBD5E1";
     }
+    html +=
+      '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;color:' +
+      color +
+      ";font-size:0.84rem;font-weight:600;" +
+      '">' +
+      prefix +
+      " " +
+      escHtml(label) +
+      "</div>";
+  });
+  container.innerHTML = html;
+}
 
-    logSystemActivity(
-      `Quotation ${createdQuote.id} created & saved to database.`,
-    );
-    saveState();
+function setWizardSaveOverlayVisible(visible) {
+  const ov = document.getElementById("wizard-save-overlay");
+  if (ov) ov.style.display = visible ? "flex" : "none";
+}
 
+function setWizardSaveButtonState(state, originalHtml) {
+  const btn = document.getElementById("w-save-quotation-btn");
+  if (!btn) return;
+  if (state === "busy") {
+    btn.disabled = true;
+    btn.innerHTML =
+      '<span class="wz-spinner"></span> Saving quotation\u2026';
+  } else if (state === "success") {
+    btn.disabled = true;
+    btn.innerHTML =
+      '<span style="color:#059669;">\u2713</span> Quotation Saved Successfully';
+  } else {
+    // idle / error → restore the original button (values remain in the form)
+    btn.disabled = false;
+    btn.innerHTML = originalHtml || "Save Quotation Registry";
+  }
+}
+
+async function runWizardQuotationSave() {
+  // Original quotation generation logic. Kept EXACTLY as before — only the
+  // surrounding save UX is managed by saveWizardQuotation() below.
+  loadState();
+
+  if (typeof calculateWizardPricing === "function") {
+    calculateWizardPricing();
+  }
+
+  // Robust customer data capture from form or state
+  if (!wizardState.customer) wizardState.customer = {};
+
+  const nameVal =
+    (document.getElementById("w-cust-name")?.value || "").trim() ||
+    wizardState.customer.name ||
+    "Valued Client";
+  const companyVal =
+    (document.getElementById("w-cust-company")?.value || "").trim() ||
+    wizardState.customer.company ||
+    nameVal;
+  const phoneVal =
+    (document.getElementById("w-cust-phone")?.value || "").trim() ||
+    wizardState.customer.phone ||
+    "";
+  const emailVal =
+    (document.getElementById("w-cust-email")?.value || "").trim() ||
+    wizardState.customer.email ||
+    "";
+  const addressVal =
+    (document.getElementById("w-cust-address")?.value || "").trim() ||
+    wizardState.customer.address ||
+    "";
+  const dateVal =
+    document.getElementById("w-cust-date")?.value ||
+    wizardState.customer.date ||
+    new Date().toISOString().split("T")[0];
+
+  wizardState.customer = {
+    name: nameVal,
+    company: companyVal,
+    phone: phoneVal,
+    email: emailVal,
+    address: addressVal,
+    date: dateVal,
+    model: wizardState.customer.model || "Commercial Vehicle",
+  };
+
+  const c = wizardState.customer;
+  const subtype = wizardState.subtype || "flatbed";
+  const template =
+    WIZARD_PRODUCT_TEMPLATES[subtype] || WIZARD_PRODUCT_TEMPLATES["flatbed"];
+
+  // Generate sequential quotation REF number (e.g. CR/001/2026)
+  STATE.quotationCounter = (STATE.quotationCounter || 0) + 1;
+  const quoteId = generateRefNumber(c.name, STATE.quotationCounter);
+
+  // 1. Create/Update Client Profile
+  if (!STATE.customers) STATE.customers = [];
+  let client = STATE.customers.find(
+    (x) =>
+      x.company &&
+      x.company.toLowerCase() === (c.company || "").toLowerCase(),
+  );
+  if (!client) {
+    try {
+      client = await customerService.create({
+        name: c.name,
+        company: c.company,
+        phone: c.phone,
+        email: c.email,
+        address: c.address,
+      });
+      STATE.customers.push(client);
+    } catch (custErr) {
+      client = {
+        id: null,
+        name: c.name,
+        company: c.company,
+        phone: c.phone,
+        email: c.email,
+        address: c.address,
+      };
+    }
+  }
+
+// 2. Build quotation payload
+  const quotePayload = {
+    customerId: client.id || null,
+    customerName: client.company || client.name,
+    model: wizardState.customer.model || "Commercial Vehicle",
+    productName: template ? template.name : "Custom Trailer",
+    productKey: wizardState.category || "trailer",
+    templateKey: subtype,
+    date: c.date,
+    total: wizardState.total || (template ? template.basePrice : 520000),
+    status: "Pending Approval",
+    specs: JSON.parse(JSON.stringify(wizardState.specs || {})),
+    notRequired: JSON.parse(JSON.stringify(wizardState.notRequired || {})),
+    capacity: wizardState.capacity || "NA",
+    dimensions: {
+      length:
+        document.getElementById("w-dim-length")?.value ||
+        template?.dimensions?.length,
+      height:
+        document.getElementById("w-dim-height")?.value ||
+        template?.dimensions?.height,
+      width:
+        document.getElementById("w-dim-width")?.value ||
+        template?.dimensions?.width,
+    },
+    scopeOfWork: wizardState.scopeOfWork || "As Mentioned above",
+    terms: wizardState.terms || [],
+    orderQty: wizardState.orderQty || 1,
+    bankDetails: JSON.parse(JSON.stringify(wizardState.bankDetails || {})),
+  };
+
+  // 3. Synchronous REST API creation call to Supabase backend
+  const createdQuote = await quotationService.create(quotePayload);
+  const submittedQuote = await quotationService.submit(
+    createdQuote._backendId,
+  );
+  const finalQuote = submittedQuote;
+
+  // 4. Update STATE ONLY upon API SUCCESS
+  if (!STATE.quotations) STATE.quotations = [];
+  const idx = STATE.quotations.findIndex(
+    (q) =>
+      q._backendId === createdQuote._backendId || q.id === createdQuote.id,
+  );
+  if (idx >= 0) {
+    STATE.quotations[idx] = createdQuote;
+  } else {
+    STATE.quotations.push(createdQuote);
+  }
+
+  logSystemActivity(
+    `Quotation ${createdQuote.id} created & saved to database.`,
+  );
+  saveState();
+
+  return createdQuote;
+}
+
+window.saveWizardQuotation = async function () {
+  if (window._wizardSaveLock) return; // ignore duplicate clicks / Enter / shortcuts
+  window._wizardSaveLock = true;
+
+  // Capture the pristine button HTML once so restores keep the original icon.
+  const originalHtml = getWizardSaveButtonHtml();
+
+  // 1. Immediate UI feedback on the very first click.
+  setWizardSaveButtonState("busy", originalHtml);
+
+  // 2. Non-blocking progress overlay (async, non-blocking).
+  ensureWizardSaveOverlay();
+  const errEl = document.getElementById("wizard-save-error");
+  const actionsEl = document.getElementById("wizard-save-actions");
+  if (errEl) errEl.style.display = "none";
+  if (actionsEl) actionsEl.style.display = "none";
+  setWizardSaveOverlayVisible(true);
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  try {
+    renderWizardSaveStepList(0); // Validating quotation
+    await wait(160);
+    renderWizardSaveStepList(1); // Saving quotation
+    await wait(160);
+    renderWizardSaveStepList(2); // Waiting for server (during the real request)
+
+    const createdQuote = await runWizardQuotationSave();
+
+    renderWizardSaveStepList(3); // Finalizing quotation
+    await wait(160);
+    renderWizardSaveStepList(4); // ✓ Saved successfully
+
+    // 4. Success state visible ~around for the requested duration.
+    setWizardSaveButtonState("success");
+    await wait(800);
+    setWizardSaveOverlayVisible(false);
+
+    // Continue with the existing success flow (notification + approvals page).
     showToastNotification(
       `Quotation ${createdQuote.id} saved! Sent to Approval page.`,
     );
@@ -5902,11 +6084,15 @@ window.saveWizardQuotation = async function () {
       err.response?.data?.error?.message ||
       err.message ||
       "Failed to save quotation to server.";
-    showToastNotification(`Failed to save quotation: ${errorMsg}`, "error");
-    alert(
-      `Failed to save quotation to server: ${errorMsg}\n\nThe quotation was NOT saved.`,
-    );
-    // DO NOT PUSH TO STATE.quotations! DO NOT RENDER STALE LOCAL DATA!
+
+    // 5. Failure → restore button, keep entered values, clear error, allow retry.
+    setWizardSaveButtonState("idle", originalHtml);
+    setWizardSaveError(errorMsg);
+    showToastNotification(`Failed to save: ${errorMsg}`, "error");
+    // DO NOT navigate away. DO NOT push to STATE.quotations.
+    // Non-blocking overlay remains visible with the retry action.
+  } finally {
+    window._wizardSaveLock = false;
   }
 };
 
