@@ -102,7 +102,12 @@ function toLegacy(q) {
 
 function toBackendCreate(quote) {
   const subtype = quote.subtype || quote.templateKey || null;
-  const manualTotal = typeof quote.manualTotal === 'number' ? quote.manualTotal : null;
+  const manualTotal = typeof quote.manualTotal === 'number'
+    ? quote.manualTotal
+    : (typeof quote.total === 'number' && quote.total > 0 ? quote.total : null);
+  const persistedTotal = !manualTotal && typeof quote.total === 'number'
+    ? quote.total
+    : manualTotal;
 
   return {
     customerId: quote.customerId && !String(quote.customerId).startsWith('CUST-')
