@@ -6792,7 +6792,7 @@ function applyModuleFilter(
 }
 // --- End filter helpers ---
 
-window.renderAllQuotations = function () {
+function renderAllQuotations() {
   loadState();
   const container = document.getElementById("allquotations-cards-container");
   if (!container) return;
@@ -6858,7 +6858,9 @@ window.renderAllQuotations = function () {
     `;
     })
     .join("");
-};
+}
+
+window.renderAllQuotations = renderAllQuotations;
 
 function renderWorkOrders() {
   loadState();
