@@ -99,7 +99,9 @@ export class ProductionService {
   }
 
   async updateItem(item) {
-    if (!item || !item._backendId) return null;
+    if (!item || !item._backendId) {
+      return { ok: false, error: 'No backend item to sync' };
+    }
     const payload = {};
     if (item.progressionMap && typeof item.progressionMap === 'object') {
       payload.productionStages = Object.entries(item.progressionMap)
@@ -114,13 +116,15 @@ export class ProductionService {
     if (item.dispatchedData && typeof item.dispatchedData === 'object') {
       payload.dispatchFields = item.dispatchedData;
     }
-    if (Object.keys(payload).length === 0) return null;
+    if (Object.keys(payload).length === 0) {
+      return { ok: true };
+    }
     try {
       const { data } = await apiClient.put(`/api/production/${item._backendId}`, payload);
-      return data ? toLegacy(data, []) : null;
+      return data ? { ok: true, item: toLegacy(data, []) } : { ok: true };
     } catch (e) {
       console.warn(`[ProductionService] progression sync failed for ${item.id}:`, e.message);
-      return null;
+      return { ok: false, error: e && e.message };
     }
   }
 

@@ -8893,17 +8893,16 @@ window.closeRemarkModal = function () {
   _remarkContext = null;
 };
 
-window.saveRemark = async function () {
+window.saveRemark = function () {
   if (!_remarkContext) return;
   loadState();
-  let prodItem = STATE.productionItems.find(
+  const prodItem = STATE.productionItems.find(
     (p) =>
       p.quoteId === _remarkContext.quoteId || p.id === _remarkContext.quoteId,
   );
-  if (!prodItem) {
-    prodItem = await ensureProductionItem(_remarkContext.quoteId);
-    if (!prodItem) return;
-  }
+  if (!prodItem) return;
+
+  const snapshot = snapshotProductionInteraction(prodItem);
 
   if (!prodItem.remarks) prodItem.remarks = {};
   if (!prodItem.stageRemarks) prodItem.stageRemarks = {};
@@ -8922,22 +8921,12 @@ window.saveRemark = async function () {
     });
   }
 
-  const merged = await productionService.updateItem(prodItem);
-  if (merged) {
-    upsertProductionItemFromBackend(
-      reconcileProductionRemarks(merged, schema),
-    );
-  }
   saveState();
   closeRemarkModal();
-  await refreshProductionFromApi().catch(() => null);
-  const refreshed = STATE.productionItems.find(
-    (p) =>
-      p.quoteId === _remarkContext.quoteId || p.id === _remarkContext.quoteId,
-  );
-  renderOrderProgressionBody(refreshed || prodItem);
+  renderOrderProgressionBody(prodItem);
   renderProductionBoard();
   if (typeof renderWorkOrders === "function") renderWorkOrders();
+  persistProductionInteraction(snapshot);
 };
 
 function renderOrderProgressionBody(prodItem) {
@@ -9124,15 +9113,104 @@ function renderOrderProgressionBody(prodItem) {
   `;
 }
 
-window.toggleEntireSectionDone = async function (quoteId, secId, markDone) {
+function snapshotProductionInteraction(prodItem) {
+  if (!prodItem) return null;
+  const wo = (STATE.workOrders || []).find(
+    (w) =>
+      w.quoteId === prodItem.quoteId ||
+      w._backendQuoteId === prodItem.quoteId ||
+      (prodItem.workOrderId && w._backendId === prodItem.workOrderId),
+  );
+  return {
+    prodItem,
+    progressionMap: Object.assign({}, prodItem.progressionMap || {}),
+    dispatchedData: Object.assign({}, prodItem.dispatchedData || {}),
+    remarks: Object.assign({}, prodItem.remarks || {}),
+    stageRemarks: Object.assign({}, prodItem.stageRemarks || {}),
+    columnStatus: prodItem.columnStatus,
+    progressPct: prodItem.progressPct,
+    wo,
+    woStage: wo ? wo.stage : undefined,
+    woProgress: wo ? wo.progress : undefined,
+  };
+}
+
+function restoreProductionInteraction(snap) {
+  if (!snap) return;
+  const p = snap.prodItem;
+  p.progressionMap = snap.progressionMap;
+  p.dispatchedData = snap.dispatchedData;
+  p.remarks = snap.remarks;
+  p.stageRemarks = snap.stageRemarks;
+  p.columnStatus = snap.columnStatus;
+  p.progressPct = snap.progressPct;
+  if (snap.wo) {
+    snap.wo.stage = snap.woStage;
+    snap.wo.progress = snap.woProgress;
+  }
+  saveState();
+}
+
+function mergeProductionItemFromBackend(localItem, backendLegacy) {
+  if (!localItem || !backendLegacy) return;
+  if (backendLegacy._backendId) localItem._backendId = backendLegacy._backendId;
+  if (backendLegacy.workOrderId) localItem.workOrderId = backendLegacy.workOrderId;
+  if (backendLegacy._backendQuoteId) {
+    localItem._backendQuoteId = backendLegacy._backendQuoteId;
+  }
+  if (backendLegacy.progressionMap) {
+    localItem.progressionMap = Object.assign(
+      {},
+      backendLegacy.progressionMap,
+      localItem.progressionMap || {},
+    );
+  }
+  if (backendLegacy.dispatchedData) {
+    localItem.dispatchedData = Object.assign(
+      {},
+      localItem.dispatchedData || {},
+      backendLegacy.dispatchedData,
+    );
+  }
+  if (backendLegacy.remarks) {
+    localItem.remarks = Object.assign({}, localItem.remarks || {}, backendLegacy.remarks);
+  }
+  if (backendLegacy.stageRemarks) {
+    localItem.stageRemarks = Object.assign(
+      {},
+      localItem.stageRemarks || {},
+      backendLegacy.stageRemarks,
+    );
+  }
+}
+
+async function persistProductionInteraction(snapshot) {
+  const result = await productionService.updateItem(snapshot.prodItem);
+  if (result && result.ok) {
+    mergeProductionItemFromBackend(snapshot.prodItem, result.item);
+    return true;
+  }
+  restoreProductionInteraction(snapshot);
+  if (snapshot.prodItem) {
+    renderOrderProgressionBody(snapshot.prodItem);
+    renderProductionBoard();
+    if (typeof renderWorkOrders === "function") renderWorkOrders();
+  }
+  showToastNotification(
+    "Unable to save production progress.<br>Your changes were not saved.",
+    "error",
+  );
+  return false;
+}
+
+window.toggleEntireSectionDone = function (quoteId, secId, markDone) {
   loadState();
-  let prodItem = STATE.productionItems.find(
+  const prodItem = STATE.productionItems.find(
     (p) => p.quoteId === quoteId || p.id === quoteId,
   );
-  if (!prodItem) {
-    prodItem = await ensureProductionItem(quoteId);
-    if (!prodItem) return;
-  }
+  if (!prodItem) return;
+
+  const snapshot = snapshotProductionInteraction(prodItem);
 
   if (!prodItem.progressionMap) prodItem.progressionMap = {};
 
@@ -9147,58 +9225,43 @@ window.toggleEntireSectionDone = async function (quoteId, secId, markDone) {
     });
   }
 
-  const merged = await productionService.updateItem(prodItem);
-  if (merged) upsertProductionItemFromBackend(merged);
   saveState();
-  await refreshProductionFromApi().catch(() => null);
-  const refreshed =
-    STATE.productionItems.find((p) => p.quoteId === quoteId || p.id === quoteId) ||
-    prodItem;
-  renderOrderProgressionBody(refreshed);
+  renderOrderProgressionBody(prodItem);
   renderProductionBoard();
   if (typeof renderWorkOrders === "function") renderWorkOrders();
+  persistProductionInteraction(snapshot);
 };
 
-window.toggleProgressionMapKey = async function (quoteId, key, isChecked) {
+window.toggleProgressionMapKey = function (quoteId, key, isChecked) {
   loadState();
-  let prodItem = STATE.productionItems.find(
+  const prodItem = STATE.productionItems.find(
     (p) => p.quoteId === quoteId || p.id === quoteId,
   );
-  if (!prodItem) {
-    prodItem = await ensureProductionItem(quoteId);
-    if (!prodItem) return;
-  }
+  if (!prodItem) return;
+
+  const snapshot = snapshotProductionInteraction(prodItem);
 
   if (!prodItem.progressionMap) prodItem.progressionMap = {};
   prodItem.progressionMap[key] = isChecked;
 
-  const merged = await productionService.updateItem(prodItem);
-  if (merged) upsertProductionItemFromBackend(merged);
   saveState();
-  await refreshProductionFromApi().catch(() => null);
-  const refreshed =
-    STATE.productionItems.find((p) => p.quoteId === quoteId || p.id === quoteId) ||
-    prodItem;
-  renderOrderProgressionBody(refreshed);
+  renderOrderProgressionBody(prodItem);
   renderProductionBoard();
   if (typeof renderWorkOrders === "function") renderWorkOrders();
+  persistProductionInteraction(snapshot);
 };
 
-window.updateDispatchedData = async function (quoteId, field, value) {
+window.updateDispatchedData = function (quoteId, field, value) {
   loadState();
-  let prodItem = STATE.productionItems.find(
+  const prodItem = STATE.productionItems.find(
     (p) => p.quoteId === quoteId || p.id === quoteId,
   );
-  if (!prodItem) {
-    prodItem = await ensureProductionItem(quoteId);
-    if (!prodItem) return;
-  }
+  if (!prodItem) return;
+  const snapshot = snapshotProductionInteraction(prodItem);
   if (!prodItem.dispatchedData) prodItem.dispatchedData = {};
   prodItem.dispatchedData[field] = value;
-  const merged = await productionService.updateItem(prodItem);
-  if (merged) upsertProductionItemFromBackend(merged);
   saveState();
-  await refreshProductionFromApi().catch(() => null);
+  persistProductionInteraction(snapshot);
 };
 
 // ------------------------------------------
