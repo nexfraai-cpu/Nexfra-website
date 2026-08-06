@@ -86,9 +86,11 @@ async function request(path, options = {}) {
 
   let response;
   try {
+    console.log("[HTTP]", method, path);
     console.log("FETCH", `${CONFIG.API_BASE_URL}${path}`, fetchOptions);
 
     response = await fetch(`${CONFIG.API_BASE_URL}${path}`, fetchOptions);
+    console.log("[HTTP] response", method, path, response && response.status);
   } catch (e) {
     throw new ApiError(
       `Unable to reach the server (${method} ${path})`,

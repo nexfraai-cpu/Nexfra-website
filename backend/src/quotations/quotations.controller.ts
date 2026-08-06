@@ -30,6 +30,7 @@ export class QuotationsController {
   });
 
   create = asyncWrap(async (req: Request, res: Response) => {
+    console.log('[BACKEND] create quotation', JSON.stringify({ body: req.body }));
     const quotation = await this.quotationsService.create(req.body, req.user!);
     res.status(201).json({ data: quotation });
   });

@@ -205,6 +205,7 @@ export class QuotationService {
   }
 
   async create(data) {
+    console.log("[SERVICE] create called");
     const { data: created } = await apiClient.post('/api/quotations', toBackendCreate(data));
     const legacy = toLegacy(created);
     const { specs, notRequired } = buildSpecsFromValues(created.specValues);

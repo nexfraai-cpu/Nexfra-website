@@ -6021,7 +6021,9 @@ async function runWizardQuotationSave() {
   };
 
   // 3. Synchronous REST API creation call to Supabase backend
+  console.log("[SAVE] POST create");
   const createdQuote = await quotationService.create(quotePayload);
+  console.log("[SAVE] POST finished", createdQuote ? createdQuote.id : null);
   const submittedQuote = await quotationService.submit(
     createdQuote._backendId,
   );
@@ -6048,6 +6050,7 @@ async function runWizardQuotationSave() {
 }
 
 window.saveWizardQuotation = async function () {
+  console.log("[SAVE] entered");
   // Submission lock: exactly ONE request may ever be in flight. Duplicate
   // clicks / Enter / shortcuts are ignored until this attempt fully resolves.
   if (window._wizardSaveLock) return;
@@ -7360,6 +7363,42 @@ function getInitialProgressionState() {
   return {};
 }
 
+// Deterministic ordering for the Quotation Approvals page. This is the only
+// place the Approval page sorts quotations (display-only; it sorts a copy and
+// never mutates STATE.quotations). Pending quotations always come first;
+// within each group newest-first by creation timestamp, broken by quotation
+// number descending when timestamps tie. Ordering never depends on the order
+// the backend or the state-merger happened to return.
+function _sortQuotationsForApprovals(quotes) {
+  return quotes.slice().sort((a, b) => {
+    const pa = a.status !== "Approved" && a.status !== "Denied" ? 0 : 1;
+    const pb = b.status !== "Approved" && b.status !== "Denied" ? 0 : 1;
+    if (pa !== pb) return pa - pb;
+    const ta = _approvalCreatedAt(a);
+    const tb = _approvalCreatedAt(b);
+    if (ta !== tb) return tb - ta;
+    return _approvalQuotationNumber(b) - _approvalQuotationNumber(a);
+  });
+}
+
+function _approvalCreatedAt(q) {
+  if (q.createdAt) {
+    const t = new Date(q.createdAt).getTime();
+    if (Number.isFinite(t)) return t;
+  }
+  if (q.date) {
+    const t = new Date(q.date).getTime();
+    if (Number.isFinite(t)) return t;
+  }
+  return 0;
+}
+
+function _approvalQuotationNumber(q) {
+  const raw = String(q.id ?? q._backendId ?? "");
+  const m = /(\d+)(?!.*\d)/.exec(raw);
+  return m ? parseInt(m[1], 10) : 0;
+}
+
 window.renderApprovalsList = function (filter = "pending") {
   _approvalsFilter = filter;
   loadState();
@@ -7391,6 +7430,8 @@ window.renderApprovalsList = function (filter = "pending") {
     ["id", "customerName", "productName"],
   );
 
+  const ordered = _sortQuotationsForApprovals(filtered);
+
   if (quotes.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; padding: 48px; text-align: center; background: white; border-radius: 12px; border: 1px dashed #CBD5E1; color: #64748B;">
@@ -7402,7 +7443,7 @@ window.renderApprovalsList = function (filter = "pending") {
     return;
   }
 
-  container.innerHTML = filtered
+  container.innerHTML = ordered
     .map((q) => {
       const isPending = q.status !== "Approved" && q.status !== "Denied";
       const isApproved = q.status === "Approved";
