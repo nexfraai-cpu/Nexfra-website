@@ -7516,7 +7516,7 @@ window.renderApprovalsList = function (filter = "pending") {
             <button data-edit-btn onclick="editQuotation('${q._backendId || q.id}')" class="btn" style="flex:0; background:#F59E0B; color:white; font-weight:700; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.85rem; box-shadow:0 2px 4px rgba(245,158,11,0.2);" title="Edit Quotation Details">
               ✏️ Edit
             </button>
-            <button onclick="showQuotationFromBoard('${q._backendId || q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
+            <button data-pdf-btn onclick="showQuotationFromBoard('${q._backendId || q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
               📄 Show PDF
             </button>
           </div>
@@ -7908,8 +7908,234 @@ window.setQuotationPending = function (quoteId) {
   if (typeof renderFinanceLedger === "function") renderFinanceLedger();
 };
 
+// ----- "Show PDF" UX wrapper (display layer only) -----
+// The PDF renderer (openPdfPreview / renderPdfFromQuote) is untouched. This
+// block only adds a loading state to the button and a skeleton in the preview
+// area, then fades the finished PDF in. On failure it restores the button and
+// shows an inline error so the user can retry.
+
+let _pdfUxStylesInjected = false;
+
+function ensurePdfUxStyles() {
+  if (_pdfUxStylesInjected || typeof document === "undefined") return;
+  _pdfUxStylesInjected = true;
+  const style = document.createElement("style");
+  style.textContent =
+    ".pdf-ux-shimmer{background:linear-gradient(90deg,#E2E8F0 25%,#F1F5F9 37%,#E2E8F0 63%);background-size:400% 100%;animation:pdf-ux-shimmer 1.15s ease infinite;border-radius:4px;}" +
+    "@keyframes pdf-ux-shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}" +
+    ".pdf-ux-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(15,23,42,.25);border-top-color:#0F172A;border-radius:50%;animation:pdf-ux-spin .7s linear infinite;vertical-align:-2px;margin-right:6px;}" +
+    "@keyframes pdf-ux-spin{to{transform:rotate(360deg)}}" +
+    "#pdf-content-to-print.pdf-ux-fade-in{animation:pdf-ux-fade .3s ease}@keyframes pdf-ux-fade{from{opacity:0}to{opacity:1}}";
+  document.head.appendChild(style);
+}
+
+function _pdfQuote(quoteId) {
+  if (!STATE.quotations) return null;
+  return STATE.quotations.find(
+    (x) => x.id === quoteId || x._backendId === quoteId,
+  );
+}
+
+function _pdfButtonForQuote(quoteId) {
+  const q = _pdfQuote(quoteId);
+  if (!q) return null;
+  const card = document.querySelector(
+    `.approvals-card[data-quote-id="${q.id}"]`,
+  );
+  return card ? card.querySelector("[data-pdf-btn]") : null;
+}
+
+function _pdfSkeletonHTML() {
+  const bars = ["82%", "67%", "76%", "58%", "84%", "64%"];
+  return (
+    '<div style="width:790px;min-height:1118px;background:#ffffff;padding:30px 35px;box-shadow:0 4px 10px rgba(0,0,0,0.15);box-sizing:border-box;">' +
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;">' +
+    '<div class="pdf-ux-shimmer" style="width:210px;height:86px;"></div>' +
+    '<div style="display:flex;flex-direction:column;gap:8px;align-items:flex-end;">' +
+    '<div class="pdf-ux-shimmer" style="width:160px;height:14px;"></div>' +
+    '<div class="pdf-ux-shimmer" style="width:110px;height:12px;"></div>' +
+    '<div class="pdf-ux-shimmer" style="width:130px;height:12px;"></div>' +
+    "</div>" +
+    "</div>" +
+    '<div class="pdf-ux-shimmer" style="width:100%;height:2px;margin-bottom:26px;"></div>' +
+    '<div class="pdf-ux-shimmer" style="width:46%;height:18px;margin-bottom:24px;"></div>' +
+    bars
+      .map(
+        (w) =>
+          '<div class="pdf-ux-shimmer" style="width:' +
+          w +
+          ";height:15px;margin-bottom:14px;\"></div>",
+      )
+      .join("") +
+    '<div class="pdf-ux-shimmer" style="width:56%;height:15px;margin-bottom:64px;"></div>' +
+    '<div style="border-top:2px solid #E2E8F0;padding-top:18px;display:flex;flex-direction:column;gap:10px;">' +
+    '<div class="pdf-ux-shimmer" style="width:44%;height:15px;"></div>' +
+    '<div class="pdf-ux-shimmer" style="width:34%;height:15px;"></div>' +
+    "</div>" +
+    "</div>"
+  );
+}
+
+function _showPdfSkeleton() {
+  ensurePdfUxStyles();
+  const modal = document.getElementById("pdf-preview-modal");
+  const content = document.getElementById("pdf-content-to-print");
+  if (modal) modal.classList.add("active");
+  if (content) {
+    if (content.dataset.prevDisplay == null) {
+      content.dataset.prevDisplay = content.style.display || "";
+    }
+    content.style.display = "none";
+    content.classList.remove("pdf-ux-fade-in");
+  }
+  if (!modal) return;
+  const host = modal.querySelector(".pdf-modal-content");
+  if (!host) return;
+  let sk = host.querySelector(".pdf-ux-skeleton");
+  if (!sk) {
+    sk = document.createElement("div");
+    sk.className = "pdf-ux-skeleton";
+    sk.innerHTML = _pdfSkeletonHTML();
+    host.appendChild(sk);
+  }
+}
+
+function _fadeInPdf() {
+  const modal = document.getElementById("pdf-preview-modal");
+  const host = modal ? modal.querySelector(".pdf-modal-content") : null;
+  if (host) {
+    const sk = host.querySelector(".pdf-ux-skeleton");
+    if (sk && sk.parentNode) sk.parentNode.removeChild(sk);
+  }
+  const content = document.getElementById("pdf-content-to-print");
+  if (content) {
+    content.style.display = content.dataset.prevDisplay || "flex";
+    delete content.dataset.prevDisplay;
+    void content.offsetWidth;
+    content.classList.add("pdf-ux-fade-in");
+  }
+}
+
+function _hidePdfPreview() {
+  const modal = document.getElementById("pdf-preview-modal");
+  if (modal) modal.classList.remove("active");
+  const host = modal ? modal.querySelector(".pdf-modal-content") : null;
+  if (host) {
+    const sk = host.querySelector(".pdf-ux-skeleton");
+    if (sk && sk.parentNode) sk.parentNode.removeChild(sk);
+  }
+  const content = document.getElementById("pdf-content-to-print");
+  if (content) {
+    content.style.display = content.dataset.prevDisplay || "flex";
+    delete content.dataset.prevDisplay;
+    content.classList.remove("pdf-ux-fade-in");
+  }
+}
+
+function _setPdfButtonLoading(btn) {
+  if (!btn) return;
+  if (btn.dataset.uxPrevHtml == null) btn.dataset.uxPrevHtml = btn.innerHTML;
+  if (btn.dataset.uxPrevStyle == null) btn.dataset.uxPrevStyle = btn.style.cssText;
+  btn.disabled = true;
+  btn.style.cursor = "not-allowed";
+  btn.style.pointerEvents = "none";
+  btn.innerHTML = '<span class="pdf-ux-spinner"></span>Loading PDF...';
+}
+
+function _restorePdfButton(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  if (btn.dataset.uxPrevStyle != null) {
+    btn.style.cssText = btn.dataset.uxPrevStyle;
+    delete btn.dataset.uxPrevStyle;
+  }
+  if (btn.dataset.uxPrevHtml != null) {
+    btn.innerHTML = btn.dataset.uxPrevHtml;
+    delete btn.dataset.uxPrevHtml;
+  }
+  btn.style.cursor = "";
+  btn.style.pointerEvents = "";
+}
+
+function _clearPdfError(quoteId) {
+  const q = _pdfQuote(quoteId);
+  if (!q) return;
+  const card = document.querySelector(`.approvals-card[data-quote-id="${q.id}"]`);
+  if (!card) return;
+  const err = card.querySelector("[data-pdf-error]");
+  if (err && err.parentNode) err.parentNode.removeChild(err);
+}
+
+function _showPdfInlineError(quoteId, msg) {
+  const q = _pdfQuote(quoteId);
+  if (!q) return;
+  const card = document.querySelector(`.approvals-card[data-quote-id="${q.id}"]`);
+  if (!card) return;
+  const body = card.querySelector(".approvals-body");
+  if (!body) return;
+  let err = card.querySelector("[data-pdf-error]");
+  if (!err) {
+    err = document.createElement("div");
+    err.setAttribute("data-pdf-error", "1");
+    err.style.cssText =
+      "display:flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:700;color:#DC2626;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 10px;margin-top:8px;";
+    body.appendChild(err);
+  }
+  const quotedId = JSON.stringify(String(quoteId));
+  err.innerHTML =
+    "⚠ " +
+    msg +
+    ' <button type="button" style="margin-left:auto;border:none;background:#DC2626;color:#fff;font-weight:700;font-size:0.75rem;padding:4px 10px;border-radius:6px;cursor:pointer;" onclick="showQuotationFromBoard(' +
+    quotedId +
+    ')">Retry</button>';
+  if (body.style.maxHeight) {
+    body.style.maxHeight = body.scrollHeight + 120 + "px";
+  }
+}
+
+// Duplicate-click guard: one PDF load per quotation while one is in flight.
+const _pdfPreviewInFlight = new Set();
+
+async function _runPdfPreviewWithUx(quoteId) {
+  const key = String(quoteId);
+  if (_pdfPreviewInFlight.has(key)) return;
+  _pdfPreviewInFlight.add(key);
+  const btn = _pdfButtonForQuote(quoteId);
+
+  // Same pre-check the renderer does, so we do not open a blank preview.
+  if (!_pdfQuote(quoteId)) {
+    _restorePdfButton(btn);
+    _pdfPreviewInFlight.delete(key);
+    _showPdfInlineError(quoteId, "Quotation not found. Please try again.");
+    return;
+  }
+
+  try {
+    _clearPdfError(quoteId);
+    _setPdfButtonLoading(btn);
+    _showPdfSkeleton();
+    // Yield a frame so the spinner + skeleton paint before the synchronous render.
+    await new Promise((r) => setTimeout(r, 40));
+    openPdfPreview(quoteId); // existing renderer (unchanged)
+    _fadeInPdf();
+    // Let the fade land, then re-enable the button for later use.
+    await new Promise((r) => setTimeout(r, 320));
+    _restorePdfButton(btn);
+  } catch (err) {
+    console.error("[showQuotationFromBoard] PDF preview failed:", err);
+    _hidePdfPreview();
+    _restorePdfButton(btn);
+    _showPdfInlineError(
+      quoteId,
+      (err && err.message) || "Failed to load the PDF. Please try again.",
+    );
+  } finally {
+    _pdfPreviewInFlight.delete(key);
+  }
+}
+
 window.showQuotationFromBoard = function (quoteId) {
-  openPdfPreview(quoteId);
+  _runPdfPreviewWithUx(quoteId);
 };
 
 function syncProductionItemsWithQuotations() {
