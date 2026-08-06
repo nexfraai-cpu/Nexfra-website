@@ -38,6 +38,7 @@ export interface SaleResponse {
 export interface SaleSummaryResponse {
   id: string;
   invoiceNumber: string;
+  quotationId: string | null;
   customerName: string;
   productName: string;
   amount: number;

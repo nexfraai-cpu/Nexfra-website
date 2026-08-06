@@ -40,6 +40,7 @@ export class FinanceService {
       result.push({
         id: (row as any).id,
         invoiceNumber: (row as any).invoice_number,
+        quotationId: (row as any).quotation_id ?? null,
         customerName: (row as any).customer_name,
         productName: (row as any).product_name,
         amount: Number((row as any).amount),

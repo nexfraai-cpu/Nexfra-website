@@ -9487,9 +9487,7 @@ function renderPaymentsList(quoteId) {
   loadState();
   var container = document.getElementById("payments-list-" + quoteId);
   if (!container) return;
-  var payments = (STATE.payments || []).filter(function (p) {
-    return p.quoteId === quoteId;
-  });
+  var payments = getQuotePayments(quoteId);
   container.innerHTML =
     payments.length > 0
       ? payments
@@ -9662,6 +9660,44 @@ function getFinanceUserDeletable() {
   return _sessionRole === "admin" || _sessionRole === "finance";
 }
 
+// Returns the payment records that belong to a quotation, rebuilt from the
+// backend-authoritative sales + payments linkage (sale.quotationId equals the
+// quotation's backend id). Falls back to any in-session quoteId tag only when
+// no sale link exists yet, so the card never trusts a cached/stale value.
+function getQuotePayments(quoteId) {
+  var quote = (STATE.quotations || []).find(function (q) {
+    return q.id === quoteId;
+  });
+  var quoteKeys = {};
+  if (quote) {
+    if (quote._backendId) quoteKeys[quote._backendId] = true;
+    quoteKeys[quote.id] = true;
+  }
+  var saleIds = {};
+  var hasSaleForQuote = false;
+  (STATE.sales || []).forEach(function (s) {
+    if (!s) return;
+    if (s.quotationId && quoteKeys[s.quotationId] && s._backendId) {
+      saleIds[s._backendId] = true;
+      hasSaleForQuote = true;
+    }
+  });
+  var seen = {};
+  var out = [];
+  (STATE.payments || []).forEach(function (p) {
+    if (!p) return;
+    var match =
+      (hasSaleForQuote && p.saleId && !!saleIds[p.saleId]) ||
+      (!hasSaleForQuote && p.quoteId === quoteId);
+    if (!match) return;
+    var k = p._backendId != null ? p._backendId : p.id;
+    if (k != null && seen[k]) return;
+    if (k != null) seen[k] = true;
+    out.push(p);
+  });
+  return out;
+}
+
 function adoptBackendFinanceList(next, state) {
   var cur = (STATE[state] || []).slice();
   var nextHas = {};
@@ -9757,10 +9793,9 @@ window.renderFinanceLedger = function () {
   for (var i = 0; i < allQuotations.length; i++) {
     var q = allQuotations[i];
     totalAmount += q.total || 0;
-    var paid = 0;
-    for (var j = 0; j < allPayments.length; j++) {
-      if (allPayments[j].quoteId === q.id) paid += allPayments[j].amount;
-    }
+    var paid = getQuotePayments(q.id).reduce(function (s, p) {
+      return s + p.amount;
+    }, 0);
     totalOutstanding += Math.max(0, (q.total || 0) - paid);
   }
   for (var k = 0; k < allPayments.length; k++) {
@@ -9807,10 +9842,9 @@ window.renderFinanceLedger = function () {
   // Apply urgent filter
   if (f.urgent === "1") {
     quotations = quotations.filter(function (q) {
-      var paid = 0;
-      for (var pi = 0; pi < allPayments.length; pi++) {
-        if (allPayments[pi].quoteId === q.id) paid += allPayments[pi].amount;
-      }
+      var paid = getQuotePayments(q.id).reduce(function (s, p) {
+        return s + p.amount;
+      }, 0);
       var outstanding = Math.max(0, (q.total || 0) - paid);
       if (outstanding <= 0) return false;
       var prodItem = STATE.productionItems
@@ -9833,10 +9867,9 @@ window.renderFinanceLedger = function () {
   // Apply status filter (header dropdown)
   if (statusFilter !== "all") {
     quotations = quotations.filter(function (q) {
-      var paid = 0;
-      for (var pi = 0; pi < allPayments.length; pi++) {
-        if (allPayments[pi].quoteId === q.id) paid += allPayments[pi].amount;
-      }
+      var paid = getQuotePayments(q.id).reduce(function (s, p) {
+        return s + p.amount;
+      }, 0);
       var outstanding = Math.max(0, (q.total || 0) - paid);
       var status = outstanding <= 0 ? "paid" : paid > 0 ? "partial" : "pending";
       return status === statusFilter;
@@ -9850,12 +9883,12 @@ window.renderFinanceLedger = function () {
     if (sortKey === "amount-high") return (b.total || 0) - (a.total || 0);
     if (sortKey === "amount-low") return (a.total || 0) - (b.total || 0);
     if (sortKey === "outstanding-high" || sortKey === "outstanding-low") {
-      var aPaid = 0,
-        bPaid = 0;
-      for (var pi = 0; pi < allPayments.length; pi++) {
-        if (allPayments[pi].quoteId === a.id) aPaid += allPayments[pi].amount;
-        if (allPayments[pi].quoteId === b.id) bPaid += allPayments[pi].amount;
-      }
+      var aPaid = getQuotePayments(a.id).reduce(function (s, p) {
+        return s + p.amount;
+      }, 0);
+      var bPaid = getQuotePayments(b.id).reduce(function (s, p) {
+        return s + p.amount;
+      }, 0);
       var aOut = Math.max(0, (a.total || 0) - aPaid);
       var bOut = Math.max(0, (b.total || 0) - bPaid);
       return sortKey === "outstanding-high" ? bOut - aOut : aOut - bOut;
@@ -9874,7 +9907,7 @@ window.renderFinanceLedger = function () {
   quotations.forEach((q) => {
     const totalWithGst = q.total || 0;
     const principal = Math.round(totalWithGst / 1.18);
-    const payments = (STATE.payments || []).filter((p) => p.quoteId === q.id);
+    const payments = getQuotePayments(q.id);
     const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
     const outstanding = Math.max(0, totalWithGst - totalPaid);
     const status =
@@ -10196,9 +10229,9 @@ window.showReceiptModal = function (quoteId) {
   const quote = (STATE.quotations || []).find((q) => q.id === quoteId);
   if (!quote) return;
 
-  const payments = (STATE.payments || [])
-    .filter((p) => p.quoteId === quoteId)
-    .sort((a, b) => new Date(b.date) - new Date(a.date));
+  const payments = getQuotePayments(quoteId).sort(
+    (a, b) => new Date(b.date) - new Date(a.date),
+  );
   const totalPaid = payments.reduce((s, p) => s + p.amount, 0);
   const outstanding = Math.max(0, (quote.total || 0) - totalPaid);
   const customer = (STATE.customers || []).find(
