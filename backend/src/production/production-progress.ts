@@ -68,22 +68,41 @@ export const DEFAULT_PRODUCTION_STAGE_DEFINITIONS: ProductionStageDefinition[] =
   { key: 'sec_qc_dispatch_sub_final_dispatch_dispatched', name: 'Dispatched' },
 ];
 
+// Linear Pending->Delivered pipeline keys used by the stage-advance flow. These are
+// lifecycle markers, not checklist stages, and must never be counted in progress
+// (otherwise advancing the pipeline would inflate the denominator and
+// prevent a checklist from ever reaching 'Finished').
+const RESERVED_LINEAR_STAGES = new Set([
+  'Pending', 'Material Ordered', 'Cutting', 'Fabrication', 'Welding',
+  'Painting', 'Assembly', 'QC', 'Ready', 'Delivered',
+]);
+
 export function calculateProductionProgress(
   stageRecords: ProductionStageRecordInput[] = [],
   stageDefinitions: ProductionStageDefinition[] = DEFAULT_PRODUCTION_STAGE_DEFINITIONS,
 ): ProductionProgress {
-  const stageKeys = stageDefinitions.map((stage) => stage.key);
-  const stageKeySet = new Set(stageKeys);
+  // Checklist universe for the denominator. The backend has no dedicated schema store, so seed
+  // with the default definitions and grow the universe with every stage key actually
+  // persisted for this item. This lets custom/added pipeline stages count toward progress
+  // instead of being ignored by a hardcoded default filter, while default installs keep
+  // the existing 41-stage semantics because their records already fall within the defaults.
+  const baseStageKeys = stageDefinitions.map((stage) => stage.key);
+  const stageKeySet = new Set(baseStageKeys);
   const completed = new Set<string>();
 
   for (const record of stageRecords || []) {
     const key = String(record.stageKey ?? record.stage_key ?? '');
-    if (!key || !stageKeySet.has(key)) continue;
+    if (!key || RESERVED_LINEAR_STAGES.has(key)) continue;
+    if (!stageKeySet.has(key)) stageKeySet.add(key);
     const isCompleted = Boolean(record.isCompleted ?? record.is_completed);
     if (isCompleted) completed.add(key);
     else completed.delete(key);
   }
 
+  // Deterministic ordered universe (defaults first, then discovered custom keys in the
+  // order they were persisted) so the PUT response and a subsequent GET derive identical
+  // completedStages / totalStages / percentage values.
+  const stageKeys = [...baseStageKeys, ...[...stageKeySet].filter((key) => !baseStageKeys.includes(key))];
   const completedStages = stageKeys.filter((key) => completed.has(key));
   const totalStages = stageKeys.length;
   const completedStageCount = completedStages.length;

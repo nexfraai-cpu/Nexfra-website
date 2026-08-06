@@ -150,6 +150,38 @@ describe('ProductionService', () => {
       expect(result.data[0].stageProgress).toHaveProperty('sec_design_sub_design_items_scopeClear', true);
     });
 
+    it('counts custom schema stage keys from persisted records', async () => {
+      const rows = [createMockItem()];
+      queries.findAll.mockResolvedValue({ data: rows, total: 1 });
+      queries.findStageRecords.mockResolvedValue([
+        createMockStageRecord({
+          stage_key: 'sec_design_sub_design_items_scopeClear',
+          is_completed: true,
+        }),
+        createMockStageRecord({
+          stage_key: 'sec_custom_pipeline_sub_new_ops_weldTackUp',
+          is_completed: true,
+        }),
+        createMockStageRecord({
+          stage_key: 'sec_custom_pipeline_sub_new_ops_finalAssembly',
+          is_completed: false,
+        }),
+        createMockStageRecord({
+          stage_key: 'Pending',
+          is_completed: false,
+        }),
+      ]);
+
+      const result = await service.list({ page: 1, perPage: 20 }, actor);
+
+      expect(result.data[0].boardColumn).toBe('Work in Progress');
+      expect(result.data[0].progressPercentage).toBeGreaterThan(0);
+      expect(result.data[0].completedStages).toContain('sec_custom_pipeline_sub_new_ops_weldTackUp');
+      expect(result.data[0].completedStageCount).toBe(2);
+      expect(result.data[0].totalStages).toBeGreaterThan(2);
+      expect(result.data[0].isFinished).toBe(false);
+    });
+
     it('maps empty stage records to Not Started with 0 percent', async () => {
       const rows = [createMockItem()];
       queries.findAll.mockResolvedValue({ data: rows, total: 1 });
