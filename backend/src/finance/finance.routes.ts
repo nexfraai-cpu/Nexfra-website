@@ -39,7 +39,7 @@ financeRouter.post('/payments', authorize('admin', 'finance'), validate(createPa
 
 financeRouter.put('/payments/:id', authorize('admin', 'finance'), validate(updatePaymentSchema), controller.updatePayment);
 
-financeRouter.delete('/payments/:id', authorize('admin'), validate(paymentIdSchema), controller.deletePayment);
+financeRouter.delete('/payments/:id', authorize('admin', 'finance'), validate(paymentIdSchema), controller.deletePayment);
 
 // Ledger
 financeRouter.get('/ledger', authorize('admin', 'finance', 'manager'), validate(ledgerListSchema), controller.getLedger);

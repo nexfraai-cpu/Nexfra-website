@@ -279,6 +279,7 @@ async function hydrateStateFromApi() {
   _syncSignatures.productionItems = _entitySig(productionItems);
   _syncSignatures.sales = _entitySig(sales);
   _syncSignatures.payments = _entitySig(payments);
+  reconcilePaymentQuoteIds(sales, payments, quotations);
 
   updateLoader(95, "Almost ready...");
 }
@@ -9459,6 +9460,11 @@ function buildPaymentRowHtml(p) {
     (p.mode || "") +
     (p.ref ? " · " + p.ref : "") +
     "</span>" +
+    (p.notes
+      ? '<div style="color:#64748B;font-size:0.7rem;margin-top:2px;"><em>' +
+        p.notes +
+        "</em></div>"
+      : "") +
     "</div>" +
     '<div style="display:flex;align-items:center;gap:8px;">' +
     '<span style="font-weight:700;color:var(--color-success);">₹' +
@@ -9467,6 +9473,11 @@ function buildPaymentRowHtml(p) {
     "<button onclick=\"editPayment('" +
     p.id +
     '\')" style="background:none;border:none;cursor:pointer;padding:2px;color:#94A3B8;font-size:0.8rem;" title="Edit Payment">✏️</button>' +
+    (getFinanceUserDeletable()
+      ? "<button onclick=\"deleteLedgerPayment('" +
+        p.id +
+        '\')" style="background:none;border:none;cursor:pointer;padding:2px;color:#94A3B8;font-size:0.8rem;" title="Delete Payment">🗑️</button>'
+      : "") +
     "</div>" +
     "</div>"
   );
@@ -9539,6 +9550,11 @@ window.editPayment = function (paymentId) {
     '" value="' +
     (payment.ref || "") +
     '" placeholder="Ref/UTR" style="font-size:0.7rem;padding:4px 8px;width:120px;">' +
+    '<input type="text" id="edit-pay-notes-' +
+    paymentId +
+    '" value="' +
+    (payment.notes || "") +
+    '" placeholder="Notes" style="font-size:0.7rem;padding:4px 8px;width:140px;">' +
     "</div>" +
     '<div style="display:flex;gap:6px;justify-content:flex-end;">' +
     "<button onclick=\"saveEditPayment('" +
@@ -9551,7 +9567,7 @@ window.editPayment = function (paymentId) {
     "</div>";
 };
 
-window.saveEditPayment = function (paymentId) {
+window.saveEditPayment = async function (paymentId) {
   loadState();
   var payment = (STATE.payments || []).find(function (p) {
     return p.id === paymentId;
@@ -9564,15 +9580,40 @@ window.saveEditPayment = function (paymentId) {
   );
   var mode = document.getElementById("edit-pay-mode-" + paymentId)?.value;
   var ref = document.getElementById("edit-pay-ref-" + paymentId)?.value || "";
+  var notes =
+    document.getElementById("edit-pay-notes-" + paymentId)?.value || "";
   if (!amount || amount <= 0) {
     alert("Please enter a valid amount.");
     return;
   }
+
+  if (payment._backendId) {
+    var updated = await financeService
+      .updatePayment(payment._backendId, {
+        amount: amount,
+        mode: mode || "RTGS",
+        ref: ref,
+        date: date || undefined,
+        notes: notes,
+      })
+      .catch(function (e) {
+        var msg = (e && e.message) || "Could not update payment";
+        if (typeof showToastNotification === "function") {
+          showToastNotification("Failed to update payment: " + msg, "error");
+        }
+        alert("Failed to update payment: " + msg);
+        return null;
+      });
+    if (!updated) return;
+    if (updated._backendId) payment._backendId = updated._backendId;
+  }
+
   payment.date = date || payment.date;
   payment.time = time || "";
   payment.amount = amount;
   payment.mode = mode || "RTGS";
   payment.ref = ref;
+  payment.notes = notes;
   logSystemActivity(
     "Payment " +
       paymentId +
@@ -9591,6 +9632,113 @@ window.cancelEditPayment = function (paymentId) {
     return p.id === paymentId;
   });
   if (payment) renderPaymentsList(payment.quoteId);
+};
+
+function reconcilePaymentQuoteIds(sales, payments, quotations) {
+  var sList = sales || STATE.sales || [];
+  var qList = quotations || STATE.quotations || [];
+  var pList = payments || STATE.payments || [];
+  var saleIdToQuoteId = {};
+  for (var i = 0; i < sList.length; i++) {
+    var sale = sList[i];
+    if (!sale.quotationId) continue;
+    var matched = qList.find(function (q) {
+      return q._backendId === sale.quotationId || q.id === sale.quotationId;
+    });
+    if (matched && sale._backendId) {
+      saleIdToQuoteId[sale._backendId] = matched.id;
+    }
+  }
+  for (var j = 0; j < pList.length; j++) {
+    var p = pList[j];
+    if (!p || p.saleId == null || !saleIdToQuoteId[p.saleId]) continue;
+    if (p.quoteId !== saleIdToQuoteId[p.saleId]) {
+      p.quoteId = saleIdToQuoteId[p.saleId];
+    }
+  }
+}
+
+function getFinanceUserDeletable() {
+  return _sessionRole === "admin" || _sessionRole === "finance";
+}
+
+function adoptBackendFinanceList(next, state) {
+  var cur = (STATE[state] || []).slice();
+  var nextHas = {};
+  for (var i = 0; i < next.length; i++) {
+    var nk = next[i]._backendId != null ? next[i]._backendId : next[i].id;
+    if (nk != null) nextHas[nk] = true;
+  }
+  var localOnly = cur.filter(function (it) {
+    if (!it) return false;
+    var k = it._backendId != null ? it._backendId : it.id;
+    return k == null || (String(it.id || "").indexOf("TXN-") === 0 && !nextHas[k]);
+  });
+  return localOnly.concat(next);
+}
+
+async function ensureQuoteSale(quote) {
+  if (!quote || !quote._backendId) return null;
+  if (quote._saleId) return quote._saleId;
+  var existing = (STATE.sales || []).find(function (s) {
+    return s.quotationId === quote._backendId;
+  });
+  if (existing) {
+    quote._saleId = existing._backendId;
+    return existing._backendId;
+  }
+  try {
+    var sale = await financeService.addSale({
+      quotationId: quote._backendId,
+      customerName: quote.customerName || "Valued Client",
+      product: quote.productName || "Custom Vehicle",
+      amount: quote.total || 0,
+      invoiceId: quote.id,
+    });
+    if (!sale || !sale._backendId) return null;
+    quote._saleId = sale._backendId;
+    if (!STATE.sales) STATE.sales = [];
+    if (!STATE.sales.some(function (s) { return s._backendId === sale._backendId; })) {
+      STATE.sales.push(sale);
+    }
+    saveState();
+    return sale._backendId;
+  } catch (e) {
+    Logger.warn("Ensure sale failed for quotation " + quote.id, e);
+    return null;
+  }
+}
+
+window.deleteLedgerPayment = async function (paymentId) {
+  if (!getFinanceUserDeletable()) {
+    alert("You do not have permission to delete payments.");
+    return;
+  }
+  loadState();
+  var payment = (STATE.payments || []).find(function (p) {
+    return p.id === paymentId || p._backendId === paymentId;
+  });
+  if (!payment) return;
+  if (!confirm("Delete this payment? This cannot be undone.")) return;
+  if (payment._backendId) {
+    try {
+      await financeService.deletePayment(payment._backendId);
+    } catch (e) {
+      var msg = (e && e.message) || "Could not delete payment";
+      if (typeof showToastNotification === "function") {
+        showToastNotification("Failed to delete payment: " + msg, "error");
+      }
+      alert("Failed to delete payment: " + msg);
+      return;
+    }
+  }
+  STATE.payments = (STATE.payments || []).filter(function (p) {
+    return p.id !== paymentId && p._backendId !== paymentId;
+  });
+  logSystemActivity("Payment " + paymentId + " deleted from ledger.");
+  saveState();
+  renderPaymentsList(payment.quoteId);
+  renderFinanceLedger();
 };
 
 window.renderFinanceLedger = function () {
@@ -9880,7 +10028,11 @@ window.renderFinanceLedger = function () {
                   <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Reference / UTR</label>
                   <input type="text" id="pay-ref-${q.id}" class="form-control form-control-sm" placeholder="Optional" style="font-size:0.75rem;padding:6px 10px;">
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="logQuotationPayment('${q.id}')" style="padding:6px 18px;font-size:0.75rem;white-space:nowrap;margin-bottom:1px;">+ Log Payment</button>
+                <div style="flex:1;min-width:180px;">
+                  <label style="font-size:0.65rem;font-weight:600;color:#64748B;display:block;margin-bottom:3px;">Notes</label>
+                  <input type="text" id="pay-notes-${q.id}" class="form-control form-control-sm" placeholder="Optional" style="font-size:0.75rem;padding:6px 10px;">
+                </div>
+                <button class="btn btn-primary btn-sm" id="pay-save-${q.id}" onclick="logQuotationPayment('${q.id}')" style="padding:6px 18px;font-size:0.75rem;white-space:nowrap;margin-bottom:1px;">+ Log Payment</button>
               </div>
             </div>
 
@@ -9904,7 +10056,7 @@ window.toggleFinanceDetails = function (quoteId) {
   el.style.display = isOpen ? "none" : "block";
 };
 
-window.logQuotationPayment = function (quoteId) {
+window.logQuotationPayment = async function (quoteId) {
   loadState();
   const date = document.getElementById("pay-date-" + quoteId)?.value;
   const time = document.getElementById("pay-time-" + quoteId)?.value;
@@ -9913,6 +10065,7 @@ window.logQuotationPayment = function (quoteId) {
   );
   const mode = document.getElementById("pay-mode-" + quoteId)?.value;
   const ref = document.getElementById("pay-ref-" + quoteId)?.value || "";
+  const notes = document.getElementById("pay-notes-" + quoteId)?.value || "";
 
   if (!amount || amount <= 0) {
     alert("Please enter a valid payment amount.");
@@ -9941,18 +10094,54 @@ window.logQuotationPayment = function (quoteId) {
     return;
   }
 
-  const pId = "TXN-" + Date.now() + "-" + Math.floor(Math.random() * 1000);
+  const saveBtn = document.getElementById("pay-save-" + quoteId);
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+  }
+
+  // Persist to the backend first: the payment must be created against a real
+  // sale record so it survives reloads and is shared by every finance user.
+  let saleId = quote._saleId;
+  if (!saleId) saleId = await ensureQuoteSale(quote);
+  if (!saleId) {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = "+ Log Payment";
+    }
+    alert(
+      "Could not record the payment because the backend sale could not be created. Please try again.",
+    );
+    return;
+  }
+
+  const payment = await financeService
+    .addPayment({
+      saleId: saleId,
+      amount: amount,
+      mode: mode || "RTGS",
+      ref: ref,
+      date: date || undefined,
+      notes: notes,
+    })
+    .catch(function (e) {
+      var msg = (e && e.message) || "Unknown error";
+      if (typeof showToastNotification === "function") {
+        showToastNotification("Failed to save payment: " + msg, "error");
+      }
+      alert("Failed to save payment: " + msg);
+      return null;
+    });
+
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "+ Log Payment";
+  }
+  if (!payment) return;
+
+  payment.quoteId = quoteId;
   if (!STATE.payments) STATE.payments = [];
-  STATE.payments.push({
-    id: pId,
-    quoteId: quoteId,
-    invoiceId: quoteId,
-    date: date || new Date().toISOString().split("T")[0],
-    time: time || "",
-    amount: amount,
-    mode: mode || "RTGS",
-    ref: ref,
-  });
+  STATE.payments.push(payment);
 
   logSystemActivity(
     "Payment ₹" +
@@ -9967,6 +10156,8 @@ window.logQuotationPayment = function (quoteId) {
 
   document.getElementById("pay-amount-" + quoteId).value = "";
   document.getElementById("pay-ref-" + quoteId).value = "";
+  const notesEl = document.getElementById("pay-notes-" + quoteId);
+  if (notesEl) notesEl.value = "";
 
   renderFinanceLedger();
 
@@ -10517,6 +10708,7 @@ async function refreshQuotationsFromApi() {
 // every finance employee sees every approved quotation, due date, payment, and
 // balance. There is no finance-owner scoping; nothing here filters by owner.
 let _financeSig = null;
+let _financeDataSig = null;
 
 async function refreshFinanceFromApi() {
   let all = [];
@@ -10526,8 +10718,41 @@ async function refreshFinanceFromApi() {
     Logger.warn("Finance refresh failed", e);
     return false;
   }
+  // Sales and payments are backend-authoritative and shared by every finance
+  // employee, so re-fetch them on every poll and merge into STATE.
+  let salesFromApi = null;
+  let paymentsFromApi = null;
+  try {
+    const [sales, payments] = await Promise.all([
+      financeService.getSales(),
+      financeService.getPayments(),
+    ]);
+    salesFromApi = sales || [];
+    paymentsFromApi = payments || [];
+  } catch (e) {
+    Logger.warn("Finance sales/payments refresh failed", e);
+  }
   const sig = JSON.stringify(all.map((q) => q._backendId));
-  if (sig === _financeSig) return false;
+  if (sig === _financeSig) {
+    if (salesFromApi) {
+      STATE.sales = adoptBackendFinanceList(salesFromApi, "sales");
+    }
+    if (paymentsFromApi) {
+      STATE.payments = adoptBackendFinanceList(paymentsFromApi, "payments");
+    }
+    reconcilePaymentQuoteIds(STATE.sales, STATE.payments, STATE.quotations);
+    const dataSig = JSON.stringify([
+      (STATE.sales || []).map((s) => s._backendId || s.id),
+      (STATE.payments || []).map((p) => p._backendId || p.id),
+    ]);
+    if (dataSig === _financeDataSig) return false;
+    _financeDataSig = dataSig;
+    _stateCache = Object.assign({}, _stateCache, {
+      sales: STATE.sales,
+      payments: STATE.payments,
+    });
+    return true;
+  }
   _financeSig = sig;
   if (_sessionRole === "finance") {
     if (!STATE.quotations) STATE.quotations = [];
@@ -10551,6 +10776,17 @@ async function refreshFinanceFromApi() {
       quotations: STATE.quotations,
     });
   }
+  if (salesFromApi) {
+    STATE.sales = adoptBackendFinanceList(salesFromApi, "sales");
+  }
+  if (paymentsFromApi) {
+    STATE.payments = adoptBackendFinanceList(paymentsFromApi, "payments");
+  }
+  reconcilePaymentQuoteIds(STATE.sales, STATE.payments, STATE.quotations);
+  _stateCache = Object.assign({}, _stateCache, {
+    sales: STATE.sales,
+    payments: STATE.payments,
+  });
   return true;
 }
 

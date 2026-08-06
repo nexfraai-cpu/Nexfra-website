@@ -11,6 +11,7 @@ function saleToLegacy(sale) {
     amount: sale.amount ?? 0,
     paidAmount: sale.paidAmount ?? 0,
     outstanding: sale.outstanding ?? 0,
+    quotationId: sale.quotationId ?? null,
     date: (sale.createdAt || '').split('T')[0],
     status: sale.status || 'Pending',
     _backendId: sale.id,
@@ -73,6 +74,7 @@ export class FinanceService {
 
   async addSale(data) {
     const { data: created } = await apiClient.post('/api/finance/sales', {
+      quotationId: data.quotationId || null,
       customerName: data.customerName,
       productName: data.product || data.productName,
       amount: data.amount,
@@ -95,5 +97,23 @@ export class FinanceService {
       notes: data.notes || null,
     });
     return paymentToLegacy(created);
+  }
+
+  async updatePayment(paymentId, data) {
+    const { data: updated } = await apiClient.put(
+      `/api/finance/payments/${paymentId}`,
+      {
+        amount: data.amount,
+        mode: data.mode,
+        reference: data.ref || data.reference || null,
+        paymentDate: data.date || null,
+        notes: data.notes || null,
+      },
+    );
+    return paymentToLegacy(updated);
+  }
+
+  async deletePayment(paymentId) {
+    await apiClient.delete(`/api/finance/payments/${paymentId}`);
   }
 }

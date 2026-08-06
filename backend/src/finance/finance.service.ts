@@ -19,7 +19,7 @@ import { logger } from '../config/logger.js';
 import { supabase } from '../database/client.js';
 import { AuthenticatedUser } from '../middleware/auth.js';
 
-const VALID_PAYMENT_MODES = ['Cash', 'RTGS', 'Cheque', 'UPI', 'Card', 'Other'];
+const VALID_PAYMENT_MODES = ['Cash', 'RTGS', 'NEFT', 'Cheque', 'UPI', 'Card', 'Other'];
 
 export class FinanceService {
   constructor(private queries: FinanceQueries) {}

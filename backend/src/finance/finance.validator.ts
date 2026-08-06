@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const validPaymentModes = ['Cash', 'RTGS', 'Cheque', 'UPI', 'Card', 'Other'] as const;
+const validPaymentModes = ['Cash', 'RTGS', 'NEFT', 'Cheque', 'UPI', 'Card', 'Other'] as const;
 const validSaleStatuses = ['Pending', 'Partial', 'Paid'] as const;
 
 export const createSaleSchema = z.object({
