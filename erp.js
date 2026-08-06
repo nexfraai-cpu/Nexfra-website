@@ -7466,7 +7466,7 @@ window.renderApprovalsList = function (filter = "pending") {
 
       return `
       <div class="card approvals-card" data-quote-id="${q.id}" style="border: 1px solid #E2E8F0; border-radius: 12px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden;">
-        <div onclick="toggleApprovalCard('${q.id}')" style="display:flex; justify-content:space-between; align-items:center; padding: 1px 8px; cursor:pointer; user-select:none;">
+        <div data-approval-toggle onclick="toggleApprovalCard('${q.id}')" style="display:flex; justify-content:space-between; align-items:center; padding: 1px 8px; cursor:pointer; user-select:none;">
           <div>
             <div style="font-size:0.77rem; font-weight:700; color:#64748B; letter-spacing:0.5px; text-transform:uppercase; line-height:1.1;">Quotation Number</div>
             <div style="margin:0; font-size:1.12rem; color:#0F172A; font-weight:800; line-height:1.2;">${q.id}</div>
@@ -7500,10 +7500,10 @@ window.renderApprovalsList = function (filter = "pending") {
             ${
               isPending
                 ? `
-              <button onclick="approveQuotation('${q._backendId || q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
+              <button data-approve-btn onclick="approveQuotation('${q._backendId || q.id}')" class="btn" style="flex:1; background:#059669; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(5,150,105,0.2);">
                 ✓ Approve
               </button>
-              <button onclick="denyQuotation('${q._backendId || q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
+              <button data-deny-btn onclick="denyQuotation('${q._backendId || q.id}')" class="btn" style="flex:1; background:#DC2626; color:white; font-weight:700; border:none; padding:10px 16px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; font-size:0.9rem; box-shadow:0 2px 4px rgba(220,38,38,0.2);">
                 ✕ Deny
               </button>
             `
@@ -7513,7 +7513,7 @@ window.renderApprovalsList = function (filter = "pending") {
               </button>
             `
             }
-            <button onclick="editQuotation('${q._backendId || q.id}')" class="btn" style="flex:0; background:#F59E0B; color:white; font-weight:700; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.85rem; box-shadow:0 2px 4px rgba(245,158,11,0.2);" title="Edit Quotation Details">
+            <button data-edit-btn onclick="editQuotation('${q._backendId || q.id}')" class="btn" style="flex:0; background:#F59E0B; color:white; font-weight:700; border:none; padding:10px 14px; border-radius:6px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:4px; font-size:0.85rem; box-shadow:0 2px 4px rgba(245,158,11,0.2);" title="Edit Quotation Details">
               ✏️ Edit
             </button>
             <button onclick="showQuotationFromBoard('${q._backendId || q.id}')" class="btn btn-secondary" style="padding:10px 14px; font-size:0.85rem; font-weight:600;" title="View Full Quotation PDF">
@@ -7532,6 +7532,8 @@ window.toggleApprovalCard = function (quoteId) {
     `.approvals-card[data-quote-id="${quoteId}"]`,
   );
   if (!card) return;
+  // While an approval is in flight the card is locked; ignore expand/collapse.
+  if (card.dataset && card.dataset.approving === "1") return;
   const body = card.querySelector(".approvals-body");
   const chevron = card.querySelector(".approvals-chevron");
   const isOpen = body.style.maxHeight && body.style.maxHeight !== "0px";
@@ -7565,7 +7567,165 @@ window.toggleBoardCard = function (quoteId) {
   }
 };
 
-window.approveQuotation = async function (quoteId, comment = "") {
+// ----- Approval UX wrapper (display layer only) -----
+// All approval business logic lives in _runApprovalCore below; this block only
+// locks the card, shows progress, and restores the UI. Nothing here changes
+// what gets approved or dispatched.
+
+const APPROVAL_STEPS = [
+  "Validating quotation",
+  "Creating work order",
+  "Updating production",
+  "Finalizing approval",
+];
+
+let _approveStylesInjected = false;
+
+function ensureApproveStyles() {
+  if (_approveStylesInjected || typeof document === "undefined") return;
+  _approveStylesInjected = true;
+  const style = document.createElement("style");
+  style.textContent =
+    ".approve-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#ffffff;border-radius:50%;animation:approve-spin .7s linear infinite;vertical-align:-2px;}" +
+    "@keyframes approve-spin{to{transform:rotate(360deg)}}";
+  document.head.appendChild(style);
+}
+
+function _approvalCardEls(card) {
+  if (!card) {
+    return { toggle: null, approve: null, deny: null, edit: null };
+  }
+  return {
+    toggle: card.querySelector("[data-approval-toggle]"),
+    approve: card.querySelector("[data-approve-btn]"),
+    deny: card.querySelector("[data-deny-btn]"),
+    edit: card.querySelector("[data-edit-btn]"),
+  };
+}
+
+function _approvalProgressHost(card) {
+  const body = card ? card.querySelector(".approvals-body") : null;
+  if (!body) return null;
+  let host = body.querySelector(".approval-progress-host");
+  if (!host) {
+    host = document.createElement("div");
+    host.className = "approval-progress-host";
+    body.appendChild(host);
+    // Keep the freshly-added content visible inside the expanding card body.
+    if (body.style.maxHeight) {
+      body.style.maxHeight = body.scrollHeight + 160 + "px";
+    }
+  }
+  return host;
+}
+
+function _renderApprovalSteps(card, activeStep) {
+  const host = _approvalProgressHost(card);
+  if (!host) return;
+  host.innerHTML = APPROVAL_STEPS.map((label, i) => {
+    let icon, color;
+    if (i < activeStep) {
+      icon = "✓";
+      color = "#059669";
+    } else if (i === activeStep) {
+      icon = "⏳";
+      color = "#D97706";
+    } else {
+      icon = "○";
+      color = "#94A3B8";
+    }
+    return (
+      '<div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:600;color:' +
+      color +
+      ";margin-top:3px;opacity:" +
+      (i <= activeStep ? 1 : 0.7) +
+      ';">' +
+      '<span style="width:16px;text-align:center;">' +
+      icon +
+      "</span><span>" +
+      label +
+      "</span></div>"
+    );
+  }).join("");
+}
+
+function _setApprovingUx(card) {
+  ensureApproveStyles();
+  if (!card) return;
+  card.dataset.approving = "1";
+  const els = _approvalCardEls(card);
+  if (els.toggle) {
+    els.toggle.style.pointerEvents = "none";
+    els.toggle.style.cursor = "default";
+  }
+  [els.approve, els.deny, els.edit].forEach((btn) => {
+    if (!btn) return;
+    if (btn.dataset.uxPrevStyle == null) btn.dataset.uxPrevStyle = btn.style.cssText;
+    btn.disabled = true;
+    btn.style.opacity = "0.6";
+    btn.style.cursor = "not-allowed";
+    btn.style.pointerEvents = "none";
+  });
+  if (els.approve) {
+    if (els.approve.dataset.uxPrevHtml == null) {
+      els.approve.dataset.uxPrevHtml = els.approve.innerHTML;
+    }
+    els.approve.innerHTML = '<span class="approve-spinner"></span> Approving...';
+  }
+  _renderApprovalSteps(card, 0);
+}
+
+function _setApprovedUx(card) {
+  if (!card) return;
+  const els = _approvalCardEls(card);
+  if (els.approve) {
+    els.approve.innerHTML = "✓ Approved";
+  }
+  _renderApprovalSteps(card, 4);
+}
+
+function _restoreApprovalUx(card, errorMsg) {
+  if (!card) return;
+  delete card.dataset.approving;
+  const els = _approvalCardEls(card);
+  if (els.toggle) {
+    els.toggle.style.pointerEvents = "";
+    els.toggle.style.cursor = "";
+  }
+  [els.approve, els.deny, els.edit].forEach((btn) => {
+    if (!btn) return;
+    btn.disabled = false;
+    if (btn.dataset.uxPrevStyle != null) {
+      btn.style.cssText = btn.dataset.uxPrevStyle;
+      delete btn.dataset.uxPrevStyle;
+    } else {
+      btn.style.opacity = "";
+      btn.style.cursor = "";
+      btn.style.pointerEvents = "";
+    }
+    if (btn === els.approve && btn.dataset.uxPrevHtml != null) {
+      btn.innerHTML = btn.dataset.uxPrevHtml;
+      delete btn.dataset.uxPrevHtml;
+    }
+  });
+  const host = _approvalProgressHost(card);
+  if (host) {
+    host.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;font-size:0.8rem;font-weight:700;color:#DC2626;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;padding:8px 10px;margin-top:8px;">⚠ ' +
+      errorMsg +
+      "</div>";
+  }
+}
+
+// Duplicate-approval guard: one request per quotation. Repeated clicks while a
+// request is running are ignored.
+const _approvalsInFlight = new Set();
+
+// Core approval logic. UNCHANGED behaviour: backend approve PATCH, local status
+// update, work-order creation, state refresh, activity log + toast. Returns
+// true on success, false when approval did not happen. `onProgress` is an
+// optional display-only hook fired at the real execution boundaries.
+async function _runApprovalCore(quoteId, comment, onProgress) {
   loadState();
   const q = (STATE.quotations || []).find(
     (x) => x.id === quoteId || x._backendId === quoteId,
@@ -7591,7 +7751,7 @@ window.approveQuotation = async function (quoteId, comment = "") {
     alert(
       "Quotation cannot be approved because backend database record is missing. Please refresh or re-save the quotation.",
     );
-    return;
+    return false;
   }
 
   // Transactional Step 1: Send approval PATCH to API and await response
@@ -7601,6 +7761,7 @@ window.approveQuotation = async function (quoteId, comment = "") {
       q.status = "Approved";
       q._backendStatus = "Approved";
     }
+    if (onProgress) onProgress(1);
   } catch (err) {
     console.error("[approveQuotation] Approval API call failed:", err);
     const msg = err.message || "Approval request failed";
@@ -7609,7 +7770,7 @@ window.approveQuotation = async function (quoteId, comment = "") {
       showToastNotification(`Approval failed: ${msg}`, "error");
     }
     // STOP IMMEDIATELY! Do NOT create work order, do NOT sync, do NOT continue.
-    return;
+    return false;
   }
 
   // Transactional Step 2: Create work order for the approved quotation
@@ -7618,11 +7779,13 @@ window.approveQuotation = async function (quoteId, comment = "") {
   } catch (err) {
     console.warn("[approveQuotation] Work order creation notice:", err.message);
   }
+  if (onProgress) onProgress(2);
 
   // Transactional Step 3: Refresh state from API and update UI
   await refreshQuotationsFromApi().catch(() => {});
   const refreshedWO = await workOrderService.getAll().catch(() => []);
   if (refreshedWO && refreshedWO.length) STATE.workOrders = refreshedWO;
+  if (onProgress) onProgress(3);
 
   logSystemActivity(
     `Quotation ${quoteId} approved and dispatched to Work Orders.`,
@@ -7630,8 +7793,47 @@ window.approveQuotation = async function (quoteId, comment = "") {
   showToastNotification(
     `Quotation ${quoteId} Approved! Dispatched to Work Orders List.`,
   );
-  renderApprovalsList("pending");
-  if (typeof renderWorkOrders === "function") renderWorkOrders();
+  return true;
+}
+
+// Wrapper: UX only. It locks the card, drives the inline progress steps at the
+// real execution boundaries, holds the success state briefly, then runs the
+// existing navigation/refresh. On failure it restores the card and shows an
+// inline error so the user can retry.
+window.approveQuotation = async function (quoteId, comment = "") {
+  const key = String(quoteId);
+  if (_approvalsInFlight.has(key)) return;
+  _approvalsInFlight.add(key);
+
+  const q = (STATE.quotations || []).find(
+    (x) => x.id === quoteId || x._backendId === quoteId,
+  );
+  const card = q
+    ? document.querySelector(`.approvals-card[data-quote-id="${q.id}"]`)
+    : null;
+
+  try {
+    _setApprovingUx(card);
+    const ok = await _runApprovalCore(quoteId, comment, (step) => {
+      _renderApprovalSteps(card, step);
+    });
+    if (ok) {
+      _setApprovedUx(card);
+      await new Promise((r) => setTimeout(r, 700));
+      renderApprovalsList("pending");
+      if (typeof renderWorkOrders === "function") renderWorkOrders();
+    } else {
+      _restoreApprovalUx(card, "Approval failed. Please try again.");
+    }
+  } catch (err) {
+    console.error("[approveQuotation] Unexpected error:", err);
+    _restoreApprovalUx(
+      card,
+      (err && err.message) || "Approval failed. Please try again.",
+    );
+  } finally {
+    _approvalsInFlight.delete(key);
+  }
 };
 
 window.denyQuotation = function (quoteId) {
