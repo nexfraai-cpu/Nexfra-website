@@ -2019,6 +2019,449 @@ function initSidebarNav() {
   });
 }
 
+// ===== GLOBAL PAGE TRANSITION MANAGER =====
+// Single owner of every module-change transition. All navigation flows through
+// `PageTransition.transitionTo`. It handles: sidebar highlight, view swap, the
+// branded loading indicator, page-specific skeletons (swapped in after ~300ms),
+// and the final fade-in of the real rendered content. Existing rendering
+// functions are NOT modified - they are referenced in RENDERERS below.
+const MODULE_LABELS = {
+  dashboard: "Overview",
+  sales: "Chassis Filtering",
+  workorders: "Work Orders",
+  status: "Production Board",
+  accounts: "Finance Ledger",
+  admin: "Administration",
+  quotations: "Quotation Builder",
+  allquotations: "All Quotations",
+  approvals: "Approval",
+};
+
+const PageTransition = (function () {
+  const FAST_LOAD_MS = 300;
+
+  let transitionSeq = 0;
+  let skeletonTimer = null;
+
+  // Existing, untouched renderers, keyed by module name. Entries may provide an
+  // optional `done` promise so the transition stays open until real (async)
+  // content has been written.
+  const RENDERERS = {
+    dashboard: renderDashboardOverview,
+    sales: renderChassisTable,
+    workorders: renderWorkOrders,
+    status: renderProductionBoard,
+    accounts: { run: refreshFinanceModule, done: waitForFinanceContent },
+    admin: renderAdminSettings,
+    quotations: startNewQuotationWizard,
+    allquotations: renderAllQuotations,
+    approvals: function () {
+      renderApprovalsList("pending");
+    },
+  };
+
+  // Page-specific skeleton builders, keyed by module name. Falls back to a
+  // generic list skeleton when a module has no dedicated one.
+  const SKELETONS = {
+    dashboard: dashboardSkeleton,
+    sales: chassisSkeleton,
+    workorders: workOrderSkeleton,
+    status: productionSkeleton,
+    accounts: ledgerSkeleton,
+    admin: genericListSkeleton,
+    quotations: configuratorSkeleton,
+    allquotations: quotationCardsSkeleton,
+    approvals: approvalCardsSkeleton,
+  };
+
+  let stylesInjected = false;
+
+  function ensureStyles() {
+    if (stylesInjected || typeof document === "undefined") return;
+    stylesInjected = true;
+    const style = document.createElement("style");
+    style.textContent =
+      ".pt-overlay{position:absolute;inset:0;z-index:50;background:rgba(248,250,252,0.55);}" +
+      ".pt-overlay-inner{position:sticky;top:0;height:100vh;display:flex;align-items:center;justify-content:center;}" +
+      ".pt-skeleton-wrap{width:100%;box-sizing:border-box;padding:8px 4px;}" +
+      ".pt-shimmer{background:linear-gradient(90deg,#E2E8F0 25%,#EDF2F7 37%,#E2E8F0 63%);background-size:400% 100%;animation:pt-shimmer 1.2s ease infinite;border-radius:6px;}" +
+      "@keyframes pt-shimmer{0%{background-position:100% 50%}100%{background-position:0 50%}}" +
+      ".pt-branded{display:flex;flex-direction:column;align-items:center;gap:14px;}" +
+      ".pt-branded .pt-logo-ring{width:54px;height:54px;border-radius:50%;border:3px solid rgba(15,23,42,0.12);border-top-color:#0F172A;animation:pt-spin .8s linear infinite;}" +
+      "@keyframes pt-spin{to{transform:rotate(360deg)}}" +
+      ".pt-branded .pt-logo-mark{width:54px;height:54px;border-radius:50%;background:#0F172A;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:1rem;}" +
+      ".pt-view-fade{animation:pt-fade-in .35s ease;}@keyframes pt-fade-in{from{opacity:0}to{opacity:1}}" +
+      ".pt-module-title{font-size:0.78rem;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;color:#64748B;}";
+    document.head.appendChild(style);
+  }
+
+  function setActiveLink(moduleName) {
+    const links = document.querySelectorAll(".sidebar-link");
+    links.forEach((link) => {
+      link.classList.toggle(
+        "active",
+        link.getAttribute("data-module") === moduleName,
+      );
+    });
+  }
+
+  function showView(moduleName) {
+    const views = document.querySelectorAll(".module-view");
+    views.forEach((v) => v.classList.remove("active"));
+    const view = document.getElementById(`view-${moduleName}`);
+    if (view) {
+      view.classList.add("active");
+      view.style.position = "relative";
+    }
+    return view;
+  }
+
+  function makeOverlay(view, kind, skeletonHTML) {
+    if (!view) return null;
+    let overlay = view.querySelector(".pt-overlay");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.className = "pt-overlay";
+      view.appendChild(overlay);
+    }
+    overlay.style.display = "";
+    overlay.style.background =
+      kind === "skeleton"
+        ? "#F8FAFC"
+        : "rgba(248,250,252,0.45)";
+    if (kind === "loader") {
+      overlay.innerHTML =
+        '<div class="pt-overlay-inner"><div class="pt-branded"><div class="pt-logo-mark">N</div>' +
+        '<div class="pt-module-title">Loading ' +
+        (MODULE_LABELS[view.id.replace("view-", "")] || "page") +
+        "</div></div></div>";
+    } else if (kind === "skeleton" && skeletonHTML) {
+      overlay.innerHTML =
+        '<div class="pt-skeleton-wrap">' + skeletonHTML + "</div>";
+    }
+    return overlay;
+  }
+
+  function removeOverlay(view) {
+    if (!view) return;
+    const overlay = view.querySelector(".pt-overlay");
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  function buildSkeleton(moduleName) {
+    const builder = SKELETONS[moduleName] || genericListSkeleton;
+    try {
+      return builder();
+    } catch (err) {
+      console.warn("[PageTransition] skeleton error for " + moduleName, err);
+      return genericListSkeleton();
+    }
+  }
+
+  async function transitionTo(moduleName) {
+    ensureStyles();
+    const seq = ++transitionSeq;
+    if (skeletonTimer) {
+      clearTimeout(skeletonTimer);
+      skeletonTimer = null;
+    }
+
+    // 1. Immediately highlight the selected module.
+    setActiveLink(moduleName);
+
+    // 2. Show the target view with a loading overlay on top.
+    const view = showView(moduleName);
+    makeOverlay(view, "loader");
+
+    // 3. If loading outlives the fast-load window, swap in the page skeleton.
+    const skeletonHTML = buildSkeleton(moduleName);
+    skeletonTimer = setTimeout(function () {
+      skeletonTimer = null;
+      if (seq !== transitionSeq) return;
+      makeOverlay(view, "skeleton", skeletonHTML);
+    }, FAST_LOAD_MS);
+
+    // Yield a couple of frames so the loader paints before rendering starts.
+    await new Promise(function (resolve) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(resolve);
+      });
+    });
+
+    // 4. Run the existing renderer (untouched).
+    const renderer = RENDERERS[moduleName];
+    try {
+      if (renderer && typeof renderer === "function") renderer();
+      else if (renderer && renderer.run) renderer.run();
+    } catch (err) {
+      console.error("[PageTransition] render failed for " + moduleName, err);
+    }
+
+    // Some renderers finish asynchronously (e.g. finance inbox); wait for them
+    // so the skeleton covers the gap instead of blank content.
+    if (renderer && renderer.done) {
+      try {
+        await renderer.done();
+      } catch (err) {
+        console.warn("[PageTransition] done-hook error for " + moduleName, err);
+      }
+    }
+
+    if (seq !== transitionSeq) {
+      removeOverlay(view);
+      return;
+    }
+    if (skeletonTimer) {
+      clearTimeout(skeletonTimer);
+      skeletonTimer = null;
+    }
+
+    // 5. Fade the overlay out and the real content in.
+    finishTransition(view);
+  }
+
+  function finishTransition(view) {
+    if (!view) return;
+    const overlay = view.querySelector(".pt-overlay");
+    if (overlay) {
+      if (typeof gsap !== "undefined") {
+        gsap.to(overlay, {
+          opacity: 0,
+          duration: 0.25,
+          onComplete: function () {
+            removeOverlay(view);
+          },
+        });
+      } else {
+        overlay.style.transition = "opacity 0.25s ease";
+        overlay.style.opacity = "0";
+        setTimeout(function () {
+          removeOverlay(view);
+        }, 250);
+      }
+    }
+    // Smoothly fade the freshly rendered content in.
+    if (typeof gsap !== "undefined") {
+      gsap.fromTo(
+        Array.prototype.slice.call(view.children).filter(function (el) {
+          return el.className !== "pt-overlay";
+        }),
+        { opacity: 0, y: 8 },
+        { opacity: 1, y: 0, stagger: 0.05, duration: 0.3 },
+      );
+    } else {
+      view.classList.add("pt-view-fade");
+      setTimeout(function () {
+        view.classList.remove("pt-view-fade");
+      }, 400);
+    }
+  }
+
+  // Finance renders asynchronously; keep the transition open until the active
+  // tab's container is no longer showing its built-in "Loading…" placeholder.
+  function waitForFinanceContent() {
+    return new Promise(function (resolve) {
+      var start = Date.now();
+      var check = function () {
+        if (Date.now() - start > 15000) {
+          resolve();
+          return;
+        }
+        var tab = typeof financeTab !== "undefined" && financeTab === "mine" ? "mine" : "inbox";
+        var containerId =
+          tab === "mine" ? "finance-ledger-container" : "finance-inbox-container";
+        var el = document.getElementById(containerId);
+        var txt = el ? el.textContent || "" : "";
+        if (!el || txt.indexOf("Loading") === -1) {
+          resolve();
+          return;
+        }
+        setTimeout(check, 120);
+      };
+      setTimeout(check, 60);
+    });
+  }
+
+  // ---- Skeleton builders (display-only) ----
+
+  function bar(w, h, extra) {
+    return '<div class="pt-shimmer" style="width:' + w + ";height:" + h + 'px;' + (extra || "") + '"></div>';
+  }
+
+  function skeletonCard(barRows) {
+    var rows = (barRows || [])
+      .map(function (b) {
+        return bar(b[0], b[1]);
+      })
+      .join("");
+    return (
+      '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(15,23,42,0.06);">' +
+      rows +
+      "</div>"
+    );
+  }
+
+  function dashboardSkeleton() {
+    var statCards = "";
+    for (var i = 0; i < 4; i++) {
+      statCards +=
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:18px;box-shadow:0 1px 3px rgba(15,23,42,0.06);display:flex;flex-direction:column;gap:12px;">' +
+        bar("50%", 12) +
+        bar("80%", 22) +
+        "</div>";
+    }
+    return (
+      '<div style="display:flex;flex-direction:column;gap:24px;">' +
+      '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;">' +
+      statCards +
+      "</div>" +
+      '<div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">' +
+      '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(15,23,42,0.06);display:flex;flex-direction:column;gap:14px;min-height:280px;">' +
+      bar("40%", 16) +
+      '<div style="flex:1;display:flex;align-items:flex-end;gap:10px;">' +
+      [30, 48, 62, 40, 74, 56, 88, 66, 42, 78].map(function (h) {
+        return '<div class="pt-shimmer" style="width:100%;height:' + h + '%;border-radius:6px;"></div>';
+      }).join("") +
+      "</div>" +
+      "</div>" +
+      '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:12px;padding:20px;box-shadow:0 1px 3px rgba(15,23,42,0.06);display:flex;flex-direction:column;gap:12px;min-height:280px;">' +
+      bar("45%", 15) +
+      skeletonCard([["92%", 14], ["80%", 14], ["88%", 14], ["70%", 14]]) +
+      "</div>" +
+      "</div>" +
+      "</div>"
+    );
+  }
+
+  function approvalCardsSkeleton() {
+    var cards = "";
+    for (var i = 0; i < 6; i++) {
+      cards += skeletonCard([
+        ["40%", 11],
+        ["65%", 18],
+        ["90%", 12],
+        ["70%", 12],
+        ["100%", 1],
+        ["55%", 14],
+        ["75%", 14],
+      ]);
+    }
+    return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">' + cards + "</div>";
+  }
+
+  function quotationCardsSkeleton() {
+    var cards = "";
+    for (var i = 0; i < 6; i++) {
+      cards += skeletonCard([
+        ["45%", 12],
+        ["80%", 18],
+        ["90%", 12],
+        ["100%", 1],
+        ["60%", 14],
+      ]);
+    }
+    return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">' + cards + "</div>";
+  }
+
+  function productionSkeleton() {
+    var cols = "";
+    for (var c = 0; c < 3; c++) {
+      var cards = "";
+      for (var r = 0; r < 4; r++) {
+        cards += skeletonCard([["60%", 12], ["90%", 12], ["70%", 12], ["100%", 1], ["50%", 12]]);
+      }
+      cols += '<div style="flex:1;display:flex;flex-direction:column;gap:14px;">' + cards + "</div>";
+    }
+    return '<div style="display:flex;gap:18px;">' + cols + "</div>";
+  }
+
+  function workOrderSkeleton() {
+    var rows = "";
+    for (var i = 0; i < 8; i++) {
+      rows +=
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 3px rgba(15,23,42,0.06);">' +
+        bar("16%", 16) +
+        bar("22%", 14) +
+        bar("26%", 14) +
+        bar("14%", 14) +
+        bar("12%", 14) +
+        "</div>";
+    }
+    return '<div>' + rows + "</div>";
+  }
+
+  function chassisSkeleton() {
+    var rows = "";
+    for (var i = 0; i < 7; i++) {
+      rows +=
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 3px rgba(15,23,42,0.06);">' +
+        bar("18%", 16) +
+        bar("30%", 14) +
+        bar("24%", 14) +
+        bar("14%", 14) +
+        "</div>";
+    }
+    return '<div>' + rows + "</div>";
+  }
+
+  function ledgerSkeleton() {
+    var rows = "";
+    for (var i = 0; i < 9; i++) {
+      rows +=
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 3px rgba(15,23,42,0.06);">' +
+        bar("20%", 14) +
+        bar("18%", 14) +
+        bar("14%", 14) +
+        bar("12%", 14) +
+        bar("12%", 14) +
+        "</div>";
+    }
+    return '<div>' + rows + "</div>";
+  }
+
+  function genericListSkeleton() {
+    var rows = "";
+    for (var i = 0; i < 6; i++) {
+      rows +=
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 3px rgba(15,23,42,0.06);">' +
+        bar("30%", 16) +
+        bar("40%", 14) +
+        bar("15%", 14) +
+        "</div>";
+    }
+    return '<div>' + rows + "</div>";
+  }
+
+  function configuratorSkeleton() {
+    var stepRows = "";
+    for (var i = 0; i < 5; i++) {
+      stepRows +=
+        '<div style="background:#fff;border:1px solid #E2E8F0;border-radius:10px;padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:16px;box-shadow:0 1px 3px rgba(15,23,42,0.06);">' +
+        bar("12%", 16) +
+        bar("55%", 14) +
+        bar("16%", 14) +
+        "</div>";
+    }
+    return (
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">' +
+      '<div>' +
+      skeletonCard([
+        ["50%", 16],
+        ["100%", 12],
+        ["100%", 12],
+        ["100%", 12],
+      ]) +
+      "</div>" +
+      '<div>' + stepRows + "</div>" +
+      "</div>"
+    );
+  }
+
+  return {
+    transitionTo: transitionTo,
+  };
+})();
+
 function switchModule(moduleName) {
   if (!userCanAccess(moduleName)) {
     const fallback = getUserDefaultModule();
@@ -2027,41 +2470,8 @@ function switchModule(moduleName) {
       return;
     }
   }
-
-  const links = document.querySelectorAll(".sidebar-link");
-  const views = document.querySelectorAll(".module-view");
-
-  links.forEach((link) => {
-    link.classList.remove("active");
-    if (link.getAttribute("data-module") === moduleName) {
-      link.classList.add("active");
-    }
-  });
-
-  views.forEach((v) => v.classList.remove("active"));
-
-  const activeView = document.getElementById(`view-${moduleName}`);
-  if (activeView) {
-    activeView.classList.add("active");
-
-    // Smooth GSAP staggered viewport load
-    gsap.fromTo(
-      activeView.children,
-      { opacity: 0, y: 10 },
-      { opacity: 1, y: 0, stagger: 0.05, duration: 0.3 },
-    );
-
-    // Refresh modules
-    if (moduleName === "dashboard") renderDashboardOverview();
-    if (moduleName === "sales") renderChassisTable();
-    if (moduleName === "workorders") renderWorkOrders();
-    if (moduleName === "status") renderProductionBoard();
-    if (moduleName === "accounts") refreshFinanceModule();
-    if (moduleName === "admin") renderAdminSettings();
-    if (moduleName === "quotations") startNewQuotationWizard();
-    if (moduleName === "allquotations") renderAllQuotations();
-    if (moduleName === "approvals") renderApprovalsList("pending");
-  }
+  // All module changes route through the single global transition manager.
+  PageTransition.transitionTo(moduleName);
 }
 
 function initDashboardShortcuts() {
