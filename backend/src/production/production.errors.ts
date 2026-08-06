@@ -29,3 +29,9 @@ export class ProductionItemAlreadyCompletedError extends AppError {
     super(400, 'Production item is already completed');
   }
 }
+
+export class WorkOrderNotFoundError extends AppError {
+  constructor(id: string) {
+    super(404, `Work order '${id}' not found`);
+  }
+}

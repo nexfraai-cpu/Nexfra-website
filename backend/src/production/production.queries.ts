@@ -126,6 +126,17 @@ export class ProductionQueries {
     return data;
   }
 
+  async createItem(input: RowData): Promise<RowData> {
+    const { data, error } = await supabase
+      .from('production_items')
+      .insert(input)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
   async findStageRecords(productionItemId: string, user: AuthenticatedUser): Promise<RowData[]> {
     const { data, error } = await applyOwnershipScope(
       supabase
@@ -239,7 +250,7 @@ export class ProductionQueries {
     const { data, error } = await applyOwnershipScope(
       supabase
         .from('work_orders')
-        .select('customer_name, product_name')
+        .select('id, quotation_id, customer_name, product_name')
         .eq('id', id)
         .single(),
       user,

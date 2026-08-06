@@ -4,6 +4,7 @@ import {
   InvalidStageTransitionError,
   ChassisRecordNotFoundError,
   ProductionItemAlreadyCompletedError,
+  WorkOrderNotFoundError,
 } from './production.errors.js';
 import {
   ProductionItemResponse,
@@ -60,7 +61,7 @@ export class ProductionService {
 
   async update(
     id: string,
-    input: { dispatchFields?: Record<string, unknown>; productionStages?: { stageKey: string; stageName?: string; isCompleted: boolean }[] },
+    input: { dispatchFields?: Record<string, unknown>; productionStages?: { stageKey: string; stageName?: string; isCompleted: boolean; remark?: string | null }[] },
     user: AuthenticatedUser,
   ): Promise<ProductionItemResponse> {
     const item = await this.queries.findById(id, user);
@@ -72,16 +73,17 @@ export class ProductionService {
     if (input.dispatchFields !== undefined) updates.dispatch_fields = input.dispatchFields;
 
     for (const stage of input.productionStages ?? []) {
-      await this.queries.upsertStageRecord({
+      const record: Record<string, unknown> = {
         production_item_id: id,
         stage_key: stage.stageKey,
         stage_name: stage.stageName ?? stage.stageKey,
         is_completed: stage.isCompleted,
         completed_by: stage.isCompleted ? user.id : null,
         completed_at: stage.isCompleted ? new Date().toISOString() : null,
-        remark: null,
         created_by: user.id,
-      });
+      };
+      if (stage.remark !== undefined) record.remark = stage.remark;
+      await this.queries.upsertStageRecord(record);
     }
 
     if (Object.keys(updates).length === 1 && !input.productionStages?.length) {
@@ -95,6 +97,42 @@ export class ProductionService {
     await this._logAudit(user.id, 'update', 'production_item', id, oldData, updated);
     logger.info({ actorId: user.id, productionItemId: id }, 'Production item updated');
     return this._toResponse(updated, stageRecords);
+  }
+
+  async createItem(
+    input: { workOrderId: string },
+    user: AuthenticatedUser,
+  ): Promise<ProductionItemResponse> {
+    const wo = await this.queries.findWorkOrderById(input.workOrderId, user);
+    if (!wo || (wo as any).deleted_at) throw new WorkOrderNotFoundError(input.workOrderId);
+
+    const item = await this.queries.createItem({
+      work_order_id: input.workOrderId,
+      quotation_id: (wo as any).quotation_id ?? null,
+      current_stage: 'Pending',
+      stage_progress: {},
+      dispatch_fields: {},
+      created_by: user.id,
+      updated_by: user.id,
+    } as any);
+
+    await this.queries.createStageRecord({
+      production_item_id: item.id as string,
+      stage_key: 'Pending',
+      stage_name: 'Pending',
+      is_completed: false,
+      completed_by: user.id,
+      completed_at: new Date().toISOString(),
+      remark: null,
+      created_by: user.id,
+    } as any);
+
+    const stageRecords = await this.queries.findStageRecords(item.id as string, user);
+    await this._logAudit(user.id, 'create', 'production_item', item.id as string, null, {
+      workOrderId: input.workOrderId,
+    });
+    logger.info({ actorId: user.id, workOrderId: input.workOrderId, productionItemId: item.id }, 'Production item created');
+    return this._toResponse(item, stageRecords);
   }
 
   async advanceStage(id: string, input: { stageKey?: string; remark?: string | null }, user: AuthenticatedUser): Promise<ProductionItemDetailResponse> {

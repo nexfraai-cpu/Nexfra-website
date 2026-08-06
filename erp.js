@@ -244,9 +244,14 @@ async function hydrateStateFromApi() {
 
   updateLoader(90, "Almost ready...");
 
-  const productionItems = rawProduction.map((item) =>
-    productionService.toLegacy(item, quotations)
-  );
+  const hydrateSchema =
+    appConfig && appConfig.progressionSchema && appConfig.progressionSchema.length
+      ? appConfig.progressionSchema
+      : getDefaultProgressionSchema();
+  const productionItems = rawProduction.map((item) => {
+    const legacy = productionService.toLegacy(item, quotations);
+    return reconcileProductionRemarks(legacy, hydrateSchema);
+  });
 
   console.log(
     "[hydrateStateFromApi] Hydrated quotations count:",
@@ -7210,7 +7215,8 @@ window.downloadWorkOrderPdf = function () {
   }, 300);
 };
 
-window.setWorkOrderDueDate = function (id) {
+window.setWorkOrderDueDate = async function (id) {
+  loadState();
   const wo = STATE.workOrders.find((w) => w.id === id);
   if (!wo) return;
   const input = document.getElementById("due-" + id);
@@ -7223,52 +7229,101 @@ window.setWorkOrderDueDate = function (id) {
     return;
   }
   wo.dueDate = input.value;
-  ensureProductionItem(wo.quoteId, input.value);
+  await ensureProductionItem(wo.quoteId);
   saveState();
+  await flushStateToApi().catch((e) =>
+    Logger.error("Background state sync failed", e),
+  );
+  await refreshWorkOrdersFromApi().catch(() => null);
+  await refreshProductionFromApi().catch(() => null);
   renderWorkOrders();
+  renderProductionBoard();
 };
 
-window.clearWorkOrderDueDate = function (id) {
+window.clearWorkOrderDueDate = async function (id) {
+  loadState();
   const wo = STATE.workOrders.find((w) => w.id === id);
   if (!wo) return;
   wo.dueDate = null;
-  wo.stage = "Pending";
-  wo.progress = 0;
-  if (STATE.productionItems) {
-    STATE.productionItems = STATE.productionItems.filter(
-      (p) => p.quoteId !== wo.quoteId,
-    );
-  }
   saveState();
+  await flushStateToApi().catch((e) =>
+    Logger.error("Background state sync failed", e),
+  );
+  await refreshWorkOrdersFromApi().catch(() => null);
+  await refreshProductionFromApi().catch(() => null);
   renderWorkOrders();
+  renderProductionBoard();
 };
 
-function ensureProductionItem(quoteId, dueDate) {
+async function ensureProductionItem(quoteId) {
+  loadState();
   if (!STATE.productionItems) STATE.productionItems = [];
-  const existing = STATE.productionItems.find((p) => p.quoteId === quoteId);
-  if (existing) {
-    existing.dueDate = dueDate;
-    return;
+  const wo = (STATE.workOrders || []).find(
+    (w) =>
+      w.quoteId === quoteId ||
+      w.quoteNumber === quoteId ||
+      w._backendQuoteId === quoteId ||
+      w.id === quoteId,
+  );
+  if (!wo || !wo._backendId) {
+    console.warn(
+      `[ensureProductionItem] No backend work order for quote ${quoteId}; cannot create a production item`,
+    );
+    return null;
   }
-  const quote = STATE.quotations.find((q) => q.id === quoteId);
-  const wo = STATE.workOrders.find((w) => w.quoteId === quoteId);
-  STATE.productionItems.push({
-    id: quoteId,
-    quoteId: quoteId,
-    customerName: quote ? quote.customerName : wo ? wo.customerName : "Client",
-    product: quote ? quote.productName : wo ? wo.product : "Custom Body",
-    date: quote
-      ? quote.date
-      : wo
-        ? wo.date
-        : new Date().toISOString().split("T")[0],
-    columnStatus: "Not Started",
-    progressPct: 0,
-    progressionMap: {},
-    remarks: {},
-    dueDate: dueDate,
-    urgent: wo ? !!wo.urgent : false,
+
+  const existing = STATE.productionItems.find(
+    (p) =>
+      p.quoteId === quoteId ||
+      (p._backendQuoteId && p._backendQuoteId === wo._backendQuoteId) ||
+      (p.workOrderId && p.workOrderId === wo._backendId),
+  );
+  if (existing) return existing;
+
+  const schema = getSchemaSafe();
+  let item = null;
+  try {
+    const rows = await productionService.fetchByWorkOrder(wo._backendId);
+    const mapped = (rows || []).map((r) =>
+      reconcileProductionRemarks(productionService.toLegacy(r, STATE.quotations || []), schema),
+    );
+    if (mapped.length) {
+      STATE.productionItems.push(...mapped);
+      item =
+        mapped.find(
+          (m) =>
+            m.quoteId === quoteId ||
+            (m._backendQuoteId && m._backendQuoteId === wo._backendQuoteId),
+        ) || mapped[0];
+    }
+  } catch (e) {
+    console.warn("[ensureProductionItem] fetch failed", e && e.message);
+  }
+
+  if (!item) {
+    try {
+      await productionService.createItem(wo._backendId);
+      const rows = await productionService.fetchByWorkOrder(wo._backendId);
+      const mapped = (rows || []).map((r) =>
+        reconcileProductionRemarks(productionService.toLegacy(r, STATE.quotations || []), schema),
+      );
+      if (mapped.length) {
+        STATE.productionItems.push(...mapped);
+        item = mapped[0];
+      }
+    } catch (e) {
+      console.warn(
+        `[ensureProductionItem] backend create failed for ${wo._backendId}`,
+        e && e.message,
+      );
+    }
+  }
+
+  _stateCache = Object.assign({}, _stateCache, {
+    productionItems: STATE.productionItems,
   });
+  _syncSignatures.productionItems = _entitySig(STATE.productionItems);
+  return item || null;
 }
 
 // ------------------------------------------
@@ -8194,7 +8249,14 @@ async function _runApprovalCore(quoteId, comment, onProgress) {
   // Transactional Step 3: Refresh state from API and update UI
   await refreshQuotationsFromApi().catch(() => {});
   const refreshedWO = await workOrderService.getAll().catch(() => []);
-  if (refreshedWO && refreshedWO.length) STATE.workOrders = refreshedWO;
+  if (refreshedWO && refreshedWO.length) {
+    STATE.workOrders = refreshedWO;
+    _stateCache = Object.assign({}, _stateCache, {
+      workOrders: STATE.workOrders,
+    });
+    _syncSignatures.workOrders = _entitySig(STATE.workOrders);
+  }
+  await refreshProductionFromApi().catch(() => null);
   if (onProgress) onProgress(3);
 
   logSystemActivity(
@@ -8552,6 +8614,62 @@ function syncProductionItemsWithQuotations() {
   // No-op: production items are now created only when a due date is set on a work order.
 }
 
+function getSchemaSafe() {
+  const src =
+    (typeof STATE !== "undefined" && STATE && STATE.progressionSchema) ||
+    (_stateCache && _stateCache.progressionSchema);
+  return src && src.length ? src : getDefaultProgressionSchema();
+}
+
+function reconcileProductionRemarks(prodItem, schema) {
+  if (!prodItem) return prodItem;
+  const stageRemarks = {};
+  (prodItem.stageRecords || []).forEach((sr) => {
+    if (sr && sr.remark) stageRemarks[sr.stageKey] = sr.remark;
+  });
+  prodItem.stageRemarks = stageRemarks;
+  if (!prodItem.remarks) prodItem.remarks = {};
+  (schema || []).forEach((sec) => {
+    let text = null;
+    sec.subsections.forEach((sub) => {
+      sub.items.forEach((it) => {
+        const k = `${sec.id}_${sub.id}_${it.id}`;
+        if (!text && stageRemarks[k]) text = stageRemarks[k];
+      });
+    });
+    if (text) prodItem.remarks[sec.id] = text;
+  });
+  return prodItem;
+}
+
+function upsertProductionItemFromBackend(legacyItem) {
+  if (!legacyItem || !legacyItem._backendId) return null;
+  if (!STATE.productionItems) STATE.productionItems = [];
+  const idx = STATE.productionItems.findIndex(
+    (p) => p._backendId && p._backendId === legacyItem._backendId,
+  );
+  if (idx >= 0) STATE.productionItems[idx] = legacyItem;
+  else STATE.productionItems.push(legacyItem);
+  return legacyItem;
+}
+
+async function refreshProductionFromApi() {
+  try {
+    const raw = await productionService.fetchRaw();
+    const schema = getSchemaSafe();
+    const items = raw.map((item) =>
+      reconcileProductionRemarks(productionService.toLegacy(item, STATE.quotations || []), schema),
+    );
+    _stateCache.productionItems = items;
+    _syncSignatures.productionItems = _entitySig(items);
+    if (typeof STATE !== "undefined" && STATE) STATE.productionItems = items;
+    return items;
+  } catch (e) {
+    console.warn("[refreshProductionFromApi] failed", e && e.message);
+    return null;
+  }
+}
+
 function renderProductionBoard() {
   loadState();
 
@@ -8559,12 +8677,12 @@ function renderProductionBoard() {
   if (!container) return;
 
   const boardItems = (STATE.productionItems || []).filter((item) => {
-    if (item.dueDate) return true;
     const wo = (STATE.workOrders || []).find(
       (w) =>
         w.quoteId === item.quoteId ||
         w._backendQuoteId === item.quoteId ||
-        w.quoteNumber === item.quoteId,
+        w.quoteNumber === item.quoteId ||
+        (item.workOrderId && w._backendId === item.workOrderId),
     );
     return !!(wo && wo.dueDate);
   });
@@ -8622,11 +8740,11 @@ function renderProductionBoard() {
               (w) =>
                 w.quoteId === item.quoteId ||
                 w._backendQuoteId === item.quoteId ||
-                w.quoteNumber === item.quoteId,
+                w.quoteNumber === item.quoteId ||
+                (item.workOrderId && w._backendId === item.workOrderId),
             )
           : null;
-        const itemDueDate =
-          item.dueDate || (woForItem && woForItem.dueDate) || null;
+        const itemDueDate = (woForItem && woForItem.dueDate) || null;
         const isOverdue = itemDueDate
           ? (() => {
               const d = new Date(itemDueDate + "T00:00:00");
@@ -8698,13 +8816,16 @@ function renderProductionBoard() {
   container.innerHTML = boardHtml;
 }
 
-window.openOrderProgressionModal = function (quoteId) {
+window.openOrderProgressionModal = async function (quoteId) {
   loadState();
 
-  const prodItem = STATE.productionItems.find(
+  let prodItem = STATE.productionItems.find(
     (p) => p.quoteId === quoteId || p.id === quoteId,
   );
-  if (!prodItem) return;
+  if (!prodItem) {
+    prodItem = await ensureProductionItem(quoteId);
+    if (!prodItem) return;
+  }
 
   const quote = STATE.quotations.find(
     (q) => q.id === quoteId || q._backendId === quoteId,
@@ -8770,28 +8891,56 @@ window.closeRemarkModal = function () {
   _remarkContext = null;
 };
 
-window.saveRemark = function () {
+window.saveRemark = async function () {
   if (!_remarkContext) return;
   loadState();
-  const prodItem = STATE.productionItems.find(
+  let prodItem = STATE.productionItems.find(
     (p) =>
       p.quoteId === _remarkContext.quoteId || p.id === _remarkContext.quoteId,
   );
-  if (!prodItem) return;
+  if (!prodItem) {
+    prodItem = await ensureProductionItem(_remarkContext.quoteId);
+    if (!prodItem) return;
+  }
 
   if (!prodItem.remarks) prodItem.remarks = {};
+  if (!prodItem.stageRemarks) prodItem.stageRemarks = {};
   const textarea = document.getElementById("remark-textarea");
-  prodItem.remarks[_remarkContext.secId] = textarea ? textarea.value : "";
+  const text = textarea ? textarea.value : "";
+  prodItem.remarks[_remarkContext.secId] = text;
 
+  const schema = getProgressionSchema();
+  const sec = schema.find((s) => s.id === _remarkContext.secId);
+  if (sec) {
+    sec.subsections.forEach((sub) => {
+      sub.items.forEach((item) => {
+        const key = `${sec.id}_${sub.id}_${item.id}`;
+        prodItem.stageRemarks[key] = text;
+      });
+    });
+  }
+
+  const merged = await productionService.updateItem(prodItem);
+  if (merged) {
+    upsertProductionItemFromBackend(
+      reconcileProductionRemarks(merged, schema),
+    );
+  }
   saveState();
   closeRemarkModal();
-  renderOrderProgressionBody(prodItem);
+  await refreshProductionFromApi().catch(() => null);
+  const refreshed = STATE.productionItems.find(
+    (p) =>
+      p.quoteId === _remarkContext.quoteId || p.id === _remarkContext.quoteId,
+  );
+  renderOrderProgressionBody(refreshed || prodItem);
   renderProductionBoard();
   if (typeof renderWorkOrders === "function") renderWorkOrders();
 };
 
 function renderOrderProgressionBody(prodItem) {
   const schema = getProgressionSchema();
+  reconcileProductionRemarks(prodItem, schema);
   if (!prodItem.progressionMap) prodItem.progressionMap = {};
   const map = prodItem.progressionMap;
 
@@ -8973,12 +9122,15 @@ function renderOrderProgressionBody(prodItem) {
   `;
 }
 
-window.toggleEntireSectionDone = function (quoteId, secId, markDone) {
+window.toggleEntireSectionDone = async function (quoteId, secId, markDone) {
   loadState();
-  const prodItem = STATE.productionItems.find(
+  let prodItem = STATE.productionItems.find(
     (p) => p.quoteId === quoteId || p.id === quoteId,
   );
-  if (!prodItem) return;
+  if (!prodItem) {
+    prodItem = await ensureProductionItem(quoteId);
+    if (!prodItem) return;
+  }
 
   if (!prodItem.progressionMap) prodItem.progressionMap = {};
 
@@ -8993,40 +9145,58 @@ window.toggleEntireSectionDone = function (quoteId, secId, markDone) {
     });
   }
 
+  const merged = await productionService.updateItem(prodItem);
+  if (merged) upsertProductionItemFromBackend(merged);
   saveState();
-  renderOrderProgressionBody(prodItem);
+  await refreshProductionFromApi().catch(() => null);
+  const refreshed =
+    STATE.productionItems.find((p) => p.quoteId === quoteId || p.id === quoteId) ||
+    prodItem;
+  renderOrderProgressionBody(refreshed);
   renderProductionBoard();
-  productionService.updateItem(prodItem);
   if (typeof renderWorkOrders === "function") renderWorkOrders();
 };
 
-window.toggleProgressionMapKey = function (quoteId, key, isChecked) {
+window.toggleProgressionMapKey = async function (quoteId, key, isChecked) {
   loadState();
-  const prodItem = STATE.productionItems.find(
+  let prodItem = STATE.productionItems.find(
     (p) => p.quoteId === quoteId || p.id === quoteId,
   );
-  if (!prodItem) return;
+  if (!prodItem) {
+    prodItem = await ensureProductionItem(quoteId);
+    if (!prodItem) return;
+  }
 
   if (!prodItem.progressionMap) prodItem.progressionMap = {};
   prodItem.progressionMap[key] = isChecked;
 
+  const merged = await productionService.updateItem(prodItem);
+  if (merged) upsertProductionItemFromBackend(merged);
   saveState();
-  renderOrderProgressionBody(prodItem);
+  await refreshProductionFromApi().catch(() => null);
+  const refreshed =
+    STATE.productionItems.find((p) => p.quoteId === quoteId || p.id === quoteId) ||
+    prodItem;
+  renderOrderProgressionBody(refreshed);
   renderProductionBoard();
-  productionService.updateItem(prodItem);
   if (typeof renderWorkOrders === "function") renderWorkOrders();
 };
 
-window.updateDispatchedData = function (quoteId, field, value) {
+window.updateDispatchedData = async function (quoteId, field, value) {
   loadState();
-  const prodItem = STATE.productionItems.find(
+  let prodItem = STATE.productionItems.find(
     (p) => p.quoteId === quoteId || p.id === quoteId,
   );
-  if (!prodItem) return;
+  if (!prodItem) {
+    prodItem = await ensureProductionItem(quoteId);
+    if (!prodItem) return;
+  }
   if (!prodItem.dispatchedData) prodItem.dispatchedData = {};
   prodItem.dispatchedData[field] = value;
+  const merged = await productionService.updateItem(prodItem);
+  if (merged) upsertProductionItemFromBackend(merged);
   saveState();
-  productionService.updateItem(prodItem);
+  await refreshProductionFromApi().catch(() => null);
 };
 
 // ------------------------------------------
@@ -10469,13 +10639,36 @@ async function refreshWorkOrdersFromApi() {
       changed = true;
       continue;
     }
+    let recordChanged = false;
     if (
       backend._backendStatus &&
       backend._backendStatus !== existingLocal._backendStatus
     ) {
       existingLocal._backendStatus = backend._backendStatus;
-      changed = true;
+      recordChanged = true;
     }
+    if (
+      backend.dueDate !== undefined &&
+      (existingLocal.dueDate || null) !== (backend.dueDate || null)
+    ) {
+      existingLocal.dueDate = backend.dueDate || null;
+      recordChanged = true;
+    }
+    if (
+      backend.urgent !== undefined &&
+      existingLocal.urgent !== backend.urgent
+    ) {
+      existingLocal.urgent = !!backend.urgent;
+      recordChanged = true;
+    }
+    if (
+      backend.notes !== undefined &&
+      (existingLocal.notes || null) !== (backend.notes || null)
+    ) {
+      existingLocal.notes = backend.notes || null;
+      recordChanged = true;
+    }
+    if (recordChanged) changed = true;
   }
   _stateCache = Object.assign({}, _stateCache, {
     workOrders: STATE.workOrders,
@@ -10507,6 +10700,13 @@ function startVisibilityPoll() {
       if (userCanAccess("workorders")) {
         const changed = await refreshWorkOrdersFromApi();
         if (changed) renderWorkOrders();
+      }
+      if (userCanAccess("status") || userCanAccess("workorders")) {
+        const refreshed = await refreshProductionFromApi();
+        if (refreshed) {
+          if (typeof renderProductionBoard === "function") renderProductionBoard();
+          if (typeof renderWorkOrders === "function") renderWorkOrders();
+        }
       }
       if (userCanAccess("accounts")) {
         const changed = await refreshFinanceFromApi();

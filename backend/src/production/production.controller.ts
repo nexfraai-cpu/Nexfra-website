@@ -28,6 +28,11 @@ export class ProductionController {
     res.status(200).json({ data: item });
   });
 
+  create = asyncWrap(async (req: Request, res: Response) => {
+    const item = await this.productionService.createItem(req.body, req.user!);
+    res.status(201).json({ data: item });
+  });
+
   advanceStage = asyncWrap(async (req: Request, res: Response) => {
     const item = await this.productionService.advanceStage(req.params.id, req.body, req.user!);
     res.status(200).json({ data: item });

@@ -9,6 +9,7 @@ import {
   productionItemIdSchema,
   advanceStageSchema,
   updateProductionItemSchema,
+  createProductionItemSchema,
   createChassisSchema,
   updateChassisSchema,
   productionListSchema,
@@ -25,6 +26,8 @@ productionRouter.use(auth);
 productionRouter.get('/', validate(productionListSchema), controller.list);
 
 productionRouter.get('/:id', validate(productionItemIdSchema), controller.getById);
+
+productionRouter.post('/', authorize('admin', 'manager'), validate(createProductionItemSchema), controller.create);
 
 productionRouter.put('/:id', authorize('admin', 'manager'), validate(updateProductionItemSchema), controller.update);
 

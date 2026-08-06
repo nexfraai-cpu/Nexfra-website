@@ -62,7 +62,11 @@ export interface AdvanceStageInput {
 
 export interface UpdateProductionItemInput {
   dispatchFields?: Record<string, unknown>;
-  productionStages?: { stageKey: string; stageName?: string; isCompleted: boolean }[];
+  productionStages?: { stageKey: string; stageName?: string; isCompleted: boolean; remark?: string | null }[];
+}
+
+export interface CreateProductionItemInput {
+  workOrderId: string;
 }
 
 export interface CreateChassisInput {

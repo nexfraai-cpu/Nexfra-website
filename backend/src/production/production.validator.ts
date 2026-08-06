@@ -12,6 +12,12 @@ export const advanceStageSchema = z.object({
   params: z.object({ id: z.string().uuid() }),
 });
 
+export const createProductionItemSchema = z.object({
+  body: z.object({
+    workOrderId: z.string().uuid('Invalid work order ID format'),
+  }),
+});
+
 export const updateProductionItemSchema = z.object({
   body: z.object({
     dispatchFields: z.record(z.unknown()).optional(),
@@ -19,6 +25,7 @@ export const updateProductionItemSchema = z.object({
       stageKey: z.string().min(1).max(200),
       stageName: z.string().max(200).optional(),
       isCompleted: z.boolean(),
+      remark: z.string().max(500).nullable().optional(),
     })).optional(),
   }),
   params: z.object({ id: z.string().uuid() }),
@@ -74,6 +81,7 @@ export const productionListSchema = z.object({
 
 export type AdvanceStageInput = z.infer<typeof advanceStageSchema>['body'];
 export type UpdateProductionItemInput = z.infer<typeof updateProductionItemSchema>['body'];
+export type CreateProductionItemInput = z.infer<typeof createProductionItemSchema>['body'];
 export type CreateChassisInput = z.infer<typeof createChassisSchema>['body'];
 export type UpdateChassisInput = z.infer<typeof updateChassisSchema>['body'];
 export type ProductionListQuery = z.infer<typeof productionListSchema>['query'];

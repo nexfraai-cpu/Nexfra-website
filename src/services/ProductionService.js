@@ -37,10 +37,12 @@ function toLegacy(item, quotations) {
     columnStatus,
     progressPct,
     progressionMap: item.stageProgress || {},
+    stageRecords: item.stageRecords || [],
     completedStages: item.completedStages || [],
     totalStages: item.totalStages || 0,
     isFinished: !!item.isFinished,
     remarks: {},
+    stageRemarks: {},
     dueDate: null,
     urgent: false,
     dispatchedData: item.dispatchFields || {},
@@ -70,26 +72,55 @@ export class ProductionService {
     return rows;
   }
 
+  async fetchByWorkOrder(workOrderId) {
+    const rows = [];
+    let page = 1;
+    let total = Infinity;
+    while (rows.length < total) {
+      const { data, meta } = await apiClient.get(
+        `/api/production?workOrderId=${encodeURIComponent(workOrderId)}&page=${page}&perPage=${PER_PAGE}`,
+      );
+      rows.push(...(data || []));
+      total = meta?.total ?? rows.length;
+      if (!data || data.length < PER_PAGE) break;
+      page += 1;
+    }
+    return rows;
+  }
+
+  async createItem(workOrderId) {
+    const { data } = await apiClient.post('/api/production', { workOrderId });
+    return data;
+  }
+
   async hydrate(quotations) {
     const rows = await this.fetchRaw();
     return rows.map((item) => toLegacy(item, quotations));
   }
 
   async updateItem(item) {
-    if (!item || !item._backendId) return;
+    if (!item || !item._backendId) return null;
     const payload = {};
     if (item.progressionMap && typeof item.progressionMap === 'object') {
       payload.productionStages = Object.entries(item.progressionMap)
-        .map(([stageKey, isChecked]) => ({ stageKey, isCompleted: !!isChecked }));
+        .map(([stageKey, isChecked]) => {
+          const stage = { stageKey, isCompleted: !!isChecked };
+          if (item.stageRemarks && item.stageRemarks[stageKey] !== undefined) {
+            stage.remark = item.stageRemarks[stageKey] || null;
+          }
+          return stage;
+        });
     }
     if (item.dispatchedData && typeof item.dispatchedData === 'object') {
       payload.dispatchFields = item.dispatchedData;
     }
-    if (Object.keys(payload).length === 0) return;
+    if (Object.keys(payload).length === 0) return null;
     try {
-      await apiClient.put(`/api/production/${item._backendId}`, payload);
+      const { data } = await apiClient.put(`/api/production/${item._backendId}`, payload);
+      return data ? toLegacy(data, []) : null;
     } catch (e) {
       console.warn(`[ProductionService] progression sync failed for ${item.id}:`, e.message);
+      return null;
     }
   }
 

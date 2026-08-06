@@ -7,6 +7,7 @@ import {
   InvalidStageTransitionError,
   ProductionItemAlreadyCompletedError,
   ChassisRecordNotFoundError,
+  WorkOrderNotFoundError,
 } from './production.errors.js';
 
 jest.mock('../database/client', () => ({
@@ -78,6 +79,7 @@ function createMockQueries() {
     findAll: jest.fn<any>(),
     findById: jest.fn<any>(),
     update: jest.fn<any>(),
+    createItem: jest.fn<any>(),
     findStageRecords: jest.fn<any>(),
     upsertStageRecord: jest.fn<any>(),
     createStageRecord: jest.fn<any>(),
@@ -324,6 +326,85 @@ describe('ProductionService', () => {
       await service.update(item.id, { dispatchFields: { driver: 'Raj' } }, actor);
 
       expect(queries.upsertStageRecord).not.toHaveBeenCalled();
+    });
+
+    it('persists remark through to stage records', async () => {
+      const item = createMockItem();
+      queries.findById.mockResolvedValue(item);
+      queries.upsertStageRecord.mockResolvedValue(createMockStageRecord({
+        stage_key: 'sec_design_sub_design_items_scopeClear',
+        is_completed: true,
+        remark: 'Priority job',
+      }));
+      queries.update.mockResolvedValue(item);
+      queries.findStageRecords.mockResolvedValue([]);
+
+      const result = await service.update(item.id, {
+        productionStages: [
+          { stageKey: 'sec_design_sub_design_items_scopeClear', isCompleted: true, remark: 'Priority job' },
+        ],
+      }, actor);
+
+      expect(queries.upsertStageRecord).toHaveBeenCalledWith(expect.objectContaining({
+        production_item_id: item.id,
+        stage_key: 'sec_design_sub_design_items_scopeClear',
+        is_completed: true,
+        remark: 'Priority job',
+      }));
+      expect(result).toBeDefined();
+    });
+
+    it('does not clobber remarks when remark is not provided', async () => {
+      const item = createMockItem();
+      queries.findById.mockResolvedValue(item);
+      queries.upsertStageRecord.mockResolvedValue(createMockStageRecord());
+      queries.update.mockResolvedValue(item);
+      queries.findStageRecords.mockResolvedValue([]);
+
+      await service.update(item.id, {
+        productionStages: [
+          { stageKey: 'sec_design_sub_design_items_scopeClear', isCompleted: true },
+        ],
+      }, actor);
+
+      const record = (queries.upsertStageRecord as jest.Mock).mock.calls[0][0];
+      expect(record).not.toHaveProperty('remark');
+    });
+  });
+
+  describe('createItem', () => {
+    it('creates a production item with a Pending stage record for an existing work order', async () => {
+      const newItem = createMockItem({ id: 'pi-created-1' });
+      queries.findWorkOrderById.mockResolvedValue({
+        id: 'wo-1111-1111-1111-1111',
+        quotation_id: 'q-1111-1111-1111-1111',
+        customer_name: 'Sharma Fabricators',
+        product_name: 'trailer flatbed',
+      });
+      queries.createItem.mockResolvedValue(newItem);
+      queries.createStageRecord.mockResolvedValue(createMockStageRecord());
+      queries.findStageRecords.mockResolvedValue([createMockStageRecord()]);
+
+      const result = await service.createItem({ workOrderId: 'wo-1111-1111-1111-1111' }, actor);
+
+      expect(queries.createItem).toHaveBeenCalledWith(expect.objectContaining({
+        work_order_id: 'wo-1111-1111-1111-1111',
+        quotation_id: 'q-1111-1111-1111-1111',
+        current_stage: 'Pending',
+      }));
+      expect(queries.createStageRecord).toHaveBeenCalledWith(expect.objectContaining({
+        production_item_id: 'pi-created-1',
+        stage_key: 'Pending',
+        is_completed: false,
+      }));
+      expect(result.id).toBe('pi-created-1');
+    });
+
+    it('throws WorkOrderNotFoundError when the work order is missing', async () => {
+      queries.findWorkOrderById.mockResolvedValue(null);
+      await expect(
+        service.createItem({ workOrderId: 'wo-missing' }, actor),
+      ).rejects.toThrow(WorkOrderNotFoundError);
     });
   });
 });
