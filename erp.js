@@ -7028,7 +7028,7 @@ function renderWorkOrders() {
           <div class="wo-due" style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:8px 12px; background:#F8FAFC; border-radius:6px; border:1px solid #E2E8F0;">
             <span style="font-size:0.75rem; font-weight:700; color:#475569;">Due Date:</span>
             <input type="date" id="due-${wo.id}" value="${wo.dueDate || ""}" min="${new Date().toISOString().split("T")[0]}" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
-            <button type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); setWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; font-weight:700;">Save</button>
+            <button id="due-save-${wo.id}" type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); setWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; font-weight:700;">Save</button>
             ${wo.dueDate ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); clearWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; color:#EF4444; border-color:#FCA5A5; font-weight:700;">Clear</button>` : ""}
           </div>
           <div class="wo-footer" style="display:flex; gap:12px;">
@@ -7217,7 +7217,69 @@ window.downloadWorkOrderPdf = function () {
   }, 300);
 };
 
+// ----- Work Order due date Save UX (display layer only) -----
+// The core save flow and all its API/persistence calls are unchanged. This
+// block only drives the Save button through "Saving..." -> "✓ Saved" -> idle.
+
+let _woDueUxStylesInjected = false;
+
+function ensureWoDueUxStyles() {
+  if (_woDueUxStylesInjected || typeof document === "undefined") return;
+  _woDueUxStylesInjected = true;
+  const style = document.createElement("style");
+  style.textContent =
+    ".wo-due-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);border-top-color:#ffffff;border-radius:50%;animation:wo-due-spin .7s linear infinite;vertical-align:-2px;margin-right:6px;}" +
+    "@keyframes wo-due-spin{to{transform:rotate(360deg)}}";
+  document.head.appendChild(style);
+}
+
+function _woDueSaveButton(id) {
+  return document.getElementById("due-save-" + id);
+}
+
+function _setWoDueSaving(btn) {
+  ensureWoDueUxStyles();
+  if (!btn) return;
+  if (btn.dataset.uxPrevHtml == null) btn.dataset.uxPrevHtml = btn.innerHTML;
+  if (btn.dataset.uxPrevStyle == null) btn.dataset.uxPrevStyle = btn.style.cssText;
+  btn.disabled = true;
+  btn.style.cursor = "not-allowed";
+  btn.style.pointerEvents = "none";
+  btn.innerHTML = '<span class="wo-due-spinner"></span>Saving...';
+}
+
+function _setWoDueSaved(btn) {
+  if (!btn) return;
+  btn.disabled = true;
+  btn.style.pointerEvents = "none";
+  btn.style.cursor = "default";
+  btn.innerHTML =
+    '<span style="color:#059669;font-weight:800;">✓</span> Saved';
+}
+
+function _restoreWoDueSave(btn) {
+  if (!btn) return;
+  btn.disabled = false;
+  if (btn.dataset.uxPrevStyle != null) {
+    btn.style.cssText = btn.dataset.uxPrevStyle;
+    delete btn.dataset.uxPrevStyle;
+  } else {
+    btn.style.cursor = "";
+    btn.style.pointerEvents = "";
+  }
+  if (btn.dataset.uxPrevHtml != null) {
+    btn.innerHTML = btn.dataset.uxPrevHtml;
+    delete btn.dataset.uxPrevHtml;
+  }
+}
+
+// Duplicate-click guard: one due-date save per work order while in flight.
+const _woDueSavingInFlight = new Set();
+
 window.setWorkOrderDueDate = async function (id) {
+  const btn = _woDueSaveButton(id);
+  if (!btn) return;
+  if (_woDueSavingInFlight.has(String(id))) return;
   loadState();
   const wo = STATE.workOrders.find((w) => w.id === id);
   if (!wo) return;
@@ -7230,16 +7292,40 @@ window.setWorkOrderDueDate = async function (id) {
     );
     return;
   }
-  wo.dueDate = input.value;
-  await ensureProductionItem(wo.quoteId);
-  saveState();
-  await flushStateToApi().catch((e) =>
-    Logger.error("Background state sync failed", e),
-  );
-  await refreshWorkOrdersFromApi().catch(() => null);
-  await refreshProductionFromApi().catch(() => null);
-  renderWorkOrders();
-  renderProductionBoard();
+
+  _woDueSavingInFlight.add(String(id));
+  _setWoDueSaving(btn);
+  try {
+    wo.dueDate = input.value;
+    await ensureProductionItem(wo.quoteId);
+    saveState();
+    await flushStateToApi().catch((e) => {
+      Logger.error("Background state sync failed", e);
+      throw new Error(
+        (e && e.message) || "Failed to save the due date. Please try again.",
+      );
+    });
+    await refreshWorkOrdersFromApi().catch(() => null);
+    await refreshProductionFromApi().catch(() => null);
+    renderWorkOrders();
+    renderProductionBoard();
+    // Show a green ✓ "Saved" pulse, then fall back to the idle UI.
+    const savedBtn = _woDueSaveButton(id);
+    _setWoDueSaved(savedBtn);
+    await new Promise((r) => setTimeout(r, 900));
+    _restoreWoDueSave(savedBtn);
+  } catch (err) {
+    console.error("[setWorkOrderDueDate] Save failed:", err);
+    _restoreWoDueSave(btn);
+    if (typeof showToastNotification === "function") {
+      showToastNotification(
+        "Failed to save the due date. Please try again.",
+        "error",
+      );
+    }
+  } finally {
+    _woDueSavingInFlight.delete(String(id));
+  }
 };
 
 window.clearWorkOrderDueDate = async function (id) {
