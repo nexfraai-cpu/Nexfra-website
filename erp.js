@@ -207,7 +207,7 @@ async function hydrateStateFromApi() {
 
   const customersPromise = wrapPromise(customerService.getAll(), "customers");
   const quotationsPromise = wrapPromise(
-    quotationService.getAll(_sessionRole === "finance" ? { financeView: "mine" } : undefined),
+    quotationService.getAll(),
     "quotations"
   );
   const workOrdersPromise = wrapPromise(workOrderService.getAll(), "workOrders");
@@ -1861,7 +1861,6 @@ function bootApplication() {
     initSidebarNav();
     initDashboardShortcuts();
     initQuotationBuilder();
-    initAccountsModule();
     initAdminModule();
     initLogout();
     initPdfPreviewControls();
@@ -2272,10 +2271,7 @@ const PageTransition = (function () {
           resolve();
           return;
         }
-        var tab = typeof financeTab !== "undefined" && financeTab === "mine" ? "mine" : "inbox";
-        var containerId =
-          tab === "mine" ? "finance-ledger-container" : "finance-inbox-container";
-        var el = document.getElementById(containerId);
+        var el = document.getElementById("finance-ledger-container");
         var txt = el ? el.textContent || "" : "";
         if (!el || txt.indexOf("Loading") === -1) {
           resolve();
@@ -9354,214 +9350,11 @@ window.updateDispatchedData = function (quoteId, field, value) {
 // 7. ACCOUNTS & CLIENT DIRECTORY
 // ------------------------------------------
 
-function initAccountsModule() {
-  // Configure the finance tab state WITHOUT rendering any placeholder content.
-  // The finance view is only rendered once the dashboard is visible and the user
-  // actually opens it, so the boot never paints an empty/"Loading…" ledger.
-  financeTab = "inbox";
-  var buttons = document.querySelectorAll("[data-finance-tab]");
-  buttons.forEach(function (b) {
-    b.classList.toggle(
-      "active",
-      b.getAttribute("data-finance-tab") === financeTab,
-    );
-  });
-  var inboxPanel = document.getElementById("finance-tab-inbox");
-  var minePanel = document.getElementById("finance-tab-mine");
-  if (inboxPanel)
-    inboxPanel.style.display = financeTab === "inbox" ? "block" : "none";
-  if (minePanel)
-    minePanel.style.display = financeTab === "mine" ? "block" : "none";
-}
-
-// Active finance ledger tab: 'inbox' (All Quotations) or 'mine' (My Quotations).
-var financeTab = "inbox";
-
+// The Finance Ledger is a single shared view. It renders from STATE on demand
+// and is refreshed by the visibility poll; no placeholder is painted at boot.
 function refreshFinanceModule() {
-  if (financeTab === "inbox") renderFinanceInbox();
-  else renderFinanceLedger();
+  renderFinanceLedger();
 }
-
-window.switchFinanceTab = function (tab) {
-  financeTab = tab === "mine" ? "mine" : "inbox";
-  var buttons = document.querySelectorAll("[data-finance-tab]");
-  buttons.forEach(function (b) {
-    b.classList.toggle(
-      "active",
-      b.getAttribute("data-finance-tab") === financeTab,
-    );
-  });
-  var inboxPanel = document.getElementById("finance-tab-inbox");
-  var minePanel = document.getElementById("finance-tab-mine");
-  if (inboxPanel)
-    inboxPanel.style.display = financeTab === "inbox" ? "block" : "none";
-  if (minePanel)
-    minePanel.style.display = financeTab === "mine" ? "block" : "none";
-  refreshFinanceModule();
-};
-
-window.renderFinanceInbox = async function () {
-  var container = document.getElementById("finance-inbox-container");
-  if (!container) return;
-  container.innerHTML =
-    '<div style="text-align:center;padding:48px 20px;color:#94A3B8;font-size:0.9rem;font-weight:600;">Loading quotations…</div>';
-
-  var quotes = [];
-  try {
-    quotes = await quotationService.getAll({ financeView: "inbox" });
-  } catch (e) {
-    Logger.warn("Finance inbox load failed", e);
-    container.innerHTML =
-      '<div style="text-align:center;padding:48px 20px;color:#DC2626;font-size:0.9rem;font-weight:600;">Failed to load quotations.</div>';
-    return;
-  }
-
-  if (quotes.length === 0) {
-    container.innerHTML =
-      '<div style="text-align:center;padding:60px 20px;color:#94A3B8;font-size:0.9rem;font-weight:600;">No approved quotations awaiting finance.</div>';
-    return;
-  }
-
-  var html = "";
-  quotes.forEach(function (q) {
-    var ownerName = "";
-    var claimedBadge = "";
-    if (q.financeOwner) {
-      var emp = (STATE.employees || []).find(function (e) {
-        return e._backendId === q.financeOwner || e.id === q.financeOwner;
-      });
-      ownerName = emp ? emp.name || "Finance" : "Finance";
-      claimedBadge =
-        '<span style="background:#ECFDF5;color:#059669;font-size:0.6rem;font-weight:800;padding:2px 8px;border-radius:3px;text-transform:uppercase;letter-spacing:0.3px;">Claimed by ' +
-        ownerName +
-        "</span>";
-    }
-    var canClaim = !q.financeOwner;
-    html +=
-      "" +
-      '<div style="background:#ffffff;border:1.5px solid #CBD5E1;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.04);">' +
-      '<div class="finance-bar" onclick="toggleFinanceInboxDetails(\'' +
-      q.id +
-      '\')" style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;cursor:pointer;user-select:none;transition:background 0.15s;">' +
-      '<div style="display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;">' +
-      '<span style="background:#0F172A;color:#fff;font-weight:800;font-size:0.75rem;padding:3px 8px;border-radius:4px;">' +
-      q.id +
-      "</span>" +
-      '<span style="font-weight:600;font-size:0.85rem;color:#1E293B;min-width:140px;">' +
-      (q.customerName || "Valued Client") +
-      "</span>" +
-      '<span class="tbl-status-badge status-pending" style="font-size:0.65rem;padding:3px 8px;">APPROVED</span>' +
-      claimedBadge +
-      "</div>" +
-      '<div style="display:flex;align-items:center;gap:16px;">' +
-      '<span style="font-size:0.75rem;font-weight:700;color:#475569;">Total: ₹' +
-      (q.total || 0).toLocaleString("en-IN") +
-      "</span>" +
-      '<svg style="width:16px;height:16px;color:#94A3B8;transition:transform 0.2s;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>' +
-      "</div>" +
-      "</div>" +
-      '<div class="finance-details" id="finance-inbox-details-' +
-      q.id +
-      '" style="display:none;border-top:1px solid #E2E8F0;padding:20px 24px;background:#FAFBFC;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;">' +
-      '<div style="display:flex;flex-direction:column;gap:6px;">' +
-      '<span style="font-size:0.8rem;color:#475569;"><strong>Customer:</strong> ' +
-      (q.customerName || "Valued Client") +
-      "</span>" +
-      '<span style="font-size:0.8rem;color:#475569;"><strong>Quotation:</strong> ' +
-      q.id +
-      "</span>" +
-      '<span style="font-size:0.8rem;color:#475569;"><strong>Approved:</strong> ' +
-      (q.date || "—") +
-      "</span>" +
-      "</div>" +
-      (canClaim
-        ? '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">' +
-          '<label style="font-size:0.7rem;font-weight:700;color:#475569;">Payment Due:</label>' +
-          '<input type="date" id="inbox-due-date-' +
-          (q._backendId || q.id) +
-          '" data-quote-id="' +
-          (q._backendId || q.id) +
-          '" class="form-control form-control-sm" style="font-size:0.7rem;padding:4px 8px;width:140px;">' +
-          '<button class="btn btn-primary btn-sm" onclick="claimFinanceQuotation(\'' +
-          (q._backendId || q.id) +
-          '\', this)" style="padding:6px 16px;font-size:0.72rem;white-space:nowrap;font-weight:700;">Claim</button>' +
-          "</div>"
-        : '<span style="font-size:0.75rem;color:#64748B;">This quotation is already claimed.</span>') +
-      "</div>" +
-      "</div>" +
-      "</div>";
-  });
-
-  container.innerHTML = html;
-};
-
-window.toggleFinanceInboxDetails = function (quoteId) {
-  var el = document.getElementById("finance-inbox-details-" + quoteId);
-  if (!el) return;
-  el.style.display = el.style.display !== "none" ? "none" : "block";
-};
-
-window.claimFinanceQuotation = async function (quoteId, btnEl) {
-  loadState();
-
-  var inputEl = document.getElementById("inbox-due-date-" + quoteId);
-  if (!inputEl && btnEl && btnEl.parentElement) {
-    inputEl = btnEl.parentElement.querySelector('input[type="date"]');
-  }
-
-  if (!inputEl) {
-    var q = (STATE.quotations || []).find(function (x) {
-      return x.id === quoteId || x._backendId === quoteId;
-    });
-    if (q) {
-      inputEl =
-        document.getElementById("inbox-due-date-" + q.id) ||
-        document.getElementById("inbox-due-date-" + q._backendId);
-    }
-  }
-
-  var paymentDueDate = inputEl ? inputEl.value.trim() : "";
-
-  // Log quotationId and paymentDueDate before validation as required
-  console.log({ quotationId: quoteId, paymentDueDate: paymentDueDate });
-
-  if (!paymentDueDate) {
-    alert("Please set a payment due date to claim this quotation.");
-    return;
-  }
-
-  try {
-    var updated = await quotationService.claim(quoteId, paymentDueDate);
-    if (!STATE.quotations) STATE.quotations = [];
-    var idx = STATE.quotations.findIndex(function (x) {
-      return x._backendId === quoteId || x.id === quoteId;
-    });
-    if (idx >= 0) STATE.quotations[idx] = updated;
-    else STATE.quotations.push(updated);
-
-    saveState();
-    logSystemActivity(
-      "Quotation " +
-        (updated.id || quoteId) +
-        " claimed by " +
-        (_sessionUser || "finance") +
-        " with due date " +
-        paymentDueDate +
-        ".",
-    );
-    if (typeof showToastNotification === "function") {
-      showToastNotification("Quotation claimed successfully.");
-    }
-    renderFinanceInbox();
-    renderFinanceLedger();
-    switchFinanceTab("mine");
-  } catch (e) {
-    console.error("[claimFinanceQuotation] Claim failed:", e);
-    alert("Claim failed: " + (e.message || "Unknown error"));
-    renderFinanceInbox();
-  }
-};
 
 // Finance ledger filter state
 var financeFilters = {};
@@ -10194,14 +9987,13 @@ window.setPaymentDueDate = async function (quoteId) {
   logSystemActivity(
     "Payment due date set to " + (dateVal || "none") + " for " + quoteId,
   );
-  // Persist to the backend so the due date survives reloads. Finance ownership
-  // is claimed when a finance employee sets the due date on their quotation.
-  if (quote.financeOwner) {
-    try {
-      await quotationService.claim(quoteId, dateVal);
-    } catch (e) {
-      Logger.warn("Payment due date persist failed", e);
-    }
+  // Persist to the backend so the due date survives reloads and is shared by
+  // every finance employee. There is no ownership concept anymore, so any
+  // finance user may set the due date on any approved quotation.
+  try {
+    await quotationService.claim(quoteId, dateVal);
+  } catch (e) {
+    Logger.warn("Payment due date persist failed", e);
   }
   renderFinanceLedger();
   var detailEl = document.getElementById("finance-details-" + quoteId);
@@ -10659,9 +10451,7 @@ function _backendToLegacyStatus(status) {
 // backend status change (e.g. Admin approval) is only adopted when the local
 // row has no pending unsynced transition. Returns true when STATE changed.
 async function refreshQuotationsFromApi() {
-  const quotations = await quotationService.getAll(
-    _sessionRole === "finance" ? { financeView: "mine" } : undefined,
-  );
+  const quotations = await quotationService.getAll();
   console.log(
     "[refreshQuotationsFromApi] fetched from API:",
     quotations.map((q) => q.id),
@@ -10722,31 +10512,26 @@ async function refreshQuotationsFromApi() {
   return changed;
 }
 
-// Backend-authoritative finance views. Refreshes the inbox ("All Quotations",
-// approved + unclaimed) and the current user's claimed quotations, and merges
-// the latter into STATE so the "My Quotations" ledger stays current. Ownership
-// scoping lives in the backend queries — nothing here filters by owner.
+// Backend-authoritative finance view. Refreshes the full quotation list and
+// merges every row into STATE so the Finance Ledger is a single shared ledger —
+// every finance employee sees every approved quotation, due date, payment, and
+// balance. There is no finance-owner scoping; nothing here filters by owner.
 let _financeSig = null;
 
 async function refreshFinanceFromApi() {
-  let inbox = [];
-  let mine = [];
+  let all = [];
   try {
-    inbox = await quotationService.getAll({ financeView: "inbox" });
-    mine = await quotationService.getAll({ financeView: "mine" });
+    all = await quotationService.getAll();
   } catch (e) {
     Logger.warn("Finance refresh failed", e);
     return false;
   }
-  const sig =
-    JSON.stringify(inbox.map((q) => q._backendId)) +
-    "|" +
-    JSON.stringify(mine.map((q) => q._backendId));
+  const sig = JSON.stringify(all.map((q) => q._backendId));
   if (sig === _financeSig) return false;
   _financeSig = sig;
   if (_sessionRole === "finance") {
     if (!STATE.quotations) STATE.quotations = [];
-    for (const q of mine) {
+    for (const q of all) {
       const idx = STATE.quotations.findIndex(
         (x) =>
           (x._backendId && x._backendId === q._backendId) ||

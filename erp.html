@@ -1148,21 +1148,9 @@
           </div>
         </div>
 
-        <!-- Finance ownership tabs -->
-        <div class="admin-tabs" id="finance-tabs">
-          <button class="admin-tab active" data-finance-tab="inbox" onclick="switchFinanceTab('inbox')">All Quotations</button>
-          <button class="admin-tab" data-finance-tab="mine" onclick="switchFinanceTab('mine')">My Quotations</button>
-        </div>
-
-        <!-- Tab: All Quotations (finance inbox) -->
-        <div class="admin-tab-panel active" id="finance-tab-inbox">
-          <div id="finance-inbox-container">
-            <!-- Injected by JS -->
-          </div>
-        </div>
-
-        <!-- Tab: My Quotations (claimed by current finance employee) -->
-        <div class="admin-tab-panel" id="finance-tab-mine">
+        <!-- Shared accounting ledger: every finance employee sees every approved
+             quotation, payment, due date, balance, and note. No ownership. -->
+        <div class="admin-tab-panel active" id="finance-tab-ledger">
           <div class="module-header" style="border-bottom:none;padding-bottom:4px;">
             <div></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
