@@ -1683,6 +1683,72 @@ const ORIGINAL_PRODUCT_TEMPLATES = JSON.parse(
   JSON.stringify(WIZARD_PRODUCT_TEMPLATES),
 );
 
+// Replace the contents of the module-scope WIZARD_PRODUCT_TEMPLATES object
+// (an immutable `const` reference) in place so every existing consumer keeps
+// reading from the same object regardless of whether it came from JS or SQL.
+function replaceWizardTemplates(loaded) {
+  Object.keys(WIZARD_PRODUCT_TEMPLATES).forEach(function (key) {
+    delete WIZARD_PRODUCT_TEMPLATES[key];
+  });
+  Object.assign(WIZARD_PRODUCT_TEMPLATES, loaded);
+}
+
+// Structurally validate an object loaded from the database so a malformed
+// payload never corrupts the builder.
+function isValidWizardCatalog(catalog) {
+  if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
+    return false;
+  }
+  const templates = Object.values(catalog);
+  if (templates.length === 0) return false;
+  return templates.every(function (t) {
+    return (
+      t &&
+      typeof t === "object" &&
+      typeof t.name === "string" &&
+      typeof t.basePrice === "number" &&
+      Array.isArray(t.specs) &&
+      t.specs.every(function (s) {
+        return (
+          s &&
+          typeof s.id === "string" &&
+          typeof s.name === "string" &&
+          Array.isArray(s.options) &&
+          typeof s.defaultValue === "string" &&
+          s.priceDiffs &&
+          typeof s.priceDiffs === "object"
+        );
+      })
+    );
+  });
+}
+
+// Load component definitions from the database catalog endpoint. On failure or
+// an empty/invalid response, the hardcoded JS defaults remain in effect.
+async function loadComponentDefinitionsFromDatabase() {
+  try {
+    const response = await apiClient.get(
+      "/api/catalog/component-definitions",
+    );
+    const catalog = response && response.data;
+    if (!isValidWizardCatalog(catalog)) {
+      Logger.warn(
+        "Database component catalog empty or invalid; falling back to built-in definitions.",
+      );
+      return false;
+    }
+    replaceWizardTemplates(catalog);
+    Logger.info("Component definitions loaded from database.");
+    return true;
+  } catch (err) {
+    Logger.warn(
+      "Database component definitions unavailable; using built-in definitions.",
+      err,
+    );
+    return false;
+  }
+}
+
 // Subtype groups for propagating spec changes across related subtypes
 const SUBTYPE_GROUPS = {
   rigid28: "rigid_load_body",
@@ -1849,6 +1915,10 @@ function bootApplication() {
 
     // 2. Populate the complete in-memory application state from that data.
     await loadState();
+
+    // 2b. Load quotation-builder component definitions from the database,
+    // falling back to hardcoded defaults if the database is unavailable.
+    await loadComponentDefinitionsFromDatabase();
 
     if (!isResetDataEnabled()) {
       document.querySelectorAll(".reset-data-btn").forEach((el) => {
@@ -3959,9 +4029,16 @@ window.addOptionChoiceRow = function (
   const choiceId = `opt-choice-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
   const html = `
-    <div class="aci-opt-choice-row" id="${choiceId}" style="display:grid; grid-template-columns: 2fr 1.2fr 80px 32px; gap:8px; align-items:center; background:#FFFFFF; padding:8px 10px; border-radius:6px; border:1px solid #CBD5E1; margin-bottom:6px;">
+    <div class="aci-opt-choice-row" id="${choiceId}" style="display:grid; grid-template-columns: 64px 2fr 1.2fr 80px 40px 32px; gap:8px; align-items:center; background:#FFFFFF; padding:8px 10px; border-radius:6px; border:1px solid #CBD5E1; margin-bottom:6px;">
+      <div style="display:flex; gap:2px;">
+        <button type="button" onclick="moveOptionRow(this, -1)" title="Move up" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:0 5px; font-size:0.6rem;">▲</button>
+        <button type="button" onclick="moveOptionRow(this, 1)" title="Move down" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:0 5px; font-size:0.6rem;">▼</button>
+        <label title="Enabled" style="display:flex; align-items:center; margin:0;">
+          <input type="checkbox" class="aci-opt-enabled" checked style="cursor:pointer;" title="Enabled">
+        </label>
+      </div>
       <div>
-        <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Option / Choice Name</span>
+        <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Option</span>
         <input type="text" class="form-control form-control-sm aci-opt-name" placeholder="e.g. Air Suspension, Fuwa 3x13T" value="${defaultName}">
       </div>
       <div>
@@ -3974,6 +4051,9 @@ window.addOptionChoiceRow = function (
       <div style="text-align:center;">
         <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Default</span>
         <input type="radio" name="default-opt-${fieldRowId}" class="aci-opt-is-default" ${isDefault ? "checked" : ""} style="cursor:pointer;">
+      </div>
+      <div style="text-align:center;">
+        <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Order</span>
       </div>
       <div>
         <button type="button" onclick="removeOptionChoiceRow('${choiceId}')" style="background:none; border:none; color:#EF4444; cursor:pointer; padding:4px;" title="Remove Option">
@@ -3990,28 +4070,47 @@ window.removeOptionChoiceRow = function (choiceId) {
   if (row) row.remove();
 };
 
+window.moveOptionRow = function (btn, direction) {
+  const row = btn.closest(".aci-opt-choice-row");
+  if (!row) return;
+  const parent = row.parentElement;
+  if (!parent) return;
+  const siblings = [...parent.querySelectorAll(":scope > .aci-opt-choice-row")];
+  const idx = siblings.indexOf(row);
+  const target = idx + direction;
+  if (target < 0 || target >= siblings.length) return;
+  if (direction < 0) {
+    parent.insertBefore(row, siblings[target]);
+  } else {
+    parent.insertBefore(row, siblings[target].nextElementSibling);
+  }
+};
+
 function extractFieldOptionsAndPrices(fieldRowEl, fieldRowId) {
   const choiceRows = fieldRowEl.querySelectorAll(".aci-opt-choice-row");
   let options = [];
   let priceDiffs = {};
   let defaultVal = "";
+  let enabledMap = {};
 
   choiceRows.forEach((cRow) => {
     const optName = cRow.querySelector(".aci-opt-name")?.value.trim();
     const optPrice =
       parseFloat(cRow.querySelector(".aci-opt-price")?.value) || 0;
     const isDefault = cRow.querySelector(".aci-opt-is-default")?.checked;
+    const optEnabled = cRow.querySelector(".aci-opt-enabled")?.checked;
 
     if (optName) {
       options.push(optName);
       priceDiffs[optName] = optPrice;
+      enabledMap[optName] = optEnabled !== false;
       if (isDefault || !defaultVal) {
         defaultVal = optName;
       }
     }
   });
 
-  return { options, priceDiffs, defaultVal };
+  return { options, priceDiffs, defaultVal, enabledMap };
 }
 
 window.toggleFieldOptionsInput = function (select) {
@@ -4056,11 +4155,24 @@ function resolveSpecName(k, template) {
 // EDIT COMPONENTS MODAL — Unified Editor for All Sections
 // -------------------------------------------------------
 
-window.openEditComponentsModal = function () {
+window.openEditComponentsModal = async function () {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
   if (!template) {
     alert("Please select a product category & subtype first.");
     return;
+  }
+
+  // Load the full DB catalog including disabled specs/options so archived
+  // items are shown (marked disabled) and are NOT silently dropped on save.
+  let editTemplate = template;
+  try {
+    const resp = await apiClient.get("/api/catalog/component-definitions?includeDisabled=true");
+    const fullCatalog = resp && resp.data;
+    if (fullCatalog && fullCatalog[wizardState.subtype]) {
+      editTemplate = fullCatalog[wizardState.subtype];
+    }
+  } catch (err) {
+    Logger.warn("Could not load disabled catalog for editor; using in-memory template.", err);
   }
 
   const container = document.getElementById("edit-components-modal-body");
@@ -4087,7 +4199,7 @@ window.openEditComponentsModal = function () {
   };
 
   const sections = {};
-  template.specs.forEach((spec) => {
+  editTemplate.specs.forEach((spec) => {
     const sec = spec.section || "general";
     if (!sections[sec]) sections[sec] = [];
     sections[sec].push(spec);
@@ -4111,7 +4223,7 @@ window.openEditComponentsModal = function () {
 
   let html = `
     <div style="margin-bottom:16px; padding:12px; background:#EFF6FF; border-left:4px solid #3B82F6; border-radius:6px;">
-      <h4 style="margin:0; font-size:0.85rem; color:#1E40AF;">Editing Components for: <strong>${template.name}</strong></h4>
+      <h4 style="margin:0; font-size:0.85rem; color:#1E40AF;">Editing Components for: <strong>${editTemplate.name}</strong></h4>
       <p style="margin:4px 0 0 0; font-size:0.75rem; color:#1D4ED8;">Add, edit, or remove sections and specs. Each spec can be a dropdown, radio, checkbox, or text field with custom options and pricing.</p>
     </div>
     <div style="margin-bottom:16px; padding:12px 16px; background:#FFF7ED; border:1.5px solid #FDBA74; border-radius:8px; display:flex; align-items:center; gap:12px;">
@@ -4164,22 +4276,27 @@ function buildEditSectionCard(secId, displayName, specs, isCustom) {
   });
 
   return `
-    <div class="ec-section-card" id="${cardId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px;">
+    <div class="ec-section-card" id="${cardId}" data-section-key="${secId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
         <div style="display:flex; align-items:center; gap:8px; flex:1;">
           <div style="display:flex; gap:4px;">
             <button type="button" onclick="moveEditSection(this, -1)" title="Move up" style="background:none; border:1px solid #CBD5E1; border-radius:4px; cursor:pointer; padding:2px 6px; font-size:0.65rem; color:#475569;">▲</button>
             <button type="button" onclick="moveEditSection(this, 1)" title="Move down" style="background:none; border:1px solid #CBD5E1; border-radius:4px; cursor:pointer; padding:2px 6px; font-size:0.65rem; color:#475569;">▼</button>
           </div>
-          <span style="font-weight:700; font-size:0.9rem; color:#1E293B;">${displayName}</span>
+          <input type="text" class="form-control form-control-sm ec-section-name-input" value="${displayName}" style="font-weight:700; font-size:0.9rem; color:#1E293B; max-width:320px;">
           ${isCustom ? '<span style="font-size:0.65rem; font-weight:600; color:#059669; background:#DCFCE7; padding:2px 8px; border-radius:4px;">custom</span>' : ""}
           <span class="section-hint" style="font-size:0.7rem; color:#64748B;">${specs.length} spec(s)</span>
         </div>
         <input type="hidden" class="ec-section-id" value="${secId}">
         <input type="hidden" class="ec-section-custom" value="${isCustom ? "1" : "0"}">
-        <button type="button" onclick="removeEditSectionCard(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600;">
-          ✕ Remove Section
-        </button>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label style="font-size:0.7rem; font-weight:600; color:#475569; display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" class="ec-section-enabled" checked style="cursor:pointer;"> Enabled
+          </label>
+          <button type="button" onclick="removeEditSectionCard(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+            ✕ Remove Section
+          </button>
+        </div>
       </div>
       <div class="ec-specs-container" data-section="${secId}">
         ${specsHtml || '<p style="text-align:center; color:#94A3B8; font-size:0.8rem; padding:8px;">No specs in this section.</p>'}
@@ -4205,10 +4322,18 @@ function buildEditSpecRow(spec, fieldRowId, idx) {
                 : 0;
             const isDef = spec.defaultValue === opt;
             const choiceId = `ec-opt-${fieldRowId}-${oi}-${Date.now()}`;
+            const optEnabled = (spec.enabledOptions || spec.options || []).includes(opt);
             return `
-          <div class="aci-opt-choice-row" id="${choiceId}" style="display:grid; grid-template-columns: 2fr 1.2fr 80px 32px; gap:8px; align-items:center; background:#FFFFFF; padding:8px 10px; border-radius:6px; border:1px solid #CBD5E1; margin-bottom:6px;">
+          <div class="aci-opt-choice-row" id="${choiceId}" style="display:grid; grid-template-columns: 64px 2fr 1.2fr 80px 40px 32px; gap:8px; align-items:center; background:#FFFFFF; padding:8px 10px; border-radius:6px; border:1px solid #CBD5E1; margin-bottom:6px; ${optEnabled ? "" : "opacity:0.6;"}">
+            <div style="display:flex; gap:2px;">
+              <button type="button" onclick="moveOptionRow(this, -1)" title="Move up" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:0 5px; font-size:0.6rem;">▲</button>
+              <button type="button" onclick="moveOptionRow(this, 1)" title="Move down" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:0 5px; font-size:0.6rem;">▼</button>
+              <label title="Enabled" style="display:flex; align-items:center; margin:0;">
+                <input type="checkbox" class="aci-opt-enabled" ${optEnabled ? "checked" : ""} style="cursor:pointer;" title="Enabled">
+              </label>
+            </div>
             <div>
-              <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Option / Choice Name</span>
+              <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Option</span>
               <input type="text" class="form-control form-control-sm aci-opt-name" value="${opt}">
             </div>
             <div>
@@ -4221,6 +4346,9 @@ function buildEditSpecRow(spec, fieldRowId, idx) {
             <div style="text-align:center;">
               <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Default</span>
               <input type="radio" name="default-opt-${fieldRowId}" class="aci-opt-is-default" ${isDef ? "checked" : ""} style="cursor:pointer;">
+            </div>
+            <div style="text-align:center;">
+              <span style="font-size:0.7rem; font-weight:600; color:#64748B; display:block;">Order</span>
             </div>
             <div>
               <button type="button" onclick="removeOptionChoiceRow('${choiceId}')" style="background:none; border:none; color:#EF4444; cursor:pointer; padding:4px;" title="Remove Option">
@@ -4236,15 +4364,24 @@ function buildEditSpecRow(spec, fieldRowId, idx) {
   const isTextOrCheckbox = spec.type === "text" || spec.type === "checkbox";
   return `
     <div class="aci-field-row ec-field-row" id="${fieldRowId}" style="background:#FFFFFF; border:1px solid #CBD5E1; border-radius:8px; padding:14px; margin-bottom:12px;">
+      <input type="hidden" class="ec-field-spec-id" value="${spec.id || ""}">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; border-bottom:1px solid #E2E8F0; padding-bottom:8px;">
         <div style="display:flex; align-items:center; gap:6px;">
           <button type="button" onclick="moveEditSpecRow(this, -1)" title="Move up" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:1px 5px; font-size:0.6rem; color:#475569;">▲</button>
           <button type="button" onclick="moveEditSpecRow(this, 1)" title="Move down" style="background:none; border:1px solid #CBD5E1; border-radius:3px; cursor:pointer; padding:1px 5px; font-size:0.6rem; color:#475569;">▼</button>
           <span style="font-weight:700; font-size:0.8rem; color:#1E293B;">Spec #${idx + 1}</span>
         </div>
-        <button type="button" onclick="removeSpecFromEditSection(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:2px 8px; font-size:0.7rem; cursor:pointer; font-weight:600;">
-          ✕ Remove
-        </button>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label style="font-size:0.7rem; font-weight:600; color:#475569; display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" class="ec-field-required" ${spec.required === false ? "" : "checked"} style="cursor:pointer;"> Required
+          </label>
+          <label style="font-size:0.7rem; font-weight:600; color:#475569; display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" class="ec-field-enabled" ${spec.enabled === false ? "" : "checked"} style="cursor:pointer;"> Enabled
+          </label>
+          <button type="button" onclick="removeSpecFromEditSection(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:2px 8px; font-size:0.7rem; cursor:pointer; font-weight:600;">
+            ✕ Remove
+          </button>
+        </div>
       </div>
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:10px;">
         <div>
@@ -4327,7 +4464,7 @@ window.addEditSectionCard = function () {
   const cardId = `ec-section-${secId}`;
 
   const html = `
-    <div class="ec-section-card" id="${cardId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px; border-color:#059669;">
+    <div class="ec-section-card" id="${cardId}" data-section-key="${secId}" style="background:#F8FAFC; border:1.5px solid #CBD5E1; border-radius:10px; padding:16px; margin-bottom:16px; border-color:#059669;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #E2E8F0; padding-bottom:10px;">
         <div style="display:flex; align-items:center; gap:8px; flex:1;">
           <div style="display:flex; gap:4px;">
@@ -4339,9 +4476,14 @@ window.addEditSectionCard = function () {
         </div>
         <input type="hidden" class="ec-section-id" value="${secId}">
         <input type="hidden" class="ec-section-custom" value="1">
-        <button type="button" onclick="removeEditSectionCard(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600;">
-          ✕ Remove Section
-        </button>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <label style="font-size:0.7rem; font-weight:600; color:#475569; display:flex; align-items:center; gap:4px; cursor:pointer;">
+            <input type="checkbox" class="ec-section-enabled" checked style="cursor:pointer;"> Enabled
+          </label>
+          <button type="button" onclick="removeEditSectionCard(this)" style="background:none; border:1px solid #FCA5A5; color:#EF4444; border-radius:4px; padding:4px 10px; font-size:0.75rem; cursor:pointer; font-weight:600;">
+            ✕ Remove Section
+          </button>
+        </div>
       </div>
       <div class="ec-specs-container" data-section="${secId}">
         <p style="text-align:center; color:#94A3B8; font-size:0.8rem; padding:8px;">No specs yet. Click "Add Spec" below.</p>
@@ -4396,79 +4538,154 @@ window.moveEditSpecRow = function (btn, direction) {
   }
 };
 
-window.saveEditComponentsModal = function () {
+function buildCatalogSectionPayload(card) {
+  const secId = card.querySelector(".ec-section-id")?.value || "general";
+  const secName =
+    card.querySelector(".ec-section-name-input")?.value.trim() || secId;
+  const secEnabled = card.querySelector(".ec-section-enabled")?.checked !== false;
+
+  const fieldRows = card.querySelectorAll(".ec-field-row");
+  const specs = [];
+
+  fieldRows.forEach((row, idx) => {
+    const name = row.querySelector(".ec-field-name")?.value.trim();
+    if (!name) return;
+
+    const type = row.querySelector(".ec-field-type")?.value || "dropdown";
+    const rowId = row.id;
+    const specId =
+      row.querySelector(".ec-field-spec-id")?.value?.trim() || `new_${secId}_${idx}`;
+    const required = row.querySelector(".ec-field-required")?.checked !== false;
+    const enabled = row.querySelector(".ec-field-enabled")?.checked !== false;
+
+    let options = [];
+    let priceDiffs = {};
+    let defaultVal = "";
+    let enabledMap = {};
+
+    if (type === "dropdown" || type === "radio") {
+      const extracted = extractFieldOptionsAndPrices(row, rowId);
+      options = extracted.options;
+      priceDiffs = extracted.priceDiffs;
+      defaultVal = extracted.defaultVal;
+      enabledMap = extracted.enabledMap || {};
+
+      if (options.length === 0) {
+        options = ["Standard", "Custom"];
+        priceDiffs = { Standard: 0, Custom: 15000 };
+        defaultVal = "Standard";
+        enabledMap = { Standard: true, Custom: true };
+      }
+    } else if (type === "checkbox") {
+      defaultVal = "Yes";
+    } else {
+      defaultVal = row.querySelector(".ec-field-default")?.value.trim() || "";
+    }
+
+    specs.push({
+      id: specId,
+      name,
+      section: secId,
+      type,
+      required,
+      enabled,
+      defaultValue: defaultVal,
+      priceDiffs,
+      options: options.map((opt) => ({
+        name: opt,
+        priceDifference: priceDiffs[opt] || 0,
+        isDefault: opt === defaultVal,
+        enabled: enabledMap[opt] !== false,
+      })),
+    });
+  });
+
+  return { id: secId, name: secName, enabled: secEnabled, specs };
+}
+
+window.saveEditComponentsModal = async function () {
+  const saveBtn = document.getElementById("ec-save-btn");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+  }
+
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
-  if (!template) return;
+  if (!template) {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "💾 Save Changes"; }
+    return;
+  }
 
   const sectionCards = document.querySelectorAll(
     "#edit-components-modal-body .ec-section-card",
   );
-  const newSpecs = [];
+  const catalogSections = [];
   const newCustomSections = [];
 
-  sectionCards.forEach((card) => {
-    const secId = card.querySelector(".ec-section-id")?.value || "general";
+  for (const card of sectionCards) {
     const isCustom = card.querySelector(".ec-section-custom")?.value === "1";
-    const customSecName = isCustom
-      ? card.querySelector(".ec-section-name-input")?.value.trim() ||
-        "Custom Section"
-      : "";
-
-    const fieldRows = card.querySelectorAll(".ec-field-row");
-    const secSpecs = [];
-
-    fieldRows.forEach((row, idx) => {
-      const name = row.querySelector(".ec-field-name")?.value.trim();
-      if (!name) return;
-
-      const type = row.querySelector(".ec-field-type")?.value || "dropdown";
-      const rowId = row.id;
-
-      let options = [];
-      let priceDiffs = {};
-      let defaultVal = "";
-
-      if (type === "dropdown" || type === "radio") {
-        const extracted = extractFieldOptionsAndPrices(row, rowId);
-        options = extracted.options;
-        priceDiffs = extracted.priceDiffs;
-        defaultVal = extracted.defaultVal;
-
-        if (options.length === 0) {
-          options = ["Standard", "Custom"];
-          priceDiffs = { Standard: 0, Custom: 15000 };
-          defaultVal = "Standard";
-        }
-      } else if (type === "checkbox") {
-        defaultVal = "Yes";
-      } else {
-        defaultVal = row.querySelector(".ec-field-default")?.value.trim() || "";
-      }
-
-      const specId = `ec_${secId}_${idx}`;
-      secSpecs.push({
-        id: specId,
-        name,
-        section: secId,
-        type,
-        options: options.length > 0 ? options : [],
-        defaultValue: defaultVal,
-        priceDiffs: Object.keys(priceDiffs).length > 0 ? priceDiffs : undefined,
-      });
-    });
-
+    const built = buildCatalogSectionPayload(card);
     if (isCustom) {
       newCustomSections.push({
-        id: secId.replace("new-section-", "custom-"),
-        name: customSecName,
-        fields: secSpecs,
+        id: built.id.replace("new-section-", "custom-"),
+        name: built.name,
+        fields: built.specs,
       });
     } else {
-      newSpecs.push(...secSpecs);
+      catalogSections.push(built);
     }
+  }
+
+  // Reject duplicate option names within any single spec BEFORE writing to the
+  // database. Duplicate names would otherwise collide on the options.name
+  // unique constraint and fail the whole save mid-transaction.
+  const dupSpecs = [];
+  catalogSections.forEach((sec) => {
+    sec.specs.forEach((spec) => {
+      const names = (spec.options || []).map((o) => o.name);
+      const seen = new Set();
+      const dupes = names.filter((n) => {
+        if (seen.has(n)) return true;
+        seen.add(n);
+        return false;
+      });
+      if (dupes.length > 0) {
+        dupSpecs.push(`${spec.name} (${sec.name}): ${dupes.join(", ")}`);
+      }
+    });
+  });
+  newCustomSections.forEach((sec) => {
+    (sec.fields || []).forEach((spec) => {
+      if (!spec) return;
+      const names = (spec.options || []).map((o) => o.name);
+      const seen = new Set();
+      const dupes = names.filter((n) => {
+        if (seen.has(n)) return true;
+        seen.add(n);
+        return false;
+      });
+      if (dupes.length > 0) {
+        dupSpecs.push(`${spec.name} (${sec.name}): ${dupes.join(", ")}`);
+      }
+    });
   });
 
-  // Save metal price per kg
+  if (dupSpecs.length > 0) {
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "💾 Save Changes"; }
+    if (window.showToastNotification) {
+      showToastNotification(
+        "Duplicate option names detected. Give each option a unique name before saving.",
+        "error",
+      );
+    }
+    alert(
+      "Duplicate option names are not allowed.\n\nPlease give each option a unique name in:\n- " +
+        dupSpecs.join("\n- "),
+    );
+    return;
+  }
+
+  // Save metal price per kg (adjacent admin setting; unchanged from before).
   const metalPriceInput = document.getElementById("ec-metal-price");
   if (metalPriceInput) {
     STATE.metalPricePerKg = parseFloat(metalPriceInput.value) || 100;
@@ -4477,32 +4694,67 @@ window.saveEditComponentsModal = function () {
       .catch((e) => Logger.warn("Metal price sync failed", e));
   }
 
-  // Save to STATE
-  loadState();
-  if (!STATE.productSpecOverrides) STATE.productSpecOverrides = {};
   const groupKey = getSubtypeGroup(wizardState.subtype);
-  STATE.productSpecOverrides[groupKey] = { specs: newSpecs };
-
-  // Save custom sections
-  if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
-  STATE.customItemDefinitions = newCustomSections;
-
-  saveState();
-
-  // Apply to all group members
   const members = getGroupMembers(groupKey);
-  members.forEach((memberKey) => {
-    if (WIZARD_PRODUCT_TEMPLATES[memberKey]) {
-      WIZARD_PRODUCT_TEMPLATES[memberKey].specs = newSpecs.map((s) => ({
-        ...s,
-      }));
-    }
-  });
 
-  closeEditComponentsModal();
-  renderConfiguratorFormInputs(template);
-  calculateWizardPricing();
-  logSystemActivity(`Updated components for ${template.name}.`);
+  // Build one template payload per group member, sharing the catalog edits.
+  const templates = members
+    .filter((key) => WIZARD_PRODUCT_TEMPLATES[key])
+    .map((key) => {
+      const t = WIZARD_PRODUCT_TEMPLATES[key];
+      return {
+        key,
+        name: t.name,
+        basePrice: t.basePrice,
+        dimensions: t.dimensions || {},
+        sections: catalogSections.map((s) => ({
+          id: s.id,
+          name: s.name,
+          enabled: s.enabled,
+        })),
+        specs: catalogSections.flatMap((s) => s.specs),
+      };
+    });
+
+  try {
+    const response = await apiClient.put(
+      "/api/catalog/component-definitions",
+      { templates },
+    );
+
+    // Refresh in-memory definitions straight from the database (single source
+    // of truth), so future quotations immediately use the edited catalog.
+    await loadComponentDefinitionsFromDatabase();
+
+    // The DB catalog is now authoritative for these templates. Clear the legacy
+    // override so the reloaded DB definitions are not clobbered by stale state.
+    loadState();
+    if (!STATE.productSpecOverrides) STATE.productSpecOverrides = {};
+    delete STATE.productSpecOverrides[groupKey];
+    if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
+    STATE.customItemDefinitions = newCustomSections;
+    saveState();
+
+    closeEditComponentsModal();
+    const freshTemplate =
+      WIZARD_PRODUCT_TEMPLATES[wizardState.subtype] || template;
+    renderConfiguratorFormInputs(freshTemplate);
+    calculateWizardPricing();
+    logSystemActivity(`Saved component catalog for ${WIZARD_PRODUCT_TEMPLATES[members[0]]?.name || template.name}.`);
+    showToastNotification("Component catalog saved successfully!", "success");
+
+    // eslint-disable-next-line no-unused-vars
+    void response;
+  } catch (err) {
+    Logger.error("Component catalog save failed", err);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "💾 Save Changes"; }
+    if (window.showToastNotification) {
+      showToastNotification(
+        "Failed to save component catalog. Please try again.",
+        "error",
+      );
+    }
+  }
 };
 
 window.closeEditComponentsModal = function () {
@@ -4510,7 +4762,7 @@ window.closeEditComponentsModal = function () {
   document.getElementById("edit-components-modal").style.display = "";
 };
 
-window.resetEditComponentsModal = function () {
+window.resetEditComponentsModal = async function () {
   if (
     !confirm(
       "Reset all sections, specs, and pricing to the original defaults for this product category? This cannot be undone.",
@@ -4519,16 +4771,84 @@ window.resetEditComponentsModal = function () {
     return;
 
   const groupKey = getSubtypeGroup(wizardState.subtype);
+  const members = getGroupMembers(groupKey);
 
-  loadState();
-  if (STATE.productSpecOverrides) {
-    delete STATE.productSpecOverrides[groupKey];
+  const saveBtn = document.getElementById("ec-save-btn");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Resetting…";
   }
-  STATE.customItemDefinitions = [];
-  delete STATE.metalPricePerKg;
-  saveState();
 
-  // Restore original templates in memory
+  // Build a save payload directly from the built-in defaults so the reset is
+  // persisted to the database catalog, not just rewritten in memory.
+  const templates = members
+    .filter((key) => ORIGINAL_PRODUCT_TEMPLATES[key])
+    .map((key) => {
+      const t = ORIGINAL_PRODUCT_TEMPLATES[key];
+      const sectionsByName = new Map();
+      const specs = (t.specs || []).map((s) => {
+        const sectionKey = s.section && s.section !== "general" ? s.section : "general";
+        if (!sectionsByName.has(sectionKey)) {
+          sectionsByName.set(sectionKey, sectionKey);
+        }
+        return {
+          id: s.id,
+          name: s.name,
+          section: sectionKey,
+          type: s.type,
+          required: s.required !== false,
+          enabled: s.enabled !== false,
+          defaultValue: s.defaultValue || "",
+          priceDiffs: s.priceDiffs || {},
+          options: (s.options || []).map((opt, oi) => ({
+            name: opt,
+            priceDifference:
+              (s.priceDiffs && s.priceDiffs[opt]) || 0,
+            isDefault: (s.defaultValue || "") === opt,
+            enabled: (s.enabledOptions || s.options || []).includes(opt),
+          })),
+        };
+      });
+
+      return {
+        key,
+        name: t.name,
+        basePrice: t.basePrice,
+        dimensions: t.dimensions || {},
+        sections: Array.from(sectionsByName.keys()).map((id) => ({
+          id,
+          name: id,
+          enabled: true,
+        })),
+        specs,
+      };
+    });
+
+  try {
+    await apiClient.put("/api/catalog/component-definitions", { templates });
+
+    // Clear persisted overrides so reloaded defaults are not clobbered.
+    loadState();
+    if (STATE.productSpecOverrides) {
+      delete STATE.productSpecOverrides[groupKey];
+    }
+    STATE.customItemDefinitions = [];
+    delete STATE.metalPricePerKg;
+    saveState();
+
+    // Refresh in-memory definitions straight from the database (single source
+    // of truth) so the reset is reflected everywhere.
+    await loadComponentDefinitionsFromDatabase();
+  } catch (err) {
+    Logger.error("Component catalog reset failed", err);
+    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "💾 Save Changes"; }
+    if (window.showToastNotification) {
+      showToastNotification("Failed to reset component catalog. Please try again.", "error");
+    }
+    return;
+  }
+
+  // Restore original templates in memory (fallback if DB empty), then reopen.
   Object.keys(ORIGINAL_PRODUCT_TEMPLATES).forEach((key) => {
     WIZARD_PRODUCT_TEMPLATES[key] = JSON.parse(
       JSON.stringify(ORIGINAL_PRODUCT_TEMPLATES[key]),
