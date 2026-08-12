@@ -424,6 +424,7 @@ CREATE TABLE chassis_records (
   model          TEXT,
   chassis_number TEXT,
   arrival_date   DATE,
+  out_date       DATE,
   customer_name  TEXT,
   product_name   TEXT,
   notes          TEXT,

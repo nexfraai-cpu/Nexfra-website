@@ -17,7 +17,7 @@
   
   <!-- html2pdf.js for High-Fidelity Client-side PDF Generation -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script type="module" crossorigin src="/assets/erp-Bhfd7KoR.js"></script>
+  <script type="module" crossorigin src="/assets/erp-knr6trSp.js"></script>
   <link rel="modulepreload" crossorigin href="/assets/Logger-BKz9iMgE.js">
   <link rel="stylesheet" crossorigin href="/assets/Logger-8h2WRwli.css">
 </head>
@@ -1632,7 +1632,10 @@
       </div>
       
       <div style="padding:16px 24px; background:#F8FAFC; border-top:1px solid #E2E8F0; display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
-        <span class="section-hint" style="font-size:0.75rem;">Edit sections, specs, options, and prices. Changes persist for future quotations.</span>
+        <div style="display:flex; flex-direction:column; gap:4px;">
+          <span class="section-hint" style="font-size:0.75rem;">Edit sections, specs, options, and prices. Changes persist for future quotations.</span>
+          <span id="ec-save-status" style="font-size:0.8rem; font-weight:700; min-height:1.1em;"></span>
+        </div>
         <div style="display:flex; gap:12px;">
           <button type="button" class="btn btn-outline btn-sm" onclick="closeEditComponentsModal()">Cancel</button>
           <button type="button" id="ec-save-btn" class="btn btn-primary btn-sm" onclick="saveEditComponentsModal()" style="background:#10B981; border:none; font-weight:700; color:#ffffff; padding:6px 14px; border-radius:6px;">💾 Save Changes</button>

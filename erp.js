@@ -16,6 +16,7 @@ import { CustomerService } from "./src/services/CustomerService.js";
 import { QuotationService } from "./src/services/QuotationService.js";
 import { WorkOrderService } from "./src/services/WorkOrderService.js";
 import { ProductionService } from "./src/services/ProductionService.js";
+import { ChassisService } from "./src/services/ChassisService.js";
 import { FinanceService } from "./src/services/FinanceService.js";
 import { AdminService } from "./src/services/AdminService.js";
 import { Logger } from "./src/utils/Logger.js";
@@ -26,6 +27,7 @@ const customerService = new CustomerService();
 const quotationService = new QuotationService();
 const workOrderService = new WorkOrderService();
 const productionService = new ProductionService();
+const chassisService = new ChassisService();
 const financeService = new FinanceService();
 const adminService = new AdminService();
 
@@ -253,6 +255,16 @@ async function hydrateStateFromApi() {
     return reconcileProductionRemarks(legacy, hydrateSchema);
   });
 
+  // Chassis allocations are persisted on the backend (chassis_records.work_order_id).
+  // Hydrate them here so they survive a page refresh; the work order display id is
+  // resolved from the joined workOrderNumber returned by the API.
+  let chassisRecords = [];
+  try {
+    chassisRecords = await chassisService.getAll(workOrders);
+  } catch (e) {
+    Logger.warn("Chassis hydrate failed", e);
+  }
+
   console.log(
     "[hydrateStateFromApi] Hydrated quotations count:",
     quotations ? quotations.length : 0,
@@ -265,6 +277,7 @@ async function hydrateStateFromApi() {
     quotations,
     workOrders,
     productionItems,
+    chassisRecords,
     sales,
     payments,
     employees,
@@ -277,6 +290,7 @@ async function hydrateStateFromApi() {
   _syncSignatures.quotations = _entitySig(quotations);
   _syncSignatures.workOrders = _entitySig(workOrders);
   _syncSignatures.productionItems = _entitySig(productionItems);
+  _syncSignatures.chassisRecords = _entitySig(chassisRecords);
   _syncSignatures.sales = _entitySig(sales);
   _syncSignatures.payments = _entitySig(payments);
   reconcilePaymentQuoteIds(sales, payments, quotations);
@@ -1814,6 +1828,7 @@ function loadState() {
   if (!STATE.quotations) STATE.quotations = [];
   if (!STATE.workOrders) STATE.workOrders = [];
   if (!STATE.productionItems) STATE.productionItems = [];
+  if (!STATE.chassisRecords) STATE.chassisRecords = [];
   if (!STATE.sales) STATE.sales = [];
   if (!STATE.payments) STATE.payments = [];
   if (!STATE.customItemDefinitions) STATE.customItemDefinitions = [];
@@ -2852,7 +2867,11 @@ window.addChassisInput = function () {
   container.appendChild(row);
 };
 
-window.addChassisRecord = function () {
+let _chassisAllocating = false;
+
+window.addChassisRecord = async function () {
+  // Prevent duplicate allocation requests while a previous request is in flight.
+  if (_chassisAllocating) return;
   loadState();
   var field = document.getElementById("ch-field-input")?.value.trim();
   var brand = document.getElementById("ch-brand-input")?.value.trim();
@@ -2875,23 +2894,95 @@ window.addChassisRecord = function () {
     return;
   }
   if (!STATE.chassisRecords) STATE.chassisRecords = [];
-  var baseId = "CH-" + Date.now();
-  var created = [];
-  chassisList.forEach(function (cn, i) {
-    var id = baseId + "-" + (i + 1);
-    STATE.chassisRecords.push({
-      id: id,
-      field: field,
-      brand: brand,
-      model: model || "",
-      brandModel: brand + (model ? " / " + model : ""),
-      workOrderId: wo,
-      chassisNumber: cn,
-      arrivalDate: date,
-      outDate: outDate,
-    });
-    created.push(cn);
+
+  // Validate that the work order resolves to a backend record so the
+  // chassis ↔ work-order relationship is actually persisted.
+  var woMatch = (STATE.workOrders || []).find(function (w) {
+    return w.id === wo;
   });
+  var uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!woMatch && !uuidRegex.test(wo)) {
+    showToastNotification(
+      "Work order \"" + wo + "\" was not found. Select a valid work order.",
+      "error",
+    );
+    return;
+  }
+  var woBackendId = woMatch ? woMatch._backendId : wo;
+
+  // Skip chassis numbers already allocated to this work order (no duplicates).
+  var existing = STATE.chassisRecords.filter(function (c) {
+    return c.workOrderId === wo;
+  });
+  var existingNumbers = {};
+  existing.forEach(function (c) {
+    existingNumbers[c.chassisNumber] = true;
+  });
+  var toCreate = chassisList.filter(function (cn) {
+    return !existingNumbers[cn];
+  });
+  var skipped = chassisList.length - toCreate.length;
+  if (toCreate.length === 0) {
+    showToastNotification(
+      skipped +
+        " chassis already allocated to " +
+        wo +
+        ". Nothing new to add.",
+      "info",
+    );
+    return;
+  }
+
+  var addBtn = document.querySelector(
+    'button[onclick="addChassisRecord()"]',
+  );
+  if (addBtn) {
+    addBtn.disabled = true;
+    addBtn.textContent = "Saving…";
+  }
+  _chassisAllocating = true;
+
+  var created = [];
+  var errors = [];
+  for (var i = 0; i < toCreate.length; i++) {
+    var cn = toCreate[i];
+    try {
+      var rec = await chassisService.create(
+        {
+          field: field,
+          brand: brand,
+          model: model || "",
+          workOrderId: woBackendId,
+          chassisNumber: cn,
+          arrivalDate: date,
+          outDate: outDate,
+        },
+        STATE.workOrders,
+      );
+      STATE.chassisRecords.push(rec);
+      created.push(cn);
+    } catch (e) {
+      Logger.error("Chassis allocation failed for " + cn, e);
+      errors.push(cn + ": " + (e && e.message ? e.message : "failed"));
+    }
+  }
+
+  _chassisAllocating = false;
+  if (addBtn) {
+    addBtn.disabled = false;
+    addBtn.textContent = "+ Add Chassis";
+  }
+
+  if (errors.length > 0) {
+    showToastNotification(
+      "Some chassis failed to allocate: " + errors.join("; "),
+      "error",
+    );
+    renderChassisTable();
+    return;
+  }
+
   saveState();
   logSystemActivity(
     "Chassis " + created.join(", ") + " registered under WO " + wo + ".",
@@ -2909,8 +3000,18 @@ window.addChassisRecord = function () {
   document.getElementById("ch-date-input").value = "";
   document.getElementById("ch-outdate-input").value = "";
   renderChassisTable();
+  // Refresh the Work Orders view so ALLOCATED CHASSIS reflects immediately.
+  if (typeof renderWorkOrders === "function") {
+    try {
+      renderWorkOrders();
+    } catch (e) {
+      Logger.warn("renderWorkOrders refresh skipped", e);
+    }
+  }
   showToastNotification(
-    created.length + " chassis record(s) registered successfully.",
+    created.length +
+      " chassis record(s) registered successfully." +
+      (skipped ? " (" + skipped + " already allocated — skipped.)" : ""),
   );
 };
 
@@ -2975,28 +3076,77 @@ window.editChassisRecord = function (id) {
   renderChassisTable();
 };
 
-window.saveEditChassis = function (id) {
+let _chassisSaving = false;
+
+window.saveEditChassis = async function (id) {
+  if (_chassisSaving) return;
   loadState();
   var r = (STATE.chassisRecords || []).find(function (c) {
     return c.id === id;
   });
   if (!r) return;
-  r.field = document.getElementById("edit-ch-field-" + id)?.value || r.field;
-  r.brand =
+  var nextField =
+    document.getElementById("edit-ch-field-" + id)?.value || r.field;
+  var nextBrand =
     document.getElementById("edit-ch-brand-" + id)?.value || r.brand || "";
-  r.model = document.getElementById("edit-ch-model-" + id)?.value || "";
-  r.brandModel = r.brand + (r.model ? " / " + r.model : "");
-  r.workOrderId =
+  var nextModel =
+    document.getElementById("edit-ch-model-" + id)?.value || "";
+  var nextWo =
     document.getElementById("edit-ch-wo-" + id)?.value || r.workOrderId;
-  r.chassisNumber =
+  var nextChassis =
     document.getElementById("edit-ch-chassis-" + id)?.value || r.chassisNumber;
-  r.arrivalDate =
+  var nextArrival =
     document.getElementById("edit-ch-date-" + id)?.value || r.arrivalDate;
-  r.outDate = document.getElementById("edit-ch-outdate-" + id)?.value || "";
-  _editingChassisId = null;
-  saveState();
-  logSystemActivity("Chassis " + r.chassisNumber + " record updated.");
-  renderChassisTable();
+  var nextOut =
+    document.getElementById("edit-ch-outdate-" + id)?.value || "";
+
+  var backendId = r._backendId || r.id;
+  var uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(String(backendId))) {
+    showToastNotification(
+      "This chassis record is not persisted yet. Refresh and try again.",
+      "error",
+    );
+    return;
+  }
+
+  _chassisSaving = true;
+  try {
+    var updated = await chassisService.update(
+      backendId,
+      {
+        field: nextField,
+        brand: nextBrand,
+        model: nextModel,
+        workOrderId: nextWo,
+        chassisNumber: nextChassis,
+        arrivalDate: nextArrival,
+        outDate: nextOut,
+      },
+      STATE.workOrders,
+    );
+    // Replace the record in state with the backend-authoritative record.
+    var idx = STATE.chassisRecords.findIndex(function (c) {
+      return c.id === id;
+    });
+    if (idx >= 0) STATE.chassisRecords[idx] = updated;
+    _editingChassisId = null;
+    saveState();
+    logSystemActivity("Chassis " + (updated.chassisNumber || nextChassis) + " record updated.");
+    renderChassisTable();
+    if (typeof renderWorkOrders === "function") {
+      try { renderWorkOrders(); } catch (e) { Logger.warn("renderWorkOrders refresh skipped", e); }
+    }
+  } catch (e) {
+    Logger.error("Chassis update failed", e);
+    showToastNotification(
+      "Failed to update chassis: " + (e && e.message ? e.message : "error"),
+      "error",
+    );
+  } finally {
+    _chassisSaving = false;
+  }
 };
 
 window.cancelEditChassis = function () {
@@ -3004,15 +3154,43 @@ window.cancelEditChassis = function () {
   renderChassisTable();
 };
 
-window.deleteChassisRecord = function (id) {
+let _chassisDeleting = false;
+
+window.deleteChassisRecord = async function (id) {
+  if (_chassisDeleting) return;
   if (!confirm("Delete this chassis record?")) return;
   loadState();
+  var r = (STATE.chassisRecords || []).find(function (c) {
+    return c.id === id;
+  });
+  var backendId = r ? r._backendId || r.id : id;
+  var uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  _chassisDeleting = true;
+  try {
+    if (uuidRegex.test(String(backendId))) {
+      await chassisService.remove(backendId);
+    }
+  } catch (e) {
+    Logger.error("Chassis delete failed", e);
+    showToastNotification(
+      "Failed to delete chassis: " + (e && e.message ? e.message : "error"),
+      "error",
+    );
+    _chassisDeleting = false;
+    return;
+  }
   STATE.chassisRecords = (STATE.chassisRecords || []).filter(function (c) {
     return c.id !== id;
   });
+  _chassisDeleting = false;
   saveState();
-  logSystemActivity("Chassis record " + id + " deleted.");
+  logSystemActivity("Chassis record " + (r ? r.chassisNumber || id : id) + " deleted.");
   renderChassisTable();
+  if (typeof renderWorkOrders === "function") {
+    try { renderWorkOrders(); } catch (e) { Logger.warn("renderWorkOrders refresh skipped", e); }
+  }
+  showToastNotification("Chassis record deleted.");
 };
 
 window.scrollToWo = function (woId) {
@@ -4155,26 +4333,146 @@ function resolveSpecName(k, template) {
 // EDIT COMPONENTS MODAL — Unified Editor for All Sections
 // -------------------------------------------------------
 
-window.openEditComponentsModal = async function () {
+// Modal request-state UI guards (display layer only; no API/business changes).
+let _ecOpenLoading = false;
+let _ecSaveInFlight = false;
+let _ecSaveStatusTimer = null;
+let _ecUxStylesInjected = false;
+
+function _ecEnsureUxStyles() {
+  if (_ecUxStylesInjected || typeof document === "undefined") return;
+  _ecUxStylesInjected = true;
+  const style = document.createElement("style");
+  style.textContent =
+    ".ec-loading-spinner{display:inline-block;width:28px;height:28px;border:3px solid #E2E8F0;border-top-color:#2563EB;border-radius:50%;animation:ec-loading-spin .7s linear infinite;}" +
+    "@keyframes ec-loading-spin{to{transform:rotate(360deg)}}";
+  document.head.appendChild(style);
+}
+
+function _ecShowModal() {
+  const modal = document.getElementById("edit-components-modal");
+  if (!modal) return;
+  modal.classList.add("active");
+  modal.style.display = "flex";
+}
+
+function _ecSetSaveButtonDisabled(disabled) {
+  const saveBtn = document.getElementById("ec-save-btn");
+  if (!saveBtn) return;
+  saveBtn.disabled = !!disabled;
+}
+
+function _ecRenderLoading() {
+  _ecEnsureUxStyles();
+  const container = document.getElementById("edit-components-modal-body");
+  if (!container) return;
+  container.innerHTML =
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:64px 20px;text-align:center;">' +
+    '<span class="ec-loading-spinner"></span>' +
+    '<p style="margin:0;font-size:0.9rem;font-weight:600;color:#475569;">Loading component definitions...</p>' +
+    "</div>";
+}
+
+function _ecRenderError(message) {
+  const container = document.getElementById("edit-components-modal-body");
+  if (!container) return;
+  container.innerHTML =
+    '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:64px 20px;text-align:center;">' +
+    '<span style="font-size:2rem;line-height:1;">⚠️</span>' +
+    '<p style="margin:0;font-size:0.95rem;font-weight:700;color:#B91C1C;">Could not load component definitions</p>' +
+    '<p style="margin:0;font-size:0.8rem;color:#64748B;max-width:440px;">' +
+    (message || "The component catalog could not be loaded from the server.") +
+    "</p>" +
+    '<button type="button" class="btn btn-primary btn-sm" onclick="retryEditComponentsLoad()" style="margin-top:10px;font-weight:700;">↺ Retry</button>' +
+    "</div>";
+}
+
+function _ecSetSaveStatus(text, type) {
+  const status = document.getElementById("ec-save-status");
+  if (!status) return;
+  status.textContent = text || "";
+  status.style.color =
+    type === "success" ? "#059669" : type === "error" ? "#DC2626" : "#D97706";
+}
+
+function _ecSetSaveSaving(message) {
+  const saveBtn = document.getElementById("ec-save-btn");
+  if (saveBtn) {
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving…";
+  }
+  _ecSetSaveStatus(message || "Saving component catalog...");
+}
+
+function _ecSetSaveIdle() {
+  const saveBtn = document.getElementById("ec-save-btn");
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "💾 Save Changes";
+  }
+}
+
+window.openEditComponentsModal = function () {
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
   if (!template) {
     alert("Please select a product category & subtype first.");
     return;
   }
+  // Open immediately and surface the load state while the existing GET runs.
+  // A guard prevents duplicate GET requests while a load is in flight.
+  if (_ecOpenLoading) return;
+  _ecOpenLoading = true;
+  _ecShowModal();
+  _ecSetSaveButtonDisabled(true);
+  _ecRenderLoading();
+  loadEditComponentsEditor().finally(() => {
+    _ecOpenLoading = false;
+  });
+};
+
+window.retryEditComponentsLoad = function () {
+  if (_ecOpenLoading) return;
+  _ecOpenLoading = true;
+  _ecSetSaveButtonDisabled(true);
+  _ecRenderLoading();
+  loadEditComponentsEditor().finally(() => {
+    _ecOpenLoading = false;
+  });
+};
+
+async function loadEditComponentsEditor() {
+  const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
+  if (!template) return;
 
   // Load the full DB catalog including disabled specs/options so archived
   // items are shown (marked disabled) and are NOT silently dropped on save.
   let editTemplate = template;
   try {
-    const resp = await apiClient.get("/api/catalog/component-definitions?includeDisabled=true");
+    const resp = await apiClient.get(
+      "/api/catalog/component-definitions?includeDisabled=true",
+    );
     const fullCatalog = resp && resp.data;
     if (fullCatalog && fullCatalog[wizardState.subtype]) {
       editTemplate = fullCatalog[wizardState.subtype];
     }
   } catch (err) {
-    Logger.warn("Could not load disabled catalog for editor; using in-memory template.", err);
+    Logger.warn(
+      "Could not load disabled catalog for editor; showing load error.",
+      err,
+    );
+    _ecRenderError(
+      (err && err.message) ||
+        "The component catalog could not be loaded from the server.",
+    );
+    _ecSetSaveButtonDisabled(true);
+    return;
   }
 
+  renderEditComponentsEditor(editTemplate);
+  _ecSetSaveIdle();
+}
+
+function renderEditComponentsEditor(editTemplate) {
   const container = document.getElementById("edit-components-modal-body");
   if (!container) return;
 
@@ -4263,9 +4561,7 @@ window.openEditComponentsModal = async function () {
   `;
 
   container.innerHTML = html;
-  document.getElementById("edit-components-modal").classList.add("active");
-  document.getElementById("edit-components-modal").style.display = "flex";
-};
+}
 
 function buildEditSectionCard(secId, displayName, specs, isCustom) {
   const cardId = `ec-section-${secId}`;
@@ -4604,15 +4900,16 @@ function buildCatalogSectionPayload(card) {
 }
 
 window.saveEditComponentsModal = async function () {
-  const saveBtn = document.getElementById("ec-save-btn");
-  if (saveBtn) {
-    saveBtn.disabled = true;
-    saveBtn.textContent = "Saving…";
-  }
+  // Guard against duplicate saves while a save is already in flight.
+  if (_ecSaveInFlight) return;
+  _ecSaveInFlight = true;
+  _ecSetSaveSaving("Saving component catalog...");
 
   const template = WIZARD_PRODUCT_TEMPLATES[wizardState.subtype];
   if (!template) {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "💾 Save Changes"; }
+    _ecSetSaveIdle();
+    _ecSetSaveStatus("Select a product category & subtype first.", "error");
+    _ecSaveInFlight = false;
     return;
   }
 
@@ -4671,7 +4968,8 @@ window.saveEditComponentsModal = async function () {
   });
 
   if (dupSpecs.length > 0) {
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "💾 Save Changes"; }
+    _ecSetSaveIdle();
+    _ecSetSaveStatus("Fix the duplicate option names before saving.", "error");
     if (window.showToastNotification) {
       showToastNotification(
         "Duplicate option names detected. Give each option a unique name before saving.",
@@ -4682,6 +4980,7 @@ window.saveEditComponentsModal = async function () {
       "Duplicate option names are not allowed.\n\nPlease give each option a unique name in:\n- " +
         dupSpecs.join("\n- "),
     );
+    _ecSaveInFlight = false;
     return;
   }
 
@@ -4722,6 +5021,8 @@ window.saveEditComponentsModal = async function () {
       { templates },
     );
 
+    _ecSetSaveSaving("Updating sections, specifications and options...");
+
     // Refresh in-memory definitions straight from the database (single source
     // of truth), so future quotations immediately use the edited catalog.
     await loadComponentDefinitionsFromDatabase();
@@ -4735,25 +5036,40 @@ window.saveEditComponentsModal = async function () {
     STATE.customItemDefinitions = newCustomSections;
     saveState();
 
-    closeEditComponentsModal();
+    // Re-render the editor from the freshly loaded DB-backed definitions so the
+    // modal reflects exactly what was persisted, then surface success feedback.
     const freshTemplate =
       WIZARD_PRODUCT_TEMPLATES[wizardState.subtype] || template;
+    renderEditComponentsEditor(freshTemplate);
+    _ecSetSaveIdle();
+    _ecSetSaveStatus("Changes saved successfully.", "success");
     renderConfiguratorFormInputs(freshTemplate);
     calculateWizardPricing();
     logSystemActivity(`Saved component catalog for ${WIZARD_PRODUCT_TEMPLATES[members[0]]?.name || template.name}.`);
     showToastNotification("Component catalog saved successfully!", "success");
 
+    // Keep the success feedback visible long enough to be understood, then
+    // quietly clear it (display-only; no business logic involved).
+    clearTimeout(_ecSaveStatusTimer);
+    _ecSaveStatusTimer = setTimeout(() => _ecSetSaveStatus(""), 3000);
+
     // eslint-disable-next-line no-unused-vars
     void response;
   } catch (err) {
     Logger.error("Component catalog save failed", err);
-    if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = "💾 Save Changes"; }
+    _ecSetSaveIdle();
+    _ecSetSaveStatus(
+      "Failed to save component catalog. Please try again.",
+      "error",
+    );
     if (window.showToastNotification) {
       showToastNotification(
         "Failed to save component catalog. Please try again.",
         "error",
       );
     }
+  } finally {
+    _ecSaveInFlight = false;
   }
 };
 
@@ -7342,10 +7658,11 @@ function renderWorkOrders() {
           <div class="wo-notes" style="font-size:0.8rem; color:#475569; margin-bottom:12px;">
             <strong>Factory Notes:</strong> ${wo.notes}
           </div>
-          <div class="wo-due" style="display:flex; align-items:center; gap:8px; margin-bottom:12px; padding:8px 12px; background:#F8FAFC; border-radius:6px; border:1px solid #E2E8F0;">
+          <div class="wo-due" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:12px; padding:8px 12px; background:#F8FAFC; border-radius:6px; border:1px solid #E2E8F0;">
             <span style="font-size:0.75rem; font-weight:700; color:#475569;">Due Date:</span>
-            <input type="date" id="due-${wo.id}" value="${wo.dueDate || ""}" min="${new Date().toISOString().split("T")[0]}" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
+            <input type="date" id="due-${wo.id}" value="${wo.dueDate || ""}" min="${new Date().toISOString().split("T")[0]}" oninput="clearWorkOrderDueStatus('${wo.id}')" style="font-size:0.75rem; padding:2px 6px; border:1px solid #CBD5E1; border-radius:4px;">
             <button id="due-save-${wo.id}" type="button" class="btn btn-primary btn-xs" onclick="event.stopPropagation(); setWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; font-weight:700;">Save</button>
+            <span id="due-status-${wo.id}" class="wo-due-status" style="font-size:0.72rem; font-weight:700;"></span>
             ${wo.dueDate ? `<button type="button" class="btn btn-outline btn-xs" onclick="event.stopPropagation(); clearWorkOrderDueDate('${wo.id}')" style="font-size:0.7rem; padding:3px 10px; color:#EF4444; border-color:#FCA5A5; font-weight:700;">Clear</button>` : ""}
           </div>
           <div class="wo-footer" style="display:flex; gap:12px;">
@@ -7554,7 +7871,16 @@ function _woDueSaveButton(id) {
   return document.getElementById("due-save-" + id);
 }
 
-function _setWoDueSaving(btn) {
+function _woDueStatusEl(id) {
+  return document.getElementById("due-status-" + id);
+}
+
+window.clearWorkOrderDueStatus = function (id) {
+  const status = _woDueStatusEl(id);
+  if (status) status.textContent = "";
+};
+
+function _setWoDueSaving(id, btn) {
   ensureWoDueUxStyles();
   if (!btn) return;
   if (btn.dataset.uxPrevHtml == null) btn.dataset.uxPrevHtml = btn.innerHTML;
@@ -7563,18 +7889,36 @@ function _setWoDueSaving(btn) {
   btn.style.cursor = "not-allowed";
   btn.style.pointerEvents = "none";
   btn.innerHTML = '<span class="wo-due-spinner"></span>Saving...';
+  const status = _woDueStatusEl(id);
+  if (status) {
+    status.textContent = "Saving due date...";
+    status.style.color = "#D97706";
+  }
 }
 
-function _setWoDueSaved(btn) {
+function _setWoDueSaved(id, btn) {
   if (!btn) return;
   btn.disabled = true;
   btn.style.pointerEvents = "none";
   btn.style.cursor = "default";
   btn.innerHTML =
     '<span style="color:#059669;font-weight:800;">✓</span> Saved';
+  const status = _woDueStatusEl(id);
+  if (status) {
+    status.textContent = "Due date saved.";
+    status.style.color = "#059669";
+  }
 }
 
-function _restoreWoDueSave(btn) {
+function _setWoDueError(id, btn) {
+  const status = _woDueStatusEl(id);
+  if (status) {
+    status.textContent = "Failed to save due date. Please try again.";
+    status.style.color = "#DC2626";
+  }
+}
+
+function _restoreWoDueSave(id, btn) {
   if (!btn) return;
   btn.disabled = false;
   if (btn.dataset.uxPrevStyle != null) {
@@ -7588,6 +7932,8 @@ function _restoreWoDueSave(btn) {
     btn.innerHTML = btn.dataset.uxPrevHtml;
     delete btn.dataset.uxPrevHtml;
   }
+  const status = _woDueStatusEl(id);
+  if (status) status.textContent = "";
 }
 
 // Duplicate-click guard: one due-date save per work order while in flight.
@@ -7611,7 +7957,7 @@ window.setWorkOrderDueDate = async function (id) {
   }
 
   _woDueSavingInFlight.add(String(id));
-  _setWoDueSaving(btn);
+  _setWoDueSaving(id, btn);
   try {
     wo.dueDate = input.value;
     await ensureProductionItem(wo.quoteId);
@@ -7628,12 +7974,13 @@ window.setWorkOrderDueDate = async function (id) {
     renderProductionBoard();
     // Show a green ✓ "Saved" pulse, then fall back to the idle UI.
     const savedBtn = _woDueSaveButton(id);
-    _setWoDueSaved(savedBtn);
+    _setWoDueSaved(id, savedBtn);
     await new Promise((r) => setTimeout(r, 900));
-    _restoreWoDueSave(savedBtn);
+    _restoreWoDueSave(id, savedBtn);
   } catch (err) {
     console.error("[setWorkOrderDueDate] Save failed:", err);
-    _restoreWoDueSave(btn);
+    _restoreWoDueSave(id, btn);
+    _setWoDueError(id, btn);
     if (typeof showToastNotification === "function") {
       showToastNotification(
         "Failed to save the due date. Please try again.",
@@ -7668,7 +8015,8 @@ async function ensureProductionItem(quoteId) {
       w.quoteId === quoteId ||
       w.quoteNumber === quoteId ||
       w._backendQuoteId === quoteId ||
-      w.id === quoteId,
+      w.id === quoteId ||
+      w._backendId === quoteId,
   );
   if (!wo || !wo._backendId) {
     console.warn(
@@ -8418,9 +8766,9 @@ window.toggleApprovalCard = function (quoteId) {
   }
 };
 
-window.toggleBoardCard = function (quoteId) {
+window.toggleBoardCard = function (cardId) {
   const card = document.querySelector(
-    `.board-card[data-quote-id="${quoteId}"]`,
+    `.board-card[data-card-id="${cardId}"]`,
   );
   if (!card) return;
   const body = card.querySelector(".board-card-body");
@@ -9102,9 +9450,22 @@ function renderProductionBoard() {
     _moduleFilters &&
     _moduleFilters.production &&
     _moduleFilters.production.urgent === "1";
-  const displayItems = urgentOnly
+  const displayItems = (urgentOnly
     ? filteredItems.filter((item) => item.urgent)
-    : filteredItems;
+    : filteredItems);
+
+  // Dedupe by production item id so the same item is never rendered in more
+  // than one stage column. Each production item is a unique _backendId; columns
+  // are already filtered by columnStatus, but a duplicate entry would slip
+  // through and cause the FINISHED card to share a quoteId with the
+  // NOT STARTED card, making the dropdown toggle the wrong card.
+  const _seenCardIds = new Set();
+  const dedupedDisplayItems = displayItems.filter((it) => {
+    const cid = it && it._backendId;
+    if (!cid || _seenCardIds.has(cid)) return false;
+    _seenCardIds.add(cid);
+    return true;
+  });
 
   const columns = [
     {
@@ -9133,7 +9494,7 @@ function renderProductionBoard() {
   let boardHtml = "";
 
   columns.forEach((col) => {
-    const items = displayItems.filter(
+    const items = dedupedDisplayItems.filter(
       (p) => (p.columnStatus || "Not Started") === col.status,
     );
 
@@ -9173,8 +9534,8 @@ function renderProductionBoard() {
             )
           : "";
         return `
-        <div class="board-card" data-quote-id="${item.quoteId}" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; margin-bottom:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
-          <div onclick="toggleBoardCard('${item.quoteId}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; cursor:pointer; user-select:none;">
+        <div class="board-card" data-card-id="${item._backendId}" data-quote-id="${item.quoteId}" style="background:#ffffff; border-radius:8px; border:1.5px solid #CBD5E1; margin-bottom:12px; overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,0.04);">
+          <div onclick="toggleBoardCard('${item._backendId}')" style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; cursor:pointer; user-select:none;">
             <span style="background:#0F172A; color:#ffffff; font-weight:800; font-size:0.75rem; padding:3px 8px; border-radius:4px; font-family:'Outfit',sans-serif;">${displayQuoteId}</span>
             <div style="display:flex; align-items:center; gap:6px;">
               <span style="font-size:0.7rem; font-weight:800; color:${col.status === "Finished" ? "#059669" : col.status === "Work in Progress" ? "#2563EB" : "#64748B"};">${pct}% Complete</span>
@@ -9195,7 +9556,7 @@ function renderProductionBoard() {
             </div>
 
             <div style="display:flex; justify-content:flex-end; align-items:center; border-top:1px solid #F1F5F9; padding:10px 0;" onclick="event.stopPropagation()">
-              <button type="button" class="btn btn-primary btn-xs" onclick="openOrderProgressionModal('${item.quoteId}')" style="font-size:0.7rem; font-weight:700; padding:3px 10px; background:#0F172A; border:none; color:white;">
+              <button type="button" class="btn btn-primary btn-xs" onclick="openOrderProgressionModal('${item._backendId}')" style="font-size:0.7rem; font-weight:700; padding:3px 10px; background:#0F172A; border:none; color:white;">
                 Track Order &rarr;
               </button>
             </div>
@@ -9221,19 +9582,27 @@ function renderProductionBoard() {
   container.innerHTML = boardHtml;
 }
 
-window.openOrderProgressionModal = async function (quoteId) {
+window.openOrderProgressionModal = async function (prodItemRef) {
   loadState();
 
+  // prodItemRef may be the production item's backend UUID (Production Board card)
+  // or the quotation number (Work Orders page). Match by the unique _backendId
+  // first so the correct production item is targeted, then fall back to the
+  // legacy quoteId/id match for the Work Orders caller.
   let prodItem = STATE.productionItems.find(
-    (p) => p.quoteId === quoteId || p.id === quoteId,
+    (p) =>
+      p._backendId === prodItemRef ||
+      p.id === prodItemRef ||
+      p.quoteId === prodItemRef,
   );
   if (!prodItem) {
-    prodItem = await ensureProductionItem(quoteId);
+    prodItem = await ensureProductionItem(prodItemRef);
     if (!prodItem) return;
   }
 
+  const quoteRef = prodItem.quoteId || prodItem._backendQuoteId || prodItemRef;
   const quote = STATE.quotations.find(
-    (q) => q.id === quoteId || q._backendId === quoteId,
+    (q) => q.id === quoteRef || q._backendId === quoteRef,
   );
   const subtitleText = `${quote ? quote.customerName || "Client" : prodItem.customerName} • ${prodItem.product} • Order Date: ${new Date(prodItem.date).toLocaleDateString("en-GB")}`;
   const displayQuoteId = resolveQuotationDisplayNumber(prodItem, [
@@ -9247,7 +9616,7 @@ window.openOrderProgressionModal = async function (quoteId) {
   document.getElementById("opm-subtitle").innerText = subtitleText;
 
   document.getElementById("opm-view-quote-btn").onclick = function () {
-    openPdfPreview(quoteId);
+    openPdfPreview(quoteRef);
   };
 
   renderOrderProgressionBody(prodItem);
@@ -9261,15 +9630,18 @@ window.closeOrderProgressionModal = function () {
 
 let _remarkContext = null;
 
-window.openRemarkModal = function (quoteId, secId) {
+window.openRemarkModal = function (prodItemRef, secId) {
   loadState();
   const prodItem = STATE.productionItems.find(
-    (p) => p.quoteId === quoteId || p.id === quoteId,
+    (p) =>
+      p._backendId === prodItemRef ||
+      p.id === prodItemRef ||
+      p.quoteId === prodItemRef,
   );
   if (!prodItem) return;
   if (!prodItem.remarks) prodItem.remarks = {};
 
-  _remarkContext = { quoteId, secId };
+  _remarkContext = { prodItemRef, secId };
 
   const overlay = document.getElementById("remark-modal-overlay");
   const textarea = document.getElementById("remark-textarea");
@@ -9301,7 +9673,9 @@ window.saveRemark = function () {
   loadState();
   const prodItem = STATE.productionItems.find(
     (p) =>
-      p.quoteId === _remarkContext.quoteId || p.id === _remarkContext.quoteId,
+      p._backendId === _remarkContext.prodItemRef ||
+      p.id === _remarkContext.prodItemRef ||
+      p.quoteId === _remarkContext.prodItemRef,
   );
   if (!prodItem) return;
 
@@ -9423,7 +9797,7 @@ function renderOrderProgressionBody(prodItem) {
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid ${isSecDone ? "#DCFCE7" : "#E2E8F0"}; padding-bottom:8px;">
               <h4 style="margin:0; font-size:0.85rem; font-weight:800; color:${isSecDone ? "#166534" : "#1E293B"}; text-transform:uppercase;">${sec.name}</h4>
               <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.775rem; font-weight:800; padding:4px 10px; border-radius:14px; background:${isSecDone ? "#10B981" : "#E2E8F0"}; color:${isSecDone ? "#ffffff" : "#475569"}; cursor:pointer; transition:all 0.2s ease;">
-                <input type="checkbox" ${isSecDone ? "checked" : ""} onchange="toggleEntireSectionDone('${prodItem.quoteId}', '${sec.id}', this.checked)">
+                <input type="checkbox" ${isSecDone ? "checked" : ""} onchange="toggleEntireSectionDone('${prodItem._backendId}', '${sec.id}', this.checked)">
                 ${isSecDone ? "✓ Section Completed" : "Section Status: Pending"}
               </label>
             </div>
@@ -9442,7 +9816,7 @@ function renderOrderProgressionBody(prodItem) {
                         const isChecked = !!map[key];
                         return `
                         <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.8rem; font-weight:600; color:#334155; cursor:pointer;">
-                          <input type="checkbox" ${isChecked ? "checked" : ""} onchange="toggleProgressionMapKey('${prodItem.quoteId}', '${key}', this.checked)">
+                          <input type="checkbox" ${isChecked ? "checked" : ""} onchange="toggleProgressionMapKey('${prodItem._backendId}', '${key}', this.checked)">
                           ${item.name}
                         </label>
                       `;
@@ -9456,7 +9830,7 @@ function renderOrderProgressionBody(prodItem) {
               <div style="background:#ffffff; padding:10px; border-radius:6px; border:1px solid #E2E8F0;">
                 <div style="display:flex; align-items:center; justify-content:space-between;">
                   <strong style="font-size:0.8rem; color:#334155;">Remark:</strong>
-                  <button type="button" onclick="openRemarkModal('${prodItem.quoteId}','${sec.id}')" style="font-size:0.7rem; font-weight:600; padding:2px 10px; border-radius:4px; border:1.5px solid #CBD5E1; background:#fff; color:#0F172A; cursor:pointer;">
+                  <button type="button" onclick="openRemarkModal('${prodItem._backendId}','${sec.id}')" style="font-size:0.7rem; font-weight:600; padding:2px 10px; border-radius:4px; border:1.5px solid #CBD5E1; background:#fff; color:#0F172A; cursor:pointer;">
                     ${prodItem.remarks && prodItem.remarks[sec.id] ? "Edit Remark" : "+ Add Remark"}
                   </button>
                 </div>
@@ -9502,7 +9876,7 @@ function renderOrderProgressionBody(prodItem) {
                 '" ' +
                 ph +
                 " onchange=\"updateDispatchedData('" +
-                prodItem.quoteId +
+                prodItem._backendId +
                 "', '" +
                 f.id +
                 '\', this.value)" style="font-size:0.8rem;">' +
@@ -9606,10 +9980,13 @@ async function persistProductionInteraction(snapshot) {
   return false;
 }
 
-window.toggleEntireSectionDone = function (quoteId, secId, markDone) {
+window.toggleEntireSectionDone = function (prodItemRef, secId, markDone) {
   loadState();
   const prodItem = STATE.productionItems.find(
-    (p) => p.quoteId === quoteId || p.id === quoteId,
+    (p) =>
+      p._backendId === prodItemRef ||
+      p.id === prodItemRef ||
+      p.quoteId === prodItemRef,
   );
   if (!prodItem) return;
 
@@ -9635,10 +10012,13 @@ window.toggleEntireSectionDone = function (quoteId, secId, markDone) {
   persistProductionInteraction(snapshot);
 };
 
-window.toggleProgressionMapKey = function (quoteId, key, isChecked) {
+window.toggleProgressionMapKey = function (prodItemRef, key, isChecked) {
   loadState();
   const prodItem = STATE.productionItems.find(
-    (p) => p.quoteId === quoteId || p.id === quoteId,
+    (p) =>
+      p._backendId === prodItemRef ||
+      p.id === prodItemRef ||
+      p.quoteId === prodItemRef,
   );
   if (!prodItem) return;
 
@@ -9654,10 +10034,13 @@ window.toggleProgressionMapKey = function (quoteId, key, isChecked) {
   persistProductionInteraction(snapshot);
 };
 
-window.updateDispatchedData = function (quoteId, field, value) {
+window.updateDispatchedData = function (prodItemRef, field, value) {
   loadState();
   const prodItem = STATE.productionItems.find(
-    (p) => p.quoteId === quoteId || p.id === quoteId,
+    (p) =>
+      p._backendId === prodItemRef ||
+      p.id === prodItemRef ||
+      p.quoteId === prodItemRef,
   );
   if (!prodItem) return;
   const snapshot = snapshotProductionInteraction(prodItem);

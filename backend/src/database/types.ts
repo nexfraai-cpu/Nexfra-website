@@ -263,6 +263,7 @@ export interface ChassisRecordRow {
   model: string | null;
   chassis_number: string | null;
   arrival_date: string | null;
+  out_date: string | null;
   customer_name: string | null;
   product_name: string | null;
   notes: string | null;
