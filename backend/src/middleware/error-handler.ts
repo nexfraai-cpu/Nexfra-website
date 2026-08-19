@@ -62,7 +62,22 @@ export function errorHandler(
     });
   }
 
-  logger.error({ err }, 'Unhandled internal error');
+  const anyErr = err as any;
+  console.error(
+    `[UNHANDLED ERROR] Method: ${req.method} Path: ${req.originalUrl || req.url} Code: ${anyErr?.code ?? 'N/A'} Message: ${err.message} Details: ${JSON.stringify(anyErr?.details ?? {})}`,
+  );
+  logger.error(
+    {
+      err,
+      method: req.method,
+      path: req.originalUrl || req.url,
+      pgCode: anyErr?.code,
+      pgMessage: anyErr?.message,
+      pgDetails: anyErr?.details,
+      pgHint: anyErr?.hint,
+    },
+    'Unhandled internal error',
+  );
   return res.status(500).json({
     error: 'InternalError',
     message: 'An unexpected error occurred',
