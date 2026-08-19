@@ -93,11 +93,33 @@ function runIntroAnimations() {
   gsap.from('.hero-title', { opacity: 0, y: 30, duration: 1, delay: 0.2, ease: 'power3.out' });
   gsap.from('.hero-desc', { opacity: 0, y: 20, duration: 1, delay: 0.4, ease: 'power2.out' });
   gsap.from('.hero-actions', { opacity: 0, y: 15, duration: 0.8, delay: 0.6, ease: 'power2.out' });
-  gsap.from('.hero-feat-card', { opacity: 0, x: 50, stagger: 0.15, duration: 0.8, delay: 0.5, ease: 'power2.out' });
+  gsap.from('.hero-feat-card', { 
+    opacity: 0, 
+    x: 50, 
+    stagger: 0.15, 
+    duration: 0.8, 
+    delay: 0.5, 
+    ease: 'power2.out',
+    clearProps: 'opacity,transform',
+    onComplete: () => {
+      document.querySelectorAll('.hero-feat-card').forEach(el => el.classList.add('revealed'));
+    }
+  });
   gsap.registerPlugin(ScrollTrigger);
   gsap.from('.about-text-wrap', { scrollTrigger: { trigger: '.about-section', start: 'top 80%' }, opacity: 0, x: -50, duration: 1, ease: 'power2.out' });
   gsap.from('.about-visual-wrap', { scrollTrigger: { trigger: '.about-section', start: 'top 80%' }, opacity: 0, x: 50, duration: 1, ease: 'power2.out' });
-  gsap.from('.industry-card', { scrollTrigger: { trigger: '.industries-section', start: 'top 80%' }, opacity: 0, y: 40, stagger: 0.1, duration: 0.8, ease: 'power2.out' });
+  gsap.from('.industry-card', { 
+    scrollTrigger: { trigger: '.industries-section', start: 'top 80%' }, 
+    opacity: 0, 
+    y: 40, 
+    stagger: 0.1, 
+    duration: 0.8, 
+    ease: 'power2.out',
+    clearProps: 'opacity,transform',
+    onComplete: () => {
+      document.querySelectorAll('.industry-card').forEach(el => el.classList.add('revealed'));
+    }
+  });
 }
 
 function initWebsiteLayout() {

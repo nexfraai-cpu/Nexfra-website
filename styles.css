@@ -504,6 +504,9 @@ textarea.form-control {
   padding: 24px;
   border-left: 4px solid var(--color-primary);
   color: var(--color-bg-white);
+}
+
+.hero-feat-card.revealed {
   transition: var(--transition-smooth);
 }
 
@@ -1237,6 +1240,9 @@ textarea.form-control {
   background-color: var(--color-bg-white);
   border: 1.5px solid var(--color-border);
   padding: 40px 30px;
+}
+
+.industry-card.revealed {
   transition: var(--transition-smooth);
 }
 
