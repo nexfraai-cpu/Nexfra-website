@@ -3830,7 +3830,7 @@ body.admin-logged-in .hero-section {
   padding: 36px 40px;
   color: #F8FAFC;
   box-shadow: 0 20px 40px -15px rgba(15, 23, 42, 0.25);
-  margin-bottom: 50px;
+  margin-bottom: 0;
   position: relative;
   overflow: hidden;
 }

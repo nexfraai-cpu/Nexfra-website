@@ -97,7 +97,6 @@ function runIntroAnimations() {
   gsap.registerPlugin(ScrollTrigger);
   gsap.from('.about-text-wrap', { scrollTrigger: { trigger: '.about-section', start: 'top 80%' }, opacity: 0, x: -50, duration: 1, ease: 'power2.out' });
   gsap.from('.about-visual-wrap', { scrollTrigger: { trigger: '.about-section', start: 'top 80%' }, opacity: 0, x: 50, duration: 1, ease: 'power2.out' });
-  gsap.from('.process-step', { scrollTrigger: { trigger: '.process-section', start: 'top 75%' }, opacity: 0, y: 30, stagger: 0.1, duration: 0.8, ease: 'power2.out' });
   gsap.from('.industry-card', { scrollTrigger: { trigger: '.industries-section', start: 'top 80%' }, opacity: 0, y: 40, stagger: 0.1, duration: 0.8, ease: 'power2.out' });
 }
 
