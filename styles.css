@@ -931,6 +931,7 @@ textarea.form-control {
   border-radius: 20px;
   text-decoration: none;
   transition: var(--transition-smooth);
+  white-space: nowrap;
 }
 
 .nav-phone-link:hover {
@@ -1037,7 +1038,7 @@ textarea.form-control {
 
 /* Manufacturing & Fleet Gallery Section */
 .gallery-section {
-  padding: 100px 0;
+  padding: 50px 0 100px;
   background-color: var(--color-bg);
   border-bottom: 1px solid var(--color-border);
 }
@@ -1150,7 +1151,7 @@ textarea.form-control {
 
 /* Manufacturing Process */
 .process-section {
-  padding: 100px 0;
+  padding: 100px 0 50px;
   background-color: var(--color-bg-white);
   border-bottom: 1px solid var(--color-border);
 }
